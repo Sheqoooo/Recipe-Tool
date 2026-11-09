@@ -33,6 +33,8 @@ Fehlt ein API-Key, ist die Quelle nicht zugänglich oder wird kein vollständige
 
 **GitHub Pages kann diese App nicht betreiben**, da es keinen Node.js-Server ausführt. Benötigt wird ein Hosting mit Node.js 24 oder Docker und dauerhaftem Datenspeicher. Die App wird an einer eigenen Domain oder Subdomain ohne URL-Unterpfad betrieben.
 
+Auf GitHub Pages zeigt die Startseite eine gestaltete **Oberflächenvorschau** statt der README. Sie leitet auf `static/index.html?preview=1` weiter. Import und API-Key-Eingabe sind dort deaktiviert; es werden keine Server- oder KI-Anfragen gesendet. Die vollständige App wird auf dem Node-/Docker-Hosting betrieben.
+
 Die vollständigen Schritte stehen in [docs/HOSTING.md](docs/HOSTING.md), einschließlich Docker Compose, Umgebungsvariablen, HTTPS, Passwortschutz und Backups. Ein Onlinebetrieb benötigt keine starke KI-Hardware; die KI-Anfragen gehen an die OpenAI-API.
 
 ## KI, Daten und Kosten

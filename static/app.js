@@ -4,6 +4,7 @@ let draft = null;
 let currentView = 'import';
 const $ = selector => document.querySelector(selector);
 const filePreview = location.protocol === 'file:';
+const previewMode = filePreview || new URLSearchParams(location.search).get('preview') === '1';
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const fmt = value => value == null ? '' : Number(value).toLocaleString('de-DE', {maximumFractionDigits: 2});
 const quantity = item => [fmt(item.amount), item.unit].filter(Boolean).join(' ');
@@ -14,7 +15,7 @@ function notify(message, error = false) {
   clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { node.hidden = true; }, error ? 12000 : 5000);
 }
 async function api(path, data) {
-  if (filePreview) throw new Error('Das ist die Dateivorschau. Starte Rezeptwerk mit npm start und öffne http://127.0.0.1:8765.');
+  if (previewMode) throw new Error('Diese Vorschau hat keine Serververbindung. Import und Datenbank funktionieren in der gestarteten bzw. gehosteten App.');
   const options = data === undefined ? {} : {method: 'POST', headers: {'Content-Type':'application/json', 'X-Rezeptwerk-Token':state.token}, body:JSON.stringify(data)};
   const response = await fetch(path, options);
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Die Serververbindung fehlt. Rezeptwerk benötigt ein laufendes Node.js-Hosting; GitHub Pages allein reicht nicht.');
@@ -154,15 +155,17 @@ document.addEventListener('change', async event => {
 });
 $('#search').addEventListener('input', renderRecipes);
 showView(location.hash.slice(1));
-if (filePreview) {
+if (previewMode) {
   renderRecipes();
   renderShopping();
   $('#import-submit').disabled = true;
   $('#api-key').disabled = true;
   $('#settings-form button[type="submit"]').disabled = true;
   $('#remove-key').disabled = true;
-  $('#key-status').textContent = 'Die Dateivorschau ist nicht mit der Datenbank verbunden. Bitte zuerst die App starten.';
-  notify('Dateivorschau: Für Import und Datenbank im Projektordner npm ci (einmalig) und npm start ausführen. Danach http://127.0.0.1:8765 öffnen.');
+  $('#key-status').textContent = 'Die Vorschau ist nicht mit der Datenbank verbunden. Bitte den API-Key erst in der vollständigen App hinterlegen.';
+  notify(filePreview
+    ? 'Dateivorschau: Für Import und Datenbank im Projektordner npm ci (einmalig) und npm start ausführen. Danach http://127.0.0.1:8765 öffnen.'
+    : 'GitHub-Pages-Vorschau: Hier kannst du die Oberfläche ansehen. Rezeptimport und Datenbank werden auf deinem Node.js-Hosting verfügbar.');
   clearTimeout(noticeTimer);
 } else {
   refresh().catch(error => notify('Die Anwendung ist nicht erreichbar. ' + error.message, true));

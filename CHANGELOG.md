@@ -2,6 +2,8 @@
 
 ## 0.2.1 – 2026-11-09
 
+- GitHub-Pages-Einstieg ergänzt: gestaltete Oberflächenvorschau statt automatisch angezeigter README.
+- Statische Vorschau zeigt ihren Status und sendet keine API-Anfragen; Desktop-/Mobiltests decken auch den Pages-Projektpfad ab.
 - Relative Verweise auf CSS und JavaScript lassen die Gestaltung auch bei direkt geöffneter HTML-Datei laden.
 - Dateivorschau zeigt eine Startanleitung und sperrt Import sowie Key-Eingabe, bis die App über den Server geöffnet wird.
 - Browser-Regressionsprüfung für die direkt geöffnete Datei auf Desktop und Mobil ergänzt.

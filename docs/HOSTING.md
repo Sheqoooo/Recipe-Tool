@@ -89,4 +89,6 @@ Der JSON-Export der App enthält Rezepte, aber weder Kochliste noch Key und ist 
 
 ## GitHub Pages
 
-Das Repository enthält den Anwendungscode und die Dokumentation. GitHub Pages kann daraus keine vollständige App starten. Die Website wird auf dem Node-/Docker-Hosting veröffentlicht; GitHub bleibt die Quellcodeverwaltung.
+Das Repository enthält den Anwendungscode und die Dokumentation. Der Einstieg `index.html` im Hauptverzeichnis öffnet auf GitHub Pages die gestaltete Oberflächenvorschau unter `static/index.html?preview=1`. Relative Ressourcenpfade funktionieren auch unter dem Projektpfad `/Recipe-Tool/`. `.nojekyll` lässt GitHub die statischen Dateien unverändert veröffentlichen.
+
+Die Vorschau benötigt keinen Server und führt keine API-Aufrufe aus; Import und Key-Eingabe sind gesperrt. GitHub Pages kann daraus keine vollständige App starten. Die vollständige Website wird auf dem Node-/Docker-Hosting veröffentlicht; GitHub bleibt die Quellcodeverwaltung.
