@@ -1,28 +1,38 @@
-name: Tests
+name: Worker tests (no deploy)
 on:
   push:
+    branches: [main, 'codex/**']
   pull_request:
 permissions:
   contents: read
 jobs:
   test:
     runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false'
+      WRANGLER_SEND_METRICS: 'false'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - run: npm run check
+      # Bootstrap the reviewed migration lockfile; switch to npm ci once captured.
+      - run: npm install
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-lock
+          path: package-lock.json
+      - run: npm run build
+      - run: npm run typecheck
       - run: npm test
-      - run: docker build -t rezeptwerk:test .
-      - run: npm install --no-save --package-lock=false --ignore-scripts @playwright/test@1.56.1
+      - run: npm run build:worker
+      - run: npx wrangler d1 migrations apply DB --local
+      - run: npx wrangler d1 migrations apply DB --local --config test/wrangler.browser.jsonc --persist-to .runtime/browser
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test
+      - run: npm run test:browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: browser-test-results
+          name: worker-test-results
           path: test-results/
           retention-days: 7
