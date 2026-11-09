@@ -42,7 +42,15 @@ export async function generateRecipe(source:Source,env:Env,importId:string,fetch
       text:{format:{type:'json_schema',name:'recipe',schema,strict:true}}},
       {headers:{'Idempotency-Key':importId}});
   }catch(error){
-    if(error instanceof OpenAI.RateLimitError)throw new AppError('AI_RATE_LIMIT','Der KI-Dienst hat sein Limit erreicht. Bitte später erneut versuchen.',503);
+    if(error instanceof OpenAI.RateLimitError){
+      // 429 also covers billing/quota failures. Never expose the raw provider message.
+      if(error.code==='credit_balance_exhausted')throw new AppError('AI_CREDITS_EMPTY','Für die OpenAI-API ist kein Guthaben verfügbar. Der Administrator muss die API-Abrechnung prüfen.',503);
+      if(error.code==='organization_spend_limit_exceeded'||error.code==='project_spend_limit_exceeded')throw new AppError('AI_SPEND_LIMIT','Das Ausgabenlimit des OpenAI-API-Kontos oder Projekts ist erreicht. Der Administrator muss das Limit in der API-Abrechnung prüfen.',503);
+      if(error.code==='organization_usage_limit_exceeded')throw new AppError('AI_USAGE_LIMIT','Das freigegebene Nutzungskontingent des OpenAI-API-Kontos ist erreicht. Der Administrator muss die API-Limits prüfen.',503);
+      if(error.code==='insufficient_quota'||error.type==='insufficient_quota')throw new AppError('AI_QUOTA','OpenAI meldet fehlendes API-Guthaben oder Nutzungskontingent. Der Administrator muss API-Abrechnung und Limits prüfen. ChatGPT Plus enthält keine API-Nutzung.',503);
+      if(error.code==='rate_limit_exceeded'||error.code==='slow_down'||error.type==='rate_limit_error')throw new AppError('AI_RATE_LIMIT','OpenAI begrenzt die Anfragen momentan. Bitte kurz warten; bei wiederholtem Auftreten muss der Administrator die API-Anfragelimits prüfen.',503);
+      throw new AppError('AI_LIMIT','OpenAI hat die Anfrage wegen einer Begrenzung abgelehnt. Der Administrator muss API-Abrechnung und Anfragelimits prüfen.',503);
+    }
     if(error instanceof OpenAI.AuthenticationError)throw new AppError('AI_CONFIGURATION','Das OpenAI-Secret muss vom Administrator geprüft werden.',503);
     throw new AppError('AI_UNAVAILABLE','Der KI-Dienst ist momentan nicht erreichbar. Es wurde kein Rezept gespeichert.',502);
   }
