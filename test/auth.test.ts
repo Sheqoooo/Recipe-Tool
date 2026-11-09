@@ -1,7 +1,7 @@
 import { it,expect } from 'vitest';
 import { generateKeyPair,SignJWT,exportJWK,createLocalJWKSet } from 'jose';
 import { verifyIdentity } from '../src/worker/auth.js';
-import type { Env } from '../src/shared/types.js';
+import type { Env } from '../src/worker/env.js';
 const config:Env={APP_ENV:'production',AUTH_MODE:'access',ACCESS_ISSUER:'https://recipe-test.cloudflareaccess.com',ACCESS_AUD:'test-audience',ASSETS:{} as Fetcher};
 it('vertraut einem E-Mail-Header ohne signiertes JWT nicht',async()=>{
   await expect(verifyIdentity(new Request('https://app.example/',{headers:{'Cf-Access-Authenticated-User-Email':'admin@example.invalid'}}),config)).rejects.toMatchObject({status:401});

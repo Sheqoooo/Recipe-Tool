@@ -1,7 +1,8 @@
+import type { Env } from "./env.js";
 import { parse,type DefaultTreeAdapterMap } from 'parse5';
 import ipaddr from 'ipaddr.js';
 import { AppError } from '../shared/errors.js';
-import type { Env, Source } from '../shared/types.js';
+import type {  Source } from '../shared/types.js';
 
 export const MAX_SOURCE_BYTES=20000;
 export function normalizeUrl(value:unknown):URL {

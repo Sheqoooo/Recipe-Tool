@@ -1,5 +1,6 @@
+import type { Env } from "./env.js";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
-import type { Env, Member } from '../shared/types.js';
+import type {  Member } from '../shared/types.js';
 import { AppError } from '../shared/errors.js';
 import { Repository } from './db.js';
 

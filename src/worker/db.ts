@@ -1,4 +1,5 @@
-import type { Member, Recipe, RecipeData, Source, SourceKind, Usage, Env, ImportRecord, PlanEntry } from '../shared/types.js';
+import type { Env } from "./env.js";
+import type { Member, Recipe, RecipeData, Source, SourceKind, Usage,  ImportRecord, PlanEntry } from '../shared/types.js';
 import { AppError } from '../shared/errors.js';
 import { positiveServings } from '../shared/recipe.js';
 

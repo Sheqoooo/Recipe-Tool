@@ -10,7 +10,7 @@ const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 const fmt=(v:number|null)=>v===null?'':v.toLocaleString('de-DE',{maximumFractionDigits:2});
 const quantity=(i:{amount:number|null;unit:string})=>[fmt(i.amount),i.unit].filter(Boolean).join(' ');
 const preview=location.protocol==='file:'||new URLSearchParams(location.search).get('preview')==='1';
-let timer:ReturnType<typeof setTimeout>;
+let timer:ReturnType<typeof setTimeout>|undefined;
 function notify(message:string,error=false){$('#notice').textContent=message;$('#notice').hidden=false;$('#notice').classList.toggle('error',error);clearTimeout(timer);timer=setTimeout(()=>{$('#notice').hidden=true;},error?15000:6000);}
 async function api<T>(path:string,data?:unknown):Promise<T>{
   if(preview)throw new Error('Diese statische Vorschau ist nicht mit der privaten App verbunden.');
