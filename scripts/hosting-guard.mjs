@@ -1,5 +1,9 @@
 // Pure configuration checks: no network access and no deployment side effects.
 export function validateHosting(config) {
+  if(!config.compatibility_flags?.includes('global_fetch_strictly_public')||config.compatibility_flags.includes('global_fetch_private_origin'))throw new Error('Source imports require strictly public global fetch routing.');
+  for(const scope of [config,config.previews]) {
+    if(['services','vpc_services','vpc_networks'].some(key=>scope?.[key]?.length))throw new Error('Do not bind private network or service fetch capabilities to the recipe importer.');
+  }
   if(config.workers_dev!==true||config.preview_urls!==false)throw new Error('Use the protected workers.dev hostname; keep legacy version URLs disabled.');
   if(config.assets?.run_worker_first!==true)throw new Error('All assets must pass authentication.');
   const origin=config.vars?.APP_ORIGIN;

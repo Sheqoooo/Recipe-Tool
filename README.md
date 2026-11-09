@@ -42,7 +42,7 @@ Portionen, Zeiten und Mengen dürfen unbekannt sein. Die KI soll diese nicht erf
 
 ## Webseiten und YouTube
 
-Webseiten müssen explizit über exakte Hostnamen freigegeben sein. schema.org-Rezeptdaten werden bevorzugt; sonst wird sichtbarer Text extrahiert. Interne Adressen, ungültige Redirects und zu große Quellen werden abgewiesen. Dynamisch gerenderte oder blockierte Seiten können nicht immer importiert werden.
+Öffentlich erreichbare HTTPS-Rezeptseiten können ohne vorherige Domainfreigabe importiert werden. Eine leere `RECIPE_ALLOWED_HOSTS`-Variable ist der Standard; eine nicht leere Liste kann den Import optional auf exakte Hostnamen beschränken. schema.org-Rezeptdaten werden bevorzugt; sonst wird sichtbarer Text extrahiert. Interne Adressen, ungültige Redirects und zu große Quellen werden abgewiesen. Dynamisch gerenderte oder blockierte Seiten können nicht immer importiert werden.
 
 YouTube-Links werden erkannt und benötigen derzeit ein rechtmäßig bereitgestelltes Transkript (max. 20 KB, angegebene Videolänge bis 20 Minuten). Es findet keine Bild-/Audioanalyse statt. Die modulare `Source`-Übergabe erlaubt spätere sichere Audio-/Frameadapter; diese sind noch nicht implementiert. [Mediengrenzen und Kosten](docs/OPENAI-VIDEO.md).
 

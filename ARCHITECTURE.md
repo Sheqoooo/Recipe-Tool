@@ -21,7 +21,7 @@ Browser → Cloudflare Access → Worker (JWT + Mitgliedschaft + Berechtigung)
 2. Same-Origin-POST und JSON-Größenlimit prüfen.
 3. HTTPS-URL normalisieren; identische gespeicherte Quelle wiederverwenden.
 4. Anfragekontingent, Parallelität und Kostenbudget atomar in D1 reservieren.
-5. Explizite Hostfreigabe, öffentliche DNS-Antworten und jeden Redirect prüfen. Keine Credentials weiterleiten.
+5. Öffentliche DNS-Antworten und jeden Redirect prüfen; lokale Adressen, Anmeldeziele und die eigene App sperren. Keine feste Quellenliste nötig, optional kann der Betreiber Hosts beschränken. Globales Fetch mit `global_fetch_strictly_public`, ohne private Netzwerk-/Service-Bindings und ohne weitergereichte Credentials verwenden.
 6. Höchstens 2 MB HTML laden. `parse5` extrahiert bevorzugt `schema.org/Recipe`, sonst sichtbaren Text. Höchstens 20 KB Quelltext an die KI weitergeben.
 7. Offizielles OpenAI-SDK verwendet die Responses API, `store:false`, ein festes JSON Schema und maximal 6.000 Ausgabetokens. Keine automatischen Wiederholungen.
 8. Gemeinsames Zod-Schema prüft die Antwort serverseitig. Metrische Grundeinheiten normalisieren, Schritt-/Zutatenreferenzen prüfen und fehlende Angaben erhalten.

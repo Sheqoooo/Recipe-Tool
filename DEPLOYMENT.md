@@ -42,7 +42,7 @@ Diese Worker-weite Access-Anwendung schützt alle zugehörigen URLs einschließl
 - Teamdomain aus den Zero-Trust-Einstellungen als `ACCESS_ISSUER`: `https://DEIN-TEAM.cloudflareaccess.com`.
 - Unter **Zero Trust → Access controls → Applications** die für `recipe-tool` angelegte Anwendung öffnen. Den **Application Audience (AUD) Tag** unter **Configure → Additional settings** als `vars.ACCESS_AUD` und `previews.vars.ACCESS_AUD` eintragen. Beide Umgebungen verwenden dieselbe Worker-weite Access-Anwendung; der Aussteller muss ebenfalls in beiden Blöcken stehen.
 - Eigene erste Admin-E-Mail in `BOOTSTRAP_ADMIN_EMAILS` eintragen, mehrere mit Komma getrennt. Erst ein gültiges Access-JWT ermöglicht die Aufnahme in D1.
-- Rezeptquellen als exakte Hostnamen in `RECIPE_ALLOWED_HOSTS` freigeben, z. B. tatsächlich verwendete Rezeptanbieter samt benötigter `www`-Variante. Keine Wildcards.
+- `RECIPE_ALLOWED_HOSTS` leer lassen: Öffentliche HTTPS-Rezeptseiten benötigen keine einzelne Freigabe. Optional schränkt eine kommaseparierte Liste exakter Hostnamen die Quellen zusätzlich ein. `global_fetch_strictly_public` beibehalten und keine privaten Netzwerk-/Service-Bindings hinzufügen.
 
 Der Worker prüft das JWT zusätzlich selbst und vertraut keinem ungesicherten E-Mail-Header. Bei Static Assets kann `ctx.access` fehlen; deshalb ist die direkte JWT-Verifikation absichtlich Bestandteil des Codes. [Offizielle Besonderheiten](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)
 
@@ -109,9 +109,9 @@ Exportdateien gehören außerhalb des Repositories; `private-backup.sql` vor Ver
 - **401:** Access-JWT fehlt/ungültig, Audience/Issuer oder Sitzung prüfen. Kein Identitätsheader als Ersatz.
 - **403 NOT_INVITED:** Access ist erfolgreich, aber D1-Mitgliedschaft fehlt oder ist gesperrt. Admin und Access-Richtlinie müssen beide Zugriff erlauben.
 - **503:** Access-/D1-Konfiguration, ausstehende lokale/produktive Migration oder `OPENAI_API_KEY` prüfen. Keine Rohfehler/Secrets öffentlich posten.
-- **SOURCE_NOT_ALLOWED / SOURCE_PRIVATE:** Exakten Host und Redirect-Ziele prüfen. Interne Ziele nicht freischalten.
+- **SOURCE_NOT_ALLOWED / SOURCE_PRIVATE:** Eine optional gesetzte Hostbeschränkung bzw. DNS-/Redirect-Ziele prüfen. Bei leerer Hostliste sind öffentliche Anbieter zugelassen. Interne Ziele nicht freischalten.
 - **IMPORT_LIMIT:** Paralleler Import, Anfragekontingent oder reserviertes Tages-/Monatsbudget erreicht. Keine unkontrollierten Wiederholungen starten.
 - **TRANSCRIPT_REQUIRED:** YouTube-Link allein ist nicht ausreichend. Rechtmäßig bereitgestelltes Transkript verwenden.
 - **GitHub Pages:** Öffentliche statische Vorschau, keine private D1-/OpenAI-Verbindung. Für die echte App die Access-geschützte Worker-Domain verwenden.
 
-Die bestehende D1 `recipe-prod` / `58577ba1-de20-4078-915d-9c0a2962f555` ist bereits eingetragen. Noch vor Veröffentlichung fehlen: tatsächliche Konto-Subdomain bzw. workers.dev-Adresse, Access-Teamdomain und Worker-AUD (in beiden Umgebungen), Bootstrap-Admin-E-Mail, erlaubte Rezeptdomains sowie das Secret im eigenen Cloudflare-Dashboard. Keine eigene Domain erforderlich. GitHub-Verbindung und automatische Deployments erst nach Review, Access-Einrichtung und ausdrücklicher Aktivierung freischalten; das Verbinden kann bereits einen Build auslösen.
+Die bestehende D1 `recipe-prod` / `58577ba1-de20-4078-915d-9c0a2962f555` ist bereits eingetragen. Noch vor Veröffentlichung fehlen: tatsächliche Konto-Subdomain bzw. workers.dev-Adresse, Access-Teamdomain und Worker-AUD (in beiden Umgebungen), Bootstrap-Admin-E-Mail sowie das Secret im eigenen Cloudflare-Dashboard. Keine eigene Domain erforderlich. GitHub-Verbindung und automatische Deployments erst nach Review, Access-Einrichtung und ausdrücklicher Aktivierung freischalten; das Verbinden kann bereits einen Build auslösen.

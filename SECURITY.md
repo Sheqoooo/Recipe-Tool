@@ -2,7 +2,7 @@
 
 ## Verbindliche Betriebsgrenzen
 
-Die Anwendung ist ein privates gemeinsames Kochbuch. Vor einer Veröffentlichung müssen Access, die bestehende D1-Datenbank, Admins, Quellenfreigaben und Worker Secrets konfiguriert werden. Die mitgelieferten produktiven Platzhalter sind absichtlich nicht veröffentlichungsfähig. Es gibt weder automatische Produktionsmigrationen noch ein Deployment aus GitHub Actions.
+Die Anwendung ist ein privates gemeinsames Kochbuch. Vor einer Veröffentlichung müssen Access, die bestehende D1-Datenbank, Admins und Worker Secrets konfiguriert werden. Die mitgelieferten produktiven Platzhalter sind absichtlich nicht veröffentlichungsfähig. Es gibt weder automatische Produktionsmigrationen noch ein Deployment aus GitHub Actions.
 
 ## Authentifizierung und Rechte
 
@@ -28,11 +28,11 @@ Keine Rohfehlermeldungen, Keys oder Quelltexte werden geloggt. Importhistorie sp
 
 ## Fremde URLs und SSRF
 
-Nur HTTPS ohne Benutzer-/Passwortanteil, IP-Literale oder Sonderport. Links mit typischen Zugangsschlüssel-Parametern werden abgelehnt. Eine explizite, exakte `RECIPE_ALLOWED_HOSTS`-Liste ist Voraussetzung; keine Wildcards oder beliebigen nutzergesteuerten Domains. Jede Weiterleitung muss erneut erlaubt sein. Die eigene App und Workers-/Access-Hosts bleiben gesperrt.
+Nur HTTPS ohne Benutzer-/Passwortanteil, IP-Literale oder Sonderport. Links mit typischen Zugangsschlüssel-Parametern werden abgelehnt. Öffentliche Rezeptquellen benötigen keine vorherige Freigabe. `RECIPE_ALLOWED_HOSTS` ist eine optionale zusätzliche Einschränkung auf exakte Hostnamen; leer bedeutet öffentliche Quellen zulassen, keine Wildcard-Konfiguration nötig. Jede Weiterleitung wird erneut auf URL und öffentliche DNS-Adressen geprüft. Lokale Namensräume, die eigene App und Access-Anmeldedomains bleiben gesperrt.
 
 Öffentliche A-/AAAA-Adressen werden zusätzlich über Cloudflares DNS-over-HTTPS geprüft. Private, reservierte, gemappte und lokale Adressen werden abgewiesen. Der eigentliche Abruf verwendet Workers globales Fetch ohne VPC-/Tunnel-/interne Service-Bindings. Authentifizierungsheader oder Cookies werden nicht weitergeleitet. Maximal drei Redirects, 15 Sekunden je Seitenabruf, 5 Sekunden je DNS-Prüfung und 2 MB HTML.
 
-**Vertrauensannahme:** Workers-Fetch bietet hier kein anwendungsseitiges IP-Pinning wie der alte Node-Socketclient. Zwischen DNS-Prüfung und Abruf kann DNS wechseln. Deshalb ist die Betreiberfreigabe vertrauenswürdiger, stabiler Hosts zwingend und beliebige URL-Hosts sind bewusst nicht unterstützt. Keine internen Dienste über dieselben Hosts oder allein aufgrund von Cloudflare-Herkunftsheadern freigeben. Für zusätzliche Isolation müsste künftig eine gesonderte kontrollierte Egress-Lösung entworfen werden; diese Änderung führt keinen solchen Dienst ein. [Cloudflare zu Workers-Bindings und SSRF](https://blog.cloudflare.com/workers-environment-live-object-bindings/)
+**Netzwerkgrenze:** Alle Wrangler-Konfigurationen aktivieren ausdrücklich `global_fetch_strictly_public`. Der Quellenabruf verwendet ausschließlich globales Workers-Fetch, das dadurch über den öffentlichen Zugang der Zielseite läuft und keine Origin-Sicherheitsregeln umgeht. Private Netzwerk-/Tunnel-/Service-Fetch-Bindings sind nicht Bestandteil dieses Workers und werden vom Release-Schutz abgelehnt. Cloudflares Isolation ist Teil der Sicherheitsannahme. Bei Selbsthosting mit einer anderen Laufzeit muss deren Egress private und reservierte Adressen ebenfalls beim Verbindungsaufbau sperren. Die vorherige DNS-Prüfung allein verhindert kein DNS-Rebinding, und Workers-Fetch bietet hier kein anwendungsseitiges IP-Pinning. Niemals private APIs allein anhand von Cloudflare-Herkunftsheadern freigeben. [Strictly-public-Fetch](https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public), [Cloudflare zu Bindings und SSRF](https://blog.cloudflare.com/workers-environment-live-object-bindings/)
 
 HTML und Transkripte sind nicht vertrauenswürdig; enthaltene Anweisungen werden als Benutzerdaten behandelt. Structured Outputs, erneute Schema-/Referenzprüfung und maskierte Browserausgabe begrenzen Folgefehler. Die Content Security Policy sperrt fremde Skripte, Frames und Netzwerkziele im Browser. Modellkorrektheit kann nicht allein durch JSON-Validierung bewiesen werden; sachliche Unklarheiten müssen sichtbar bleiben.
 
@@ -46,4 +46,4 @@ Der aktuell implementierte Medienweg ist nur Text. Videolänge bis 20 Minuten is
 
 ## Wartung
 
-Betreiber verantwortet Access-Richtlinien, Mitgliedschaften, Secrets, geprüfte Hostliste, aktuelle Modellpreise, D1-Backups und Aktualisierungen. Sicherheitsrelevante Änderungen über geschützte PRs prüfen. Produktionsmigrationen erst nach Backup, SQL-Review und ausdrücklicher Freigabe durchführen. Keine persönlichen Daten oder Geheimnisse in öffentliche Issues posten.
+Betreiber verantwortet Access-Richtlinien, Mitgliedschaften, Secrets, öffentliche Egress-Isolation, optionale Quellenbeschränkungen, aktuelle Modellpreise, D1-Backups und Aktualisierungen. Sicherheitsrelevante Änderungen über geschützte PRs prüfen. Produktionsmigrationen erst nach Backup, SQL-Review und ausdrücklicher Freigabe durchführen. Keine persönlichen Daten oder Geheimnisse in öffentliche Issues posten.

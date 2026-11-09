@@ -17,3 +17,5 @@
 - Vor Übergabe Typen, Build, Worker-/D1-Tests und Browserabläufe prüfen; blockierte oder ungetestete Teile ehrlich benennen.
 
 - Hosting vorerst ausschließlich über die kostenlose workers.dev-Adresse für Frontend und API. Worker-weites Cloudflare Access auf All traffic mit expliziten E-Mail-Freigaben schützt auch Vorschauen. Keine eigene Domain voraussetzen und GitHub Pages unverändert lassen.
+
+- Öffentliche HTTPS-Rezeptquellen ohne Pflicht-Hostliste unterstützen. RECIPE_ALLOWED_HOSTS bleibt eine optionale Einschränkung. global_fetch_strictly_public, DNS-/Redirect-Prüfungen und öffentliche Egress-Isolation erhalten; keine privaten Netzwerk-/Service-Fetch-Bindings ergänzen.

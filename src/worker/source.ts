@@ -35,7 +35,7 @@ export async function limitedText(response:Response,limit:number):Promise<string
 export async function checkDns(host:string,fetcher:typeof fetch=fetch):Promise<void>{
   const records=await Promise.all(['A','AAAA'].map(async type=>{
     const response=await fetcher('https://cloudflare-dns.com/dns-query?name='+encodeURIComponent(host)+'&type='+type,
-      {headers:{Accept:'application/dns-json'},redirect:'error',signal:AbortSignal.timeout(5000)});
+      {headers:{Accept:'application/dns-json'},redirect:'manual',signal:AbortSignal.timeout(5000)});
     if(!response.ok)throw new AppError('SOURCE_DNS','Die Quelladresse konnte nicht sicher geprüft werden.',502);
     const body=JSON.parse(await limitedText(response,16000)) as {Status:number;Answer?:{type:number;data:string}[]};
     if(body.Status!==0)throw new AppError('SOURCE_DNS','Die Quelladresse konnte nicht aufgelöst werden.',422);
@@ -44,9 +44,14 @@ export async function checkDns(host:string,fetcher:typeof fetch=fetch):Promise<v
   const all=records.flat();if(!all.length||all.some(ip=>!publicAddress(ip)))throw new AppError('SOURCE_PRIVATE','Interne oder nicht öffentliche Quelladressen sind gesperrt.',422);
 }
 export function checkAllowed(url:URL,env:Env):void{
+  // Optional operator restriction; an empty list permits public sources after DNS validation.
   const hosts=(env.RECIPE_ALLOWED_HOSTS||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
-  if(!hosts.includes(url.hostname)||url.origin===env.APP_ORIGIN||url.hostname.endsWith('.cloudflareaccess.com')||url.hostname.endsWith('.workers.dev')) {
-    throw new AppError('SOURCE_NOT_ALLOWED','Diese Rezept-Domain ist noch nicht vom Administrator freigegeben.',422);
+  const forbidden=['localhost','local','internal','lan','home.arpa','onion','cloudflareaccess.com'];
+  if(url.origin===env.APP_ORIGIN||forbidden.some(host=>url.hostname===host||url.hostname.endsWith('.'+host))) {
+    throw new AppError('SOURCE_PRIVATE','Interne Adressen und Anmeldeziele sind als Rezeptquelle gesperrt.',422);
+  }
+  if(hosts.length&&!hosts.includes(url.hostname)) {
+    throw new AppError('SOURCE_NOT_ALLOWED','Diese Quelle liegt außerhalb der optionalen Quellenbeschränkung.',422);
   }
 }
 export function extractSource(html:string,url:string):Source{

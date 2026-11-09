@@ -17,7 +17,7 @@ if(action==='preview'){
 }else{
   const db=config.d1_databases?.[0];
   if(!db||db.database_name.includes('REPLACE_WITH')||db.database_id==='11111111-1111-4111-8111-111111111111')fail('Set the EXISTING D1 name and ID; do not create a new production database.');
-  if(!vars.BOOTSTRAP_ADMIN_EMAILS||!vars.RECIPE_ALLOWED_HOSTS)fail('Set bootstrap administrators and the source host allowlist.');
+  if(!vars.BOOTSTRAP_ADMIN_EMAILS)fail('Set bootstrap administrators.');
   if(action==='production'&&process.env.CONFIRM_PRODUCTION_DEPLOY!=='1')fail('Production deployment requires CONFIRM_PRODUCTION_DEPLOY=1.');
   if(action==='migrate'&&process.env.CONFIRM_PRODUCTION_MIGRATIONS!=='1')fail('Remote migration requires separate explicit approval: CONFIRM_PRODUCTION_MIGRATIONS=1.');
   if(process.env.WORKERS_CI_BRANCH&&process.env.WORKERS_CI_BRANCH!=='main')fail('Production operations are only allowed from main.');
