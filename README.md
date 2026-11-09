@@ -42,9 +42,9 @@ Portionen, Zeiten und Mengen dürfen unbekannt sein. Die KI soll diese nicht erf
 
 ## Webseiten und YouTube
 
-Öffentlich erreichbare HTTPS-Rezeptseiten können ohne vorherige Domainfreigabe importiert werden. Eine leere `RECIPE_ALLOWED_HOSTS`-Variable ist der Standard; eine nicht leere Liste kann den Import optional auf exakte Hostnamen beschränken. schema.org-Rezeptdaten werden bevorzugt; sonst wird sichtbarer Text extrahiert. Interne Adressen, ungültige Redirects und zu große Quellen werden abgewiesen. Dynamisch gerenderte oder blockierte Seiten können nicht immer importiert werden.
+Öffentlich erreichbare HTTPS-Rezeptseiten können ohne vorherige Domainfreigabe importiert werden. Eine leere `RECIPE_ALLOWED_HOSTS`-Variable ist der Standard; eine nicht leere Liste kann den Import optional auf exakte Hostnamen beschränken. schema.org-Rezeptdaten werden auf Titel, Zutaten, Schritte, Portionen und Zeiten reduziert; große Bewertungen, Bilder und andere Metadaten werden ausgelassen. Ohne strukturierte Daten werden Rezeptkarten und erkennbare Zutaten-/Zubereitungsabschnitte gegenüber Seitentext bevorzugt. Maximal 2 MB HTML und 20 KB extrahierter Text; der eigentliche Rezeptkern wird nicht still gekürzt. Interne Adressen, ungültige Redirects und zu große Quellen werden abgewiesen. Dynamisch gerenderte oder blockierte Seiten können nicht immer importiert werden.
 
-YouTube-Links werden erkannt und benötigen derzeit ein rechtmäßig bereitgestelltes Transkript (max. 20 KB, angegebene Videolänge bis 20 Minuten). Es findet keine Bild-/Audioanalyse statt. Die modulare `Source`-Übergabe erlaubt spätere sichere Audio-/Frameadapter; diese sind noch nicht implementiert. [Mediengrenzen und Kosten](docs/OPENAI-VIDEO.md).
+**Eingeschränkter Zwischenstand:** Automatischer YouTube-Videoimport bleibt das langfristige Produktziel und ist noch nicht implementiert. YouTube-Links werden erkannt und benötigen derzeit ein rechtmäßig bereitgestelltes Transkript (max. 20 KB, angegebene Videolänge bis 20 Minuten). Es findet keine Bild-/Audioanalyse statt. Die modulare `Source`-Übergabe erlaubt spätere sichere Audio-/Frameadapter; diese sind noch nicht implementiert. [Mediengrenzen und Kosten](docs/OPENAI-VIDEO.md).
 
 ## Tests
 
@@ -83,3 +83,7 @@ Bestehende private SQLite-Dateien werden nicht automatisch in D1 übertragen. Vo
 ## Lizenz
 
 [MIT](LICENSE). Die Anwendung ist Open Source; Cloudflare und die optionale OpenAI-API sind externe Dienste mit eigenen Bedingungen und Abrechnung.
+
+## Manuelle Prüfung nach Veröffentlichung
+
+Die konkrete [Smoke-Test-Checkliste](docs/SMOKE-TEST.md) umfasst Access einschließlich Assets/API/Preview, bestehende D1 und beide Migrationen, Quellen-/URL-Sicherheit, echte OpenAI-Imports nach gesonderter Kostenfreigabe sowie Koch- und Einkaufsliste. Sie ist vorbereitet, aber noch nicht live abgearbeitet.

@@ -32,7 +32,7 @@ function clip(value:string,bytes:number):string {
   let size=0,result='';for(const character of value){const n=encoder.encode(character).length;if(size+n>bytes)break;result+=character;size+=n;}return result;
 }
 function instructions(value:unknown,depth=0):string[]{
-  if(depth>40)return [];
+  if(depth>40)throw new AppError('SOURCE_COMPLEX','Die Rezeptstruktur ist zu stark verschachtelt.',422);
   if(typeof value==='string')return [plain(value)].filter(Boolean);
   if(Array.isArray(value))return value.flatMap(v=>instructions(v,depth+1));
   if(!value||typeof value!=='object')return [];
@@ -71,12 +71,16 @@ export function extractRecipeContent(html:string,limit:number):string {
     if(name==='main'&&mains.length<8)mains.push(node);
     if('childNodes'in node)for(let i=node.childNodes.length-1;i>=0;i--)stack.push(node.childNodes[i]);
   }
-  let visits=0;
-  function find(value:unknown,depth=0):Record<string,unknown>|null {
-    if(!value||typeof value!=='object'||depth>40||++visits>20000)return null;
-    const obj=value as Record<string,unknown>,type=obj['@type'];
-    if(type==='Recipe'||Array.isArray(type)&&type.includes('Recipe'))return obj;
-    for(const child of Object.values(obj)){const result=find(child,depth+1);if(result)return result;}return null;
+  function find(value:unknown):Record<string,unknown>|null {
+    // Breadth first: graph-level Recipe siblings precede deeply nested reviews/metadata.
+    const queue:{value:unknown;depth:number}[]=[{value,depth:0}];
+    for(let i=0;i<queue.length&&i<20000;i++){
+      const current=queue[i];if(!current.value||typeof current.value!=='object'||current.depth>40)continue;
+      const obj=current.value as Record<string,unknown>,type=obj['@type'];
+      if(type==='Recipe'||Array.isArray(type)&&type.includes('Recipe'))return obj;
+      for(const child of Object.values(obj))if(child&&typeof child==='object'&&queue.length<20000)queue.push({value:child,depth:current.depth+1});
+    }
+    return null;
   }
   for(const script of scripts){let value:unknown;try{value=JSON.parse(script);}catch{continue;}
     const recipe=find(value);if(recipe)return projectRecipe(recipe,limit);

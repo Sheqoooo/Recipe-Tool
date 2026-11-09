@@ -22,7 +22,7 @@ Browser → Cloudflare Access → Worker (JWT + Mitgliedschaft + Berechtigung)
 3. HTTPS-URL normalisieren; identische gespeicherte Quelle wiederverwenden.
 4. Anfragekontingent, Parallelität und Kostenbudget atomar in D1 reservieren.
 5. Öffentliche DNS-Antworten und jeden Redirect prüfen; lokale Adressen, Anmeldeziele und die eigene App sperren. Keine feste Quellenliste nötig, optional kann der Betreiber Hosts beschränken. Globales Fetch mit `global_fetch_strictly_public`, ohne private Netzwerk-/Service-Bindings und ohne weitergereichte Credentials verwenden.
-6. Höchstens 2 MB HTML laden. `parse5` extrahiert bevorzugt `schema.org/Recipe`, sonst sichtbaren Text. Höchstens 20 KB Quelltext an die KI weitergeben.
+6. Höchstens 2 MB HTML laden. `parse5` extrahiert den Kochkern von `schema.org/Recipe` ohne Bilder/Bewertungen/irrelevante Metadaten. Sonst Rezeptkarten, Artikel-/Main-Bereiche und vollständige Zutaten-/Zubereitungsabschnitte bevorzugen. Optionale Beschreibung auf UTF-8-Bytebudget begrenzen; Zutaten/Schritte nicht abschneiden. Höchstens 20 KB Text an die KI; bei weiterhin zu großem oder nicht isolierbarem Kern kontrolliert ablehnen.
 7. Offizielles OpenAI-SDK verwendet die Responses API, `store:false`, ein festes JSON Schema und maximal 6.000 Ausgabetokens. Keine automatischen Wiederholungen.
 8. Gemeinsames Zod-Schema prüft die Antwort serverseitig. Metrische Grundeinheiten normalisieren, Schritt-/Zutatenreferenzen prüfen und fehlende Angaben erhalten.
 9. D1-Batch speichert Rezept, Zutaten, Schritte und Importmetadaten atomar. Kein vollständiges HTML, Transkript oder Modell-Rohobjekt wird gespeichert.
@@ -36,7 +36,7 @@ Ein fehlendes Portionenfeld verhindert die Aufnahme in die skalierbare Kochliste
 
 ## D1-Schema
 
-Die versionierte Migration `migrations/0001_shared_cookbook.sql` enthält:
+Die versionierte Migration `migrations/0001_shared_cookbook.sql` enthält folgende Tabellen; `0002_recipe_listing_index.sql` ergänzt einen Index auf `recipes(created_at DESC,id DESC)`:
 
 | Tabelle | Zweck |
 | --- | --- |
@@ -62,4 +62,10 @@ YouTube-Links werden erkannt. Ohne bereitgestelltes Transkript wird `TRANSCRIPT_
 
 ## Begrenzungen
 
-Die Sammlung liefert derzeit maximal 500 Rezepte je Zustandsantwort; eine paginierte Suche ist ein späterer Schritt. Planung und Häkchen sind gemeinsam. Keine Favoriten/Tags, keine automatische Synonym-/Packungsgrößenauflösung und kein JSON-Reimport. Die Preview ist standardmäßig authentifiziert und ohne DB/Secret schreibgeschützt; produktionsnahe Preview-Daten sind absichtlich nicht vorbereitet.
+Die Sammlung liefert derzeit maximal 500 Rezepte je Zustandsantwort. Rezeptauswahl, Zutaten und Schritte werden in einem D1-Batch aus derselben begrenzten Auswahl gelesen; Detailtabellen verwenden ihre Rezept-ID-Indizes statt sämtliche Details zurückzugeben. Die Zuordnung im Worker erfolgt einmal über Maps statt wiederholter Vollfilter. Der Listenindex unterstützt die sortierte Auswahl. Eine paginierte Suche ist weiterhin offen; Planung und Häkchen sind gemeinsam. Keine Favoriten/Tags, keine automatische Synonym-/Packungsgrößenauflösung und kein JSON-Reimport. Die Preview ist standardmäßig authentifiziert und ohne DB/Secret schreibgeschützt; produktionsnahe Preview-Daten sind absichtlich nicht vorbereitet.
+
+## Schutz der Quell-URLs
+
+Gemeinsame URL-Validierung in `src/shared/source-url.ts`: bekannte Zugangsschlüssel-Namen, case-/trennzeichen-/kodierungsvarianten und verschachtelte URL-Parameter werden abgewiesen. Sie greift vor dem Abruf, bei Redirects, nach Quellenadaptern sowie direkt im Repository vor Reservierung/Speicherung. API-Sammlung und Importhistorie blenden unzulässige historische Quell-URLs aus, ohne DB-Werte eigenständig zu ändern. Nicht sensible Rezeptparameter bleiben erhalten. Grenzen der heuristischen Erkennung stehen in SECURITY.md.
+
+Live-Nachweis: [manuelle Checkliste](docs/SMOKE-TEST.md), noch nicht ausgeführt. Der automatische YouTube-Videoimport bleibt ein langfristiges Produktziel; Transkriptverarbeitung ist nur ein Zwischenstand.

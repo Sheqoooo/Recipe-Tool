@@ -88,3 +88,50 @@ it('signierte Preview bleibt ohne DB/KI lesbar, aber Schreibzugriffe und unsiche
   expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,OPENAI_API_KEY:'test-placeholder'})).status).toBe(503);
   expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,BOOTSTRAP_ADMIN_EMAILS:'admin@example.invalid'})).status).toBe(503);
 });
+it.each(['access_token','apikey','X-Amz-Signature','%2561ccess_token'])('sensible Import-URLs erreichen weder Abruf, KI noch Importhistorie: %s',async key=>{
+  const app=appFixture();const response=await app.post('/api/import',{value:'https://recipes.example/pasta?'+key+'=DO_NOT_EXPOSE'});
+  expect(response.status).toBe(400);expect(await response.text()).not.toContain('DO_NOT_EXPOSE');
+  expect(app.read).not.toHaveBeenCalled();expect(app.generate).not.toHaveBeenCalled();
+  const state=await(await app.get()).json() as AppState;expect(state.imports).toHaveLength(0);expect(state.recipes).toHaveLength(0);
+});
+it('Repository lehnt sensible Quell-URLs auch bei direkter Nutzung ab',async()=>{
+  const repo=new Repository(env.DB),owner=actor('owner');await seed(owner);
+  const source={url:'https://recipes.example/pasta',kind:'web' as const};
+  const unsafe={...source,url:source.url+'?apikey=DO_NOT_EXPOSE'};
+  await expect(repo.reserve(owner,unsafe,localEnv(env.DB),100)).rejects.toMatchObject({code:'PRIVATE_URL'});
+  const job=await repo.reserve(owner,source,localEnv(env.DB),100);
+  await expect(repo.save(recipe,owner,unsafe,job,generated.usage)).rejects.toMatchObject({code:'PRIVATE_URL'});
+  expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM recipes').first('n')).toBe(0);
+  expect((await repo.history(owner))[0].source_url).toBe(source.url);
+});
+it('historisch gespeicherte sensible Quell-URLs werden in Sammlung und Historie nicht ausgegeben',async()=>{
+  const app=appFixture();await app.post('/api/import',{value:'https://recipes.example/pasta'});
+  const unsafe='https://recipes.example/pasta?X-Amz-Signature=DO_NOT_EXPOSE';
+  await env.DB.batch([env.DB.prepare('UPDATE recipes SET source_url=?').bind(unsafe),env.DB.prepare('UPDATE imports SET source_url=?').bind(unsafe)]);
+  const response=await app.get(),state=await response.json() as AppState;
+  expect(state.recipes[0].source_url).toBe('');expect(state.imports[0].source_url).toBe('');expect(JSON.stringify(state)).not.toContain('DO_NOT_EXPOSE');
+  // Reading redacts the API output, but never silently mutates historical production data.
+  expect(await env.DB.prepare('SELECT source_url FROM recipes').first('source_url')).toBe(unsafe);
+});
+it('ein Adapter kann vor dem KI-Aufruf keine sensible Quell-URL einschleusen',async()=>{
+  const app=appFixture();app.read.mockImplementation(async()=>({kind:'web',url:'https://recipes.example/?access_token=DO_NOT_EXPOSE',text:'source'}));
+  const response=await app.post('/api/import',{value:'https://recipes.example/pasta'});
+  expect(response.status).toBe(400);expect(app.generate).not.toHaveBeenCalled();expect(await response.text()).not.toContain('DO_NOT_EXPOSE');
+  expect(JSON.stringify((await(await app.get()).json() as AppState).imports)).not.toContain('DO_NOT_EXPOSE');
+});
+it('große Sammlungen laden nur Details der gewählten 500 Rezepte mit stabiler Reihenfolge',async()=>{
+  const owner=actor('owner');await seed(owner);
+  await env.DB.batch([
+    env.DB.prepare("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<505) INSERT INTO recipes(id,owner_id,title,source_url,source_kind,created_at) SELECT i,?,printf('Rezept %d',i),printf('https://recipes.example/%d',i),'web','2026-01-01' FROM n").bind(owner.id),
+    env.DB.prepare("INSERT INTO ingredients SELECT id,0,title,1,'g','' FROM recipes"),
+    env.DB.prepare("INSERT INTO steps SELECT id,0,title,'[0]' FROM recipes"),
+  ]);
+  let counts:number[]=[];
+  const db={prepare:(sql:string)=>env.DB.prepare(sql),batch:async(statements:D1PreparedStatement[])=>{const result=await env.DB.batch(statements);counts=result.map(r=>r.results.length);return result;}} as unknown as D1Database;
+  const recipes=await new Repository(db).recipes(owner);
+  expect(counts).toEqual([500,500,500]);expect(recipes).toHaveLength(500);
+  expect(recipes[0].id).toBe(505);expect(recipes[499].id).toBe(6);
+  expect(recipes[0].ingredients[0].name).toBe('Rezept 505');expect(recipes[499].steps[0].text).toBe('Rezept 6');
+  const plan=await env.DB.prepare('EXPLAIN QUERY PLAN SELECT id FROM recipes ORDER BY created_at DESC,id DESC LIMIT 500').all<{detail:string}>();
+  expect(plan.results.some(row=>row.detail.includes('recipes_listing'))).toBe(true);
+});
