@@ -1,6 +1,6 @@
 # Cloudflare-Einrichtung und Übergabe
 
-Diese Schritte sind für den Betreiber vorbereitet. In diesem Auftrag werden keine produktiven Ressourcen angelegt, keine Migrationen remote angewendet und keine App veröffentlicht. GitHub Pages bleibt bestehen.
+Diese Schritte sind für den Betreiber vorbereitet. Produktive Ressourcen, Migrationen und App-Deployments benötigen jeweils eine ausdrückliche Betreiberfreigabe. Bereits ausgeführte manuelle Schritte sind von noch offenen Prüfungen zu unterscheiden. GitHub Pages bleibt bestehen.
 
 ## 1. Lokale Entwicklung
 
@@ -70,7 +70,7 @@ Das Skript prüft die Konfiguration und führt ausschließlich dann `wrangler d1
 
 ## 7. GitHub mit Workers Builds verbinden
 
-Im Dashboard **Worker → Settings → Builds → Connect Git repository** das Repository auswählen. **Production branch: `main`**. Branchschutz und Reviewpflicht auf GitHub einrichten. Änderungen dieses Auftrags liegen ausschließlich in `codex/cloudflare-secure-migration`; sie dürfen erst nach Nutzerprüfung gemergt werden.
+Im Dashboard **Worker → Settings → Builds → Connect Git repository** das Repository auswählen. **Production branch: `main`**. Branchschutz und Reviewpflicht auf GitHub einrichten. Änderungen werden in `codex/`-Branches vorbereitet und erst nach Nutzerprüfung und ausdrücklicher Merge-Freigabe übernommen.
 
 Vor Verbinden automatische Produktionsbuilds kontrollieren, damit keine vorhandene unfertige Konfiguration veröffentlicht wird. Die folgenden Einstellungen erst nach Konfiguration und Freigabe aktivieren:
 
@@ -78,8 +78,8 @@ Vor Verbinden automatische Produktionsbuilds kontrollieren, damit keine vorhande
 | --- | --- |
 | Root directory | Repository-Wurzel |
 | Build command | `npm ci && npm run build && npm run typecheck` |
-| Production deploy command | `npm run deploy:production` |
-| Production build variable | `CONFIRM_PRODUCTION_DEPLOY=1`, erst bei ausdrücklicher Aktivierung des Merge-Deploy-Ablaufs |
+| Production deploy command | `CONFIRM_PRODUCTION_DEPLOY=1 npm run deploy:production`, erst nach ausdrücklicher Aktivierung des Merge-Deploy-Ablaufs |
+| Alternative zum vorangestellten Freigabewert | Build-Variable `CONFIRM_PRODUCTION_DEPLOY=1` und Deploy-Befehl `npm run deploy:production`; nicht als Worker-Laufzeitvariable setzen |
 | Preview command | `npm run deploy:preview` |
 
 `scripts/release.mjs` verweigert Produktionsaktionen bei Platzhaltern oder einem bekannten Build-Branch ungleich `main`. Die offizielle Integration setzt `WORKERS_CI_BRANCH`. Das Skript ist eine zusätzliche Schranke, kein Ersatz für Branchschutz. GitHub Actions testet ausschließlich und führt kein Deployment aus. [Workers-Builds-Konfiguration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
@@ -119,3 +119,41 @@ Die bestehende D1 `recipe-prod` / `58577ba1-de20-4078-915d-9c0a2962f555` ist ber
 ## Smoke-Test nach Freigabe
 
 Vor Nutzung die [konkrete manuelle Checkliste](docs/SMOKE-TEST.md) abarbeiten und Ergebnisse protokollieren. Access vor Assets/API und Preview, D1-Migrationsstand, Rollen, Quellen-/URL-Grenzen und Persistenz prüfen. Echte OpenAI-Imports benötigen eine ausdrückliche separate Kostenfreigabe. Die Checkliste ist noch nicht live durchgeführt; der funktionierende Hello-World-Login beweist nicht die vollständige App-Integration.
+
+## Einrichtung ausschließlich im Dashboard
+
+Der bestehende Worker kann mit GitHub verbunden werden; hierfür ist kein lokales Terminal nötig. Die Verbindung verwaltet Builds, nicht die D1-Migrationen. Beim Einrichten Builds zunächst deaktivieren und nach abgeschlossener Konfiguration gezielt aktivieren.
+
+### D1 manuell initialisieren
+
+Nur nach ausdrücklicher Freigabe und Prüfung der bestehenden Datenbank: In **D1 → recipe-prod → Console** den Tabellen-/Indexbestand über `sqlite_schema` lesen. Bei leerem Anwendungsschema die geprüften SQL-Anweisungen aus `migrations/0001_shared_cookbook.sql` und anschließend `0002_recipe_listing_index.sql` ausführen. Keine Tabellen zurücksetzen. **Kommentarzeilen beginnend mit `--` nicht zusammen mit durch die Konsole zu einer Zeile verbundenem SQL einfügen:** Sonst kann der Rest des Blocks auskommentiert werden. Bei Fehlern den Bestand erneut lesen, statt den kompletten Block blind zu wiederholen.
+
+Wranglers Migrationstabelle hat das folgende offizielle Format. Nur anlegen, falls noch nicht vorhanden:
+
+```sql
+CREATE TABLE IF NOT EXISTS d1_migrations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE,
+  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+```
+
+Erst nach Prüfung aller sieben Anwendungstabellen samt Quell-/Importindizes und des Index `recipes_listing` beide Dateien als angewendet erfassen:
+
+```sql
+INSERT OR IGNORE INTO d1_migrations (name)
+VALUES ('0001_shared_cookbook.sql'), ('0002_recipe_listing_index.sql');
+SELECT name FROM d1_migrations ORDER BY id;
+```
+
+Damit bleibt der dokumentierte Versionsstand auch bei späterer Verwendung von Wrangler konsistent. Nie eine fehlgeschlagene oder nur teilweise angewendete Migration als erledigt markieren. [D1-Migrationen](https://developers.cloudflare.com/d1/reference/migrations/), [Wrangler-Tabellenschema](https://github.com/cloudflare/workers-sdk/blob/main/packages/wrangler/src/d1/migrations/helpers.ts)
+
+### Ersten Git-Build auslösen
+
+Der dokumentierte Git-Workflow startet einen Build durch einen neuen Push auf den verbundenen Branch. Ein bereits vor der Verbindung vorhandener Merge wird nicht zwangsläufig nachträglich gebaut. Das Speichern einer Build-Konfiguration wird für den nächsten Build wirksam und ist kein verlässlicher Build-Auslöser. Falls ein fehlgeschlagener Git-Build existiert, kann dieser nach Korrektur erneut gestartet werden. Falls nicht, erfolgt der erste produktive Build beim nächsten **ausdrücklich freigegebenen PR-Merge auf main**. Kein Direkt-Push und kein Umgehen des Release-Skripts nötig.
+
+Im Deploy-Befehl stellt `CONFIRM_PRODUCTION_DEPLOY=1 npm run deploy:production` den vom Skript geforderten Freigabewert für diesen Prozess bereit; dafür ist kein zusätzlicher Eintrag unter Laufzeit-Secrets erforderlich. Der API-Key gehört weiterhin ausschließlich in Production Worker Secrets. [Git-Build-Ablauf](https://developers.cloudflare.com/workers/ci-cd/builds/), [Build-Konfiguration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
+
+### Manuell beobachteter Stand am 9. November 2026
+
+Nach Angaben und Screenshots des Betreibers: Access-All-traffic mit E-Mail-Allow-Regel und One-time PIN funktioniert am Hello-World-Platzhalter; Production-Secrets und D1-Binding sind angelegt; sieben Anwendungstabellen, der ergänzte Listenindex und beide Migrationseinträge wurden eingerichtet bzw. vom Betreiber als erfolgreich bestätigt. GitHub ist mit main verbunden und der Deploy-Befehl wurde inklusive Freigabewert hinterlegt. Auf der gezeigten Deployment-Seite war weiterhin nur der Platzhalter aktiv. **Die eigentliche App und die vollständige Smoke-Test-Checkliste sind noch nicht live verifiziert.** Keine echten KI-Anfragen wurden durch Codex ausgeführt.
