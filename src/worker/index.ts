@@ -85,7 +85,7 @@ export function createApp(deps:Dependencies={}){
       if(path==='/api/recipes/delete'){await repo.delete(id(data.id),actor);return json({ok:true});}
       if(path==='/api/plan'){await repo.setPlan(id(data.recipe_id),data.servings,data.remove===true);return json({ok:true});}
       if(path==='/api/shopping/check'){
-        if(typeof data.key!=='string'||data.key.length>2000||typeof data.checked!=='boolean')throw new AppError('INVALID_ITEM','Ungültige Einkaufsposition.');
+        if(typeof data.key!=='string'||data.key.length>8000||typeof data.checked!=='boolean')throw new AppError('INVALID_ITEM','Ungültige Einkaufsposition.');
         if(!shoppingList(await repo.plan(await repo.recipes(actor))).some(i=>i.key===data.key))throw new AppError('STALE_ITEM','Die Einkaufsliste hat sich geändert. Bitte neu laden.',409);
         await repo.check(data.key,data.checked);return json({ok:true});
       }

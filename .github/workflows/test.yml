@@ -21,6 +21,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build:worker
+      - run: npx wrangler deploy --dry-run --config wrangler.production.jsonc --outdir .runtime/production-check
       - run: npx wrangler d1 migrations apply DB --local
       - run: npx wrangler d1 migrations apply DB --local --config test/wrangler.browser.jsonc --persist-to .runtime/browser
       - run: npx playwright install --with-deps chromium

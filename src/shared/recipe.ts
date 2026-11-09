@@ -68,6 +68,9 @@ export function shoppingList(entries: PlanEntry[]): ShoppingItem[] {
       if (!item.recipes.includes(entry.recipe.title)) item.recipes.push(entry.recipe.title);
     }
   }
-  return [...groups.values()].map(item => ({ ...item, amount: item.amount === null ? null : Math.round(item.amount * 1000) / 1000 }))
+  return [...groups.values()].map(item => {
+    const amount=item.amount===null?null:Math.round(item.amount*1000)/1000;
+    return {...item,amount,key:JSON.stringify([item.key,amount])};
+  })
     .sort((a, b) => a.name.localeCompare(b.name, 'de'));
 }

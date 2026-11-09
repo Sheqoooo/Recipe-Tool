@@ -26,6 +26,12 @@ it('Webimport speichert direkt; gemeinsame Kochliste, Skalierung, Häkchen und K
   expect((await app.post('/api/recipes/delete',{id})).status).toBe(200);expect((await(await app.get()).json() as AppState).recipes).toHaveLength(0);
 });
 it('bekannte Quelle verursacht keine zweite KI-Anfrage',async()=>{const app=appFixture();await app.post('/api/import',{value:'https://recipes.example/pasta'});expect((await app.post('/api/import',{value:'https://recipes.example/pasta#zutaten'})).status).toBe(200);expect(app.generate).toHaveBeenCalledTimes(1);});
+it('veraltete Häkchen können geänderte Einkaufsmengen nicht als erledigt markieren',async()=>{
+  const app=appFixture();const {id}=await(await app.post('/api/import',{value:'https://recipes.example/pasta'})).json() as {id:number};
+  await app.post('/api/plan',{recipe_id:id,servings:2});const old=(await(await app.get()).json() as AppState).shopping[0].key;
+  await app.post('/api/plan',{recipe_id:id,servings:4});expect((await app.post('/api/shopping/check',{key:old,checked:true})).status).toBe(409);
+  expect((await(await app.get()).json() as AppState).checked).toHaveLength(0);
+});
 it('fehlender Key, falsche Origin und ungültige Mengen verursachen keine KI-Kosten',async()=>{
   const app=appFixture();app.config.OPENAI_API_KEY=undefined;expect((await app.post('/api/import',{value:'https://recipes.example/pasta'})).status).toBe(503);expect((await app.post('/api/import',{value:'https://recipes.example/pasta'},'https://evil.example')).status).toBe(403);expect(app.generate).not.toHaveBeenCalled();
 });

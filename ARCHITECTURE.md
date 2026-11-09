@@ -30,7 +30,7 @@ Browser → Cloudflare Access → Worker (JWT + Mitgliedschaft + Berechtigung)
 
 ## Gemeinsame Typen und Ausgabe
 
-`src/shared/recipe.ts` definiert das feste Zod-Schema; `src/shared/types.ts` leitet `RecipeData` daraus ab. Backend, D1-Repository und TypeScript-Oberfläche verwenden diese Typen. Unbekannte Portionen/Zeiten/Mengen sind `null`, keine erfundenen Standardwerte. Schritte enthalten `text` und nullbasierte `ingredient_indices`. Die Oberfläche zeigt zu jedem referenzierten Schritt die zugehörigen Zutatenmengen direkt an.
+`src/shared/recipe.ts` definiert das feste Zod-Schema; `src/shared/types.ts` leitet `RecipeData` daraus ab. Backend, D1-Repository und TypeScript-Oberfläche verwenden diese Typen. Unbekannte Portionen/Zeiten/Mengen sind `null`, keine erfundenen Standardwerte. Schritte enthalten `text` und nullbasierte `ingredient_indices`. Die Oberfläche zeigt zu jedem referenzierten Schritt die zugehörigen Zutatenmengen direkt an. Wird dieselbe Zutat in mehreren Schritten verwendet, kennzeichnet sie die zusätzliche Anzeige als Rezeptgesamtmenge; maßgeblich sind dann die bekannten Teilmengen im Schritttext. So wird eine Gesamtmenge nicht irreführend als jede einzelne Teilmenge ausgegeben.
 
 Ein fehlendes Portionenfeld verhindert die Aufnahme in die skalierbare Kochliste, bis es sachlich korrigiert wurde. Volumen-/Gewichtsumrechnung für Cups bleibt eine zutatenabhängige KI-Aufgabe mit Prüfhinweis; einfache g/kg- und ml/l-Normalisierung sowie Einkaufsarithmetik laufen deterministisch.
 
