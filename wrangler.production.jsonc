@@ -9,8 +9,8 @@
   "d1_databases": [{ "binding": "DB", "database_name": "recipe-prod", "database_id": "58577ba1-de20-4078-915d-9c0a2962f555", "migrations_dir": "migrations" }],
   "vars": {
     "APP_ENV": "production", "AUTH_MODE": "access",
-    "APP_ORIGIN": "https://recipe-tool.REPLACE_WITH_WORKERS_SUBDOMAIN.workers.dev",
-    "ACCESS_ISSUER": "https://REPLACE_WITH_TEAM.cloudflareaccess.com", "ACCESS_AUD": "REPLACE_WITH_APPLICATION_AUD",
+    "APP_ORIGIN": "https://recipe-tool.sahin-erengil92.workers.dev",
+    "ACCESS_ISSUER": "https://round-lab-d812.cloudflareaccess.com", "ACCESS_AUD": "a5d9fe68a636276a09809bfacb4045255cfecc5df5795bce43d1820c253b69fa",
     "BOOTSTRAP_ADMIN_EMAILS": "", "RECIPE_ALLOWED_HOSTS": "",
     "OPENAI_MODEL": "gpt-5.4-mini", "MODEL_INPUT_USD_PER_MILLION": "0.75", "MODEL_OUTPUT_USD_PER_MILLION": "4.50",
     "MAX_PARALLEL_IMPORTS": "2", "USER_IMPORTS_PER_MINUTE": "5", "USER_IMPORTS_PER_DAY": "30",
@@ -19,7 +19,7 @@
   "previews": {
     "vars": {
       "APP_ENV": "preview", "AUTH_MODE": "access",
-      "ACCESS_ISSUER": "https://REPLACE_WITH_TEAM.cloudflareaccess.com", "ACCESS_AUD": "REPLACE_WITH_APPLICATION_AUD"
+      "ACCESS_ISSUER": "https://round-lab-d812.cloudflareaccess.com", "ACCESS_AUD": "a5d9fe68a636276a09809bfacb4045255cfecc5df5795bce43d1820c253b69fa"
     },
     "d1_databases": []
   }
