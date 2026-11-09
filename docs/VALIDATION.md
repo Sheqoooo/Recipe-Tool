@@ -1,5 +1,15 @@
 # Prüfnachweis Cloudflare-Migration
 
+## Aktueller Review-Nachweis
+
+Geprüfter Codecommit: `fa6ac554ab19feb0f804bd85057b3938aee3752c`. [Erfolgreicher CI-Lauf](https://github.com/Sheqoooo/Recipe-Tool/actions/runs/42680140515): **93 Worker-/D1-/Quellen-/URL-/API-Tests, sieben Konfigurationsprüfungen und sechs Browserprüfungen** erfolgreich. Frontend-Build, beide Typprüfungen, beide Wrangler-Dry-Runs und Migrationen 0001/0002 ausschließlich in lokaler D1-Emulation erfolgreich. Node bleibt auf dem ursprünglichen Rechner blockiert; Ausführung auf GitHub CI, keine echten KI-Anfragen.
+
+Neue Regressionen: große JSON-LD-Metadaten, Rezeptkarten nach langen Einleitungen, vollständige Zutaten-/Zubereitungsabschnitte, UTF-8-Limits ohne abgeschnittene Zutaten/Schritte, kodierte/verschachtelte sensible Query-Namen, Abweisung vor Quellen-/KI-Aufruf und DB-Schreibzugriff, API-Redaktion historischer Quell-URLs, 505 Rezepte mit nur 500 geladenen Zutaten-/Schrittgruppen und Nutzung des Listenindex.
+
+Die [manuelle Cloudflare-/OpenAI-Smoke-Test-Checkliste](SMOKE-TEST.md) ist vorbereitet, aber **noch nicht live durchgeführt**. Kein Merge, App-Deploy, Remote-Migration oder kostenpflichtiger API-Aufruf im Rahmen dieser Review-Nacharbeit.
+
+## Historischer Erstnachweis
+
 Stand: 9. November 2026. Geprüfter Implementierungscommit: `7b534946b37ef3839f82038274691d87740ffbf8` im Branch `codex/cloudflare-secure-migration`.
 
 [Erfolgreicher CI-Lauf](https://github.com/Sheqoooo/Recipe-Tool/actions/runs/42661603402) · [Pull Request #1](https://github.com/Sheqoooo/Recipe-Tool/pull/1)
