@@ -72,6 +72,8 @@ Erwartung bei Erfolg: `completed`, Tokenverbrauch und Kostenschätzung vorhanden
 - [ ] Rezept zur Kochliste hinzufügen, Portionen ändern, Einkaufsmengen prüfen, Position abhaken und neu laden. Nach Mengenänderung dürfen alte Häkchen nicht unpassend erhalten bleiben.
 - [ ] Als normales Mitglied eigenes Testrezept bearbeiten; fremdes Rezept und Löschen bleiben gesperrt. Als Admin darf das vereinbarte Testrezept verwaltet werden. Löschen nur nach Freigabe des konkreten Testdatensatzes.
 
+OpenAI-429 wird in den Mocktests getrennt für Guthaben, Kontingent, Ausgabenlimits, kurzfristige Anfragelimits und unbekannte Limits geprüft. Die Fehlermeldung darf weder rohe Anbieterinformationen enthalten noch bei Abrechnungsproblemen bloß zum Warten auffordern. Keine automatischen Retries.
+
 Timeouts, OpenAI-429/5xx und unvollständige Modellantworten sind mit Mocks automatisiert abgedeckt. Sie werden für diesen Smoke-Test nicht kostenpflichtig oder durch absichtliche Produktionsstörungen erzwungen.
 
 ## 5. Eingeschränkter YouTube-Zwischenstand
