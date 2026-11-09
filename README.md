@@ -2,6 +2,18 @@
 
 Eine lokale, quelloffene Rezeptsammlung mit deutscher KI-Aufbereitung und gemeinsamer Einkaufsliste. Kein App-Konto und kein Cloud-Datenbankdienst. Python 3.9 oder neuer genügt; es sind keine zusätzlichen Python-Pakete erforderlich.
 
+## Entwicklungsstand und Ziel
+
+Dies ist die erste technische Grundstruktur. Der gewünschte Hauptablauf lautet: **Link einfügen → automatisch auslesen und auf Deutsch aufbereiten → direkt in der Rezeptdatenbank speichern.** Manuelle Bearbeitung soll nur zur nachträglichen Korrektur dienen.
+
+**Dieser Zielablauf ist noch nicht umgesetzt:** Aktuell öffnet ein Import einen Entwurf, der vor dem Speichern bestätigt werden muss; außerdem enthält die Oberfläche Textimport und manuelles Anlegen. Diese Interaktion wird im nächsten Entwicklungsschritt ersetzt. Die folgende Anleitung beschreibt den tatsächlich vorhandenen Stand.
+
+Weitere Dokumentation:
+
+- [Produktanforderungen und Abnahmekriterien](docs/PRODUKT.md)
+- [Architektur, lokale API und Entwicklung](docs/ENTWICKLUNG.md)
+- [Änderungsverlauf](CHANGELOG.md)
+
 ## Starten
 
 ```sh
