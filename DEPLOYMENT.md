@@ -31,7 +31,7 @@ Eine eigene Domain/Subdomain verwenden, z. B. `https://rezepte.example.de`. Dies
 
 ## 4. Cloudflare Access
 
-In **Zero Trust → Access → Applications** eine **Self-hosted Application** für die vollständige App-Domain inklusive aller Pfade anlegen. Eine Allow-Richtlinie mit den tatsächlich eingeladenen E-Mail-Adressen bzw. einer kontrollierten Gruppe verwenden. Keine Bypass-/Everyone-Richtlinie für die private App. Geeignete Sitzungsdauer einstellen.
+In **Zero Trust → Access → Applications** eine **Self-hosted Application** für die vollständige App-Domain inklusive aller Pfade anlegen. Eine Allow-Richtlinie mit den tatsächlich eingeladenen E-Mail-Adressen bzw. einer kontrollierten Gruppe verwenden. Keine Bypass-/Everyone-Richtlinie für die private App. Sitzungsdauer auf höchstens 24 Stunden einstellen; der Worker verweigert ältere Tokens.
 
 - Teamdomain aus den Zero-Trust-Einstellungen als `ACCESS_ISSUER`: `https://DEIN-TEAM.cloudflareaccess.com`.
 - Den **Application Audience (AUD) Tag** aus den Einstellungen der Access-Anwendung als `ACCESS_AUD` eintragen.

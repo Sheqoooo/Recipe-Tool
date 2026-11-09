@@ -5,6 +5,7 @@ import { createApp } from '../src/worker/index.js';
 import { AppError } from '../src/shared/errors.js';
 import { recipe,generated,localEnv } from './fixtures.js';
 import type { AppState,Member } from '../src/shared/types.js';
+import { generateKeyPair,exportJWK,SignJWT } from 'jose';
 
 beforeEach(async()=>{await env.DB.batch(['DELETE FROM imports','DELETE FROM checked_items','DELETE FROM plan','DELETE FROM steps','DELETE FROM ingredients','DELETE FROM recipes','DELETE FROM members'].map(s=>env.DB.prepare(s)));});
 const actor=(id:string,role:'admin'|'member'='member'):Member=>({id,email:id+'@example.invalid',role,active:1});
@@ -54,4 +55,29 @@ it('Assets und API werden vor Auslieferung authentifiziert',async()=>{
   const asset=vi.fn(async()=>new Response('private'));app.config.ASSETS={fetch:asset} as Fetcher;
   for(const path of ['/','/app.js','/style.css','/api/state','/api/import'])expect((await app.app.fetch(new Request('https://app.example'+path),app.config)).status).toBe(401);
   expect(asset).not.toHaveBeenCalled();expect(app.generate).not.toHaveBeenCalled();
+});
+it('abgelaufene Import-Lease kann keine späte Speicherung verursachen',async()=>{
+  const repo=new Repository(env.DB),owner=actor('owner');await seed(owner);const source={url:'https://recipes.example/late',kind:'web' as const};
+  const job=await repo.reserve(owner,source,localEnv(env.DB),50000);await env.DB.prepare('UPDATE imports SET lease_expires_at=0 WHERE id=?').bind(job).run();
+  await expect(repo.save(recipe,owner,source,job,generated.usage)).rejects.toThrow();expect(await repo.bySource(source.url)).toBeNull();
+});
+it('Mitgliederverwaltung ist Admin-only und kann eigenen Adminzugang nicht sperren',async()=>{
+  const app=appFixture();await app.get();const state=await(await app.get()).json() as AppState;
+  expect((await app.post('/api/members',{email:'new@example.invalid',role:'member'})).status).toBe(200);
+  expect((await app.post('/api/members/update',{id:state.user.id,active:0})).status).toBe(403);
+  const repo=new Repository(env.DB);await expect(repo.updateMember(state.user.id,0,undefined,actor('normal'))).rejects.toMatchObject({status:403});
+});
+it('signierte Preview bleibt ohne DB/KI lesbar, aber Schreibzugriffe und unsichere Bindings sind gesperrt',async()=>{
+  const {privateKey,publicKey}=await generateKeyPair('RS256');const jwk=await exportJWK(publicKey);jwk.kid='preview';
+  vi.stubGlobal('fetch',vi.fn(async(url:RequestInfo|URL)=>{
+    if(String(url)==='https://preview-tests.cloudflareaccess.com/cdn-cgi/access/certs')return Response.json({keys:[jwk]});
+    throw new Error('Network disabled');
+  }));
+  const token=await new SignJWT({email:'reviewer@example.invalid'}).setProtectedHeader({alg:'RS256',kid:'preview'}).setSubject('reviewer').setIssuer('https://preview-tests.cloudflareaccess.com').setAudience('preview-aud').setIssuedAt().setExpirationTime('1h').sign(privateKey);
+  const config={...localEnv(env.DB),APP_ENV:'preview' as const,AUTH_MODE:'access' as const,DB:undefined,OPENAI_API_KEY:undefined,ACCESS_ISSUER:'https://preview-tests.cloudflareaccess.com',ACCESS_AUD:'preview-aud'};
+  const app=createApp(),headers={'Cf-Access-Jwt-Assertion':token};
+  expect((await app.fetch(new Request('https://preview.example/api/state',{headers}),config)).status).toBe(200);
+  expect((await app.fetch(new Request('https://preview.example/api/import',{method:'POST',headers}),config)).status).toBe(403);
+  expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,DB:env.DB})).status).toBe(503);
+  expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,OPENAI_API_KEY:'test-placeholder'})).status).toBe(503);
 });

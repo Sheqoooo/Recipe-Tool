@@ -6,7 +6,7 @@ Die Anwendung ist ein privates gemeinsames Kochbuch. Vor einer Veröffentlichung
 
 ## Authentifizierung und Rechte
 
-Cloudflare Access schützt die vollständige Domain. Zusätzlich prüft der Worker jedes `Cf-Access-Jwt-Assertion` kryptografisch, einschließlich Aussteller und Audience. Ungeschützte alternative Hosts dürfen nicht eingerichtet werden; `workers_dev` und alte `preview_urls` sind deaktiviert. Alle Static Assets laufen zuerst durch den Worker. Direkte Identitätsheader werden nicht verwendet. Access-Aussteller müssen eine feste `*.cloudflareaccess.com`-Teamadresse sein; sie kommen nie aus dem Request.
+Cloudflare Access schützt die vollständige Domain. Zusätzlich prüft der Worker jedes `Cf-Access-Jwt-Assertion` kryptografisch, einschließlich Aussteller, Audience und höchstens 24 Stunden Tokenalter. Access-Sitzungen entsprechend auf maximal 24 Stunden konfigurieren. Ungeschützte alternative Hosts dürfen nicht eingerichtet werden; `workers_dev` und alte `preview_urls` sind deaktiviert. Alle Static Assets laufen zuerst durch den Worker. Direkte Identitätsheader werden nicht verwendet. Access-Aussteller müssen eine feste `*.cloudflareaccess.com`-Teamadresse sein; sie kommen nie aus dem Request.
 
 Das JWT reicht allein nicht: E-Mail und Subject werden an eine aktive D1-Mitgliedschaft gebunden. Nicht eingeladene oder gesperrte Nutzer erhalten keinen Zugang. Initiale Admins werden ausschließlich aus `BOOTSTRAP_ADMIN_EMAILS` nach erfolgreicher JWT-Prüfung aufgenommen. Eine nachträglich geänderte Bootstrap-Liste befördert keine vorhandenen Mitglieder automatisch.
 

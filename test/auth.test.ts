@@ -18,3 +18,8 @@ it('lokale Anmeldung ist auf die lokale Umgebung UND Loopback begrenzt',async()=
   await expect(verifyIdentity(new Request('https://public.example/'),{...config,AUTH_MODE:'local',APP_ENV:'local'})).rejects.toMatchObject({status:503});
   await expect(verifyIdentity(new Request('http://localhost/'),{...config,AUTH_MODE:'local',APP_ENV:'production'})).rejects.toMatchObject({status:503});
 });
+it('ein fremder Signaturschlüssel mit passender Audience wird abgewiesen',async()=>{
+  const expected=await generateKeyPair('RS256'),attacker=await generateKeyPair('RS256');const jwk=await exportJWK(expected.publicKey);jwk.kid='expected';
+  const token=await new SignJWT({email:'admin@example.invalid'}).setProtectedHeader({alg:'RS256',kid:'expected'}).setSubject('subject').setIssuer(config.ACCESS_ISSUER!).setAudience(config.ACCESS_AUD!).setIssuedAt().setExpirationTime('1h').sign(attacker.privateKey);
+  await expect(verifyIdentity(new Request('https://app.example/',{headers:{'Cf-Access-Jwt-Assertion':token}}),config,createLocalJWKSet({keys:[jwk]}))).rejects.toMatchObject({status:401});
+});

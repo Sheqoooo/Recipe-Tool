@@ -47,7 +47,10 @@ export class Repository {
       this.db.prepare('SELECT * FROM ingredients ORDER BY recipe_id,position').all<{recipe_id:number;name:string;amount:number|null;unit:string;note:string}>(),
       this.db.prepare('SELECT * FROM steps ORDER BY recipe_id,position').all<{recipe_id:number;text:string;ingredient_indices_json:string}>(),
     ]);
-    return rows.results.map(row => ({ ...row, warnings: JSON.parse(row.warnings_json) as string[],
+    return rows.results.map(row => ({ id:row.id,owner_id:row.owner_id,title:row.title,description:row.description,
+      servings:row.servings,prep_minutes:row.prep_minutes,cook_minutes:row.cook_minutes,source_url:row.source_url,
+      source_kind:row.source_kind,revision:row.revision,created_at:row.created_at,updated_at:row.updated_at,
+      warnings: JSON.parse(row.warnings_json) as string[],
       ingredients: ingredients.results.filter(i => i.recipe_id === row.id).map(i => ({ name:i.name, amount:i.amount, unit:i.unit, note:i.note })),
       steps: steps.results.filter(s => s.recipe_id === row.id).map(s => ({ text:s.text, ingredient_indices:JSON.parse(s.ingredient_indices_json) as number[] })),
       can_edit: actor.role === 'admin' || row.owner_id === actor.id, can_delete: actor.role === 'admin',
@@ -105,7 +108,7 @@ export class Repository {
   async save(recipe:RecipeData, actor:Member, source:Pick<Source,'url'|'kind'>, importId:string,usage:Usage):Promise<number> {
     const id=Number.parseInt(crypto.randomUUID().replaceAll('-','').slice(0,13),16);
     const statements=[this.db.prepare(`INSERT INTO recipes(id,owner_id,title,description,servings,prep_minutes,cook_minutes,source_url,source_kind,warnings_json)
-      VALUES(?,?,?,?,?,?,?,?,?,?)`).bind(id,actor.id,recipe.title,recipe.description,recipe.servings,recipe.prep_minutes,recipe.cook_minutes,source.url,source.kind,JSON.stringify(recipe.warnings))];
+      SELECT ?,?,?,?,?,?,?,?,?,? FROM imports WHERE id=? AND status='running' AND lease_expires_at>?`).bind(id,actor.id,recipe.title,recipe.description,recipe.servings,recipe.prep_minutes,recipe.cook_minutes,source.url,source.kind,JSON.stringify(recipe.warnings),importId,Date.now())];
     recipe.ingredients.forEach((i,p)=>statements.push(this.db.prepare('INSERT INTO ingredients VALUES(?,?,?,?,?,?)').bind(id,p,i.name,i.amount,i.unit,i.note)));
     recipe.steps.forEach((s,p)=>statements.push(this.db.prepare('INSERT INTO steps VALUES(?,?,?,?)').bind(id,p,s.text,JSON.stringify(s.ingredient_indices))));
     statements.push(this.db.prepare("UPDATE imports SET status='completed',recipe_id=?,input_tokens=?,output_tokens=?,model=?,estimated_cost_microusd=? WHERE id=? AND status='running'")
