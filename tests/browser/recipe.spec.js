@@ -1,4 +1,22 @@
 import { test, expect } from '@playwright/test';
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+
+test('direkt geöffnete HTML-Datei zeigt gestaltete Vorschau und Startanleitung', async ({ page }, testInfo) => {
+  const errors = [];
+  const apiRequests = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => { if (request.url().includes('/api/')) apiRequests.push(request.url()); });
+  await page.goto(pathToFileURL(resolve('static/index.html')).href);
+  await expect(page.locator('#notice')).toContainText('Dateivorschau');
+  await expect(page.locator('#notice')).toContainText('npm start');
+  await expect(page.locator('#import-submit')).toBeDisabled();
+  await expect(page.locator('#api-key')).toBeDisabled();
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(248, 248, 243)');
+  await page.screenshot({ path: testInfo.outputPath('file-preview.png'), fullPage: true });
+  expect(apiRequests).toEqual([]);
+  expect(errors).toEqual([]);
+});
 
 test('Link eingeben, automatisch speichern, einkaufen und erst danach korrigieren', async ({ page }, testInfo) => {
   const errors = [];

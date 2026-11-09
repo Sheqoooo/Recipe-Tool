@@ -1,5 +1,11 @@
 # Änderungsverlauf
 
+## 0.2.1 – 2026-11-09
+
+- Relative Verweise auf CSS und JavaScript lassen die Gestaltung auch bei direkt geöffneter HTML-Datei laden.
+- Dateivorschau zeigt eine Startanleitung und sperrt Import sowie Key-Eingabe, bis die App über den Server geöffnet wird.
+- Browser-Regressionsprüfung für die direkt geöffnete Datei auf Desktop und Mobil ergänzt.
+
 ## 0.2.0 – 2026-11-09
 
 - Python-Hintergrund vollständig durch JavaScript auf Node.js 24 ersetzt; SQLite-Schema bleibt kompatibel.

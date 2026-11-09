@@ -3,6 +3,7 @@ let state = {recipes: [], plan: [], shopping: [], checked: []};
 let draft = null;
 let currentView = 'import';
 const $ = selector => document.querySelector(selector);
+const filePreview = location.protocol === 'file:';
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const fmt = value => value == null ? '' : Number(value).toLocaleString('de-DE', {maximumFractionDigits: 2});
 const quantity = item => [fmt(item.amount), item.unit].filter(Boolean).join(' ');
@@ -13,6 +14,7 @@ function notify(message, error = false) {
   clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { node.hidden = true; }, error ? 12000 : 5000);
 }
 async function api(path, data) {
+  if (filePreview) throw new Error('Das ist die Dateivorschau. Starte Rezeptwerk mit npm start und öffne http://127.0.0.1:8765.');
   const options = data === undefined ? {} : {method: 'POST', headers: {'Content-Type':'application/json', 'X-Rezeptwerk-Token':state.token}, body:JSON.stringify(data)};
   const response = await fetch(path, options);
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Die Serververbindung fehlt. Rezeptwerk benötigt ein laufendes Node.js-Hosting; GitHub Pages allein reicht nicht.');
@@ -152,4 +154,16 @@ document.addEventListener('change', async event => {
 });
 $('#search').addEventListener('input', renderRecipes);
 showView(location.hash.slice(1));
-refresh().catch(error => notify('Die Anwendung ist nicht erreichbar. ' + error.message, true));
+if (filePreview) {
+  renderRecipes();
+  renderShopping();
+  $('#import-submit').disabled = true;
+  $('#api-key').disabled = true;
+  $('#settings-form button[type="submit"]').disabled = true;
+  $('#remove-key').disabled = true;
+  $('#key-status').textContent = 'Die Dateivorschau ist nicht mit der Datenbank verbunden. Bitte zuerst die App starten.';
+  notify('Dateivorschau: Für Import und Datenbank im Projektordner npm ci (einmalig) und npm start ausführen. Danach http://127.0.0.1:8765 öffnen.');
+  clearTimeout(noticeTimer);
+} else {
+  refresh().catch(error => notify('Die Anwendung ist nicht erreichbar. ' + error.message, true));
+}

@@ -15,6 +15,8 @@ npm start
 
 Anschließend **http://127.0.0.1:8765** öffnen. Beenden mit `Strg+C`. Unter macOS kann nach der einmaligen Installation der Pakete auch `Start.command` verwendet werden.
 
+`static/index.html` direkt per Doppelklick zu öffnen zeigt nur eine gestaltete Dateivorschau mit Startanleitung. Import, API-Key und Datenbank sind dort bewusst deaktiviert. Für die vollständige Anwendung immer die Serveradresse öffnen.
+
 ## Verwenden
 
 1. In **Einstellungen** einmal den persönlichen OpenAI-API-Key hinterlegen. Alternativ `OPENAI_API_KEY` auf dem Server setzen.
