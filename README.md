@@ -1,73 +1,84 @@
-# Rezeptwerk
+# Rezeptwerk / Recipe-Tool
 
-**Rezeptlink einfügen → automatisch auf Deutsch aufbereiten → direkt in der Sammlung speichern.** Aus ausgewählten Gerichten wird eine gemeinsame Einkaufsliste mit anpassbaren Portionen.
+Private gemeinsame Rezeptsammlung: **Link einfügen → auf Deutsch aufbereiten → direkt speichern**. Zutaten, metrische Mengen, bekannte Zeiten und Schritte mit Zutatenmengen werden strukturiert dargestellt. Gemeinsam ausgewählte Gerichte ergeben eine skalierbare Einkaufsliste.
 
-Oberfläche: HTML, CSS und JavaScript. Server: JavaScript mit Node.js 24. Datenbank: SQLite. Open Source unter MIT-Lizenz. Kein Python, kein App-Konto und kein externer Datenbankdienst nötig.
+## Stack und Funktionen
 
-## Lokal starten
+- Cloudflare Workers mit Static Assets; Oberfläche aus bestehendem HTML/CSS und TypeScript, kein neues UI-Framework.
+- Cloudflare D1 mit versionierten relationalen SQL-Migrationen.
+- Cloudflare Access mit zusätzlicher kryptografischer JWT-Prüfung im Worker.
+- Explizit eingeladene Mitglieder; eigene Rezepte bearbeiten, Admins verwalten alle und dürfen löschen.
+- Offizielles OpenAI-SDK, Responses API, Structured Outputs und serverseitige Zod-Validierung.
+- Persistente Anfrage-, Parallelitäts- und Kostenlimits; Importhistorie mit Verbrauchsschätzungen.
+- Suche, Korrektur, Portionsskalierung, gemeinsame Häkchen und Rezept-JSON-Export.
+- YouTube-Transkriptimport nach Nutzungsbestätigung; **kein automatischer Abruf beliebiger Videos oder fremder Untertitel**.
 
-Voraussetzung: **Node.js 24.x mit npm**.
+## Lokal entwickeln
+
+Node.js 24 und npm:
 
 ```sh
 npm ci
-npm start
+npm run build
+npm run db:migrate:local
+npm run dev
 ```
 
-Anschließend **http://127.0.0.1:8765** öffnen. Beenden mit `Strg+C`. Unter macOS kann nach der einmaligen Installation der Pakete auch `Start.command` verwendet werden.
+`http://127.0.0.1:8787` öffnen. Lokale D1-Emulation und lokale Test-Adminidentität; keine produktive Datenbankverbindung. Ohne OpenAI-Key kann die Oberfläche und Sammlung geprüft werden, aber kein echter KI-Import. Automatisierte Tests benötigen keinen Key. Nur für einen ausdrücklich freigegebenen echten Import selbst `.dev.vars.example` nach `.dev.vars` kopieren und dort den eigenen Key hinterlegen. Nicht mit `--remote` oder öffentlichem Tunnel starten.
 
-`static/index.html` direkt per Doppelklick zu öffnen zeigt nur eine gestaltete Dateivorschau mit Startanleitung. Import, API-Key und Datenbank sind dort bewusst deaktiviert. Für die vollständige Anwendung immer die Serveradresse öffnen.
+## Eigene Cloudflare-Installation
 
-## Verwenden
+Andere Betreiber benötigen eigene Cloudflare-Ressourcen, eine Access-Anwendung und einen eigenen OpenAI-API-Key. Dieses Projekt enthält keinerlei produktive Zugangsdaten. Für diese konkrete Installation existiert bereits eine manuell angelegte D1: **keine zweite produktive Datenbank erstellen**.
 
-1. In **Einstellungen** einmal den persönlichen OpenAI-API-Key hinterlegen. Alternativ `OPENAI_API_KEY` auf dem Server setzen.
-2. Den Link zu einer Rezept-Webseite einfügen und **Rezept importieren** klicken.
-3. Die App liest das Rezept aus, übersetzt und strukturiert es und speichert es direkt. Es öffnet sich keine Pflichtmaske zum Bearbeiten oder Bestätigen.
-4. In **Meine Rezepte** gespeicherte Rezepte ansehen oder bei Bedarf nachträglich korrigieren.
-5. Rezepte zur Kochliste hinzufügen, Portionen wählen und in **Einkaufsliste** Zutaten abhaken oder kopieren.
+`wrangler.production.jsonc` enthält Platzhalter für die bestehende D1, Domain und Access-Audiences. Defaults für lokale Entwicklung stehen separat in `wrangler.jsonc`. Produktionsmigrationen und Deployments sind voneinander getrennte, explizit bestätigte Betreiberaktionen. GitHub Actions führt nur Tests aus. Workers Builds soll erst nach Konfiguration und Nutzerfreigabe an `main` angeschlossen werden.
 
-Ein bereits gespeicherter identischer Link wird wiedererkannt, auch bei geändertem URL-Fragment. Dabei fällt kein weiterer KI-Aufruf an. Andere URLs zum gleichen Rezept werden nicht automatisch erkannt.
+Vollständige Anleitung: [DEPLOYMENT.md](DEPLOYMENT.md).
 
-Fehlt ein API-Key, ist die Quelle nicht zugänglich oder wird kein vollständiges Rezept erkannt, wird kein leerer Datensatz angelegt. Nicht jede Rezeptseite erlaubt automatisches Auslesen. JavaScript-gerenderte Seiten werden noch nicht in einem Browser ausgeführt. Instagram und Videoanalyse sind zurückgestellt.
+## Secrets und Daten
 
-## Online betreiben
+`OPENAI_API_KEY` gehört ausschließlich in ein Worker Secret. Kein Key-Eingabefeld in der privaten App und kein Key im Browser-Bundle. Lokale Variablendateien, Datenbankkopien und Buildausgaben sind ignoriert. Bei OpenAI-Aufrufen werden nur begrenzte Quelldaten übertragen; `store:false` ist gesetzt. Vollständige Webseiten/Transkripte werden nicht dauerhaft gespeichert. Details: [SECURITY.md](SECURITY.md).
 
-**GitHub Pages kann diese App nicht betreiben**, da es keinen Node.js-Server ausführt. Benötigt wird ein Hosting mit Node.js 24 oder Docker und dauerhaftem Datenspeicher. Die App wird an einer eigenen Domain oder Subdomain ohne URL-Unterpfad betrieben.
+Portionen, Zeiten und Mengen dürfen unbekannt sein. Die KI soll diese nicht erfinden. Unsicherheiten bleiben sichtbar; sachliche Modellfehler sind trotz Schema möglich. Cups werden nur zutatenabhängig in Gewicht umgerechnet. Vorbereitungs-/Kochzeit bleiben leer, wenn die Quelle sie nicht nennt.
 
-Auf GitHub Pages zeigt die Startseite eine gestaltete **Oberflächenvorschau** statt der README. Sie leitet auf `static/index.html?preview=1` weiter. Import und API-Key-Eingabe sind dort deaktiviert; es werden keine Server- oder KI-Anfragen gesendet. Die vollständige App wird auf dem Node-/Docker-Hosting betrieben.
+## Webseiten und YouTube
 
-Die vollständigen Schritte stehen in [docs/HOSTING.md](docs/HOSTING.md), einschließlich Docker Compose, Umgebungsvariablen, HTTPS, Passwortschutz und Backups. Ein Onlinebetrieb benötigt keine starke KI-Hardware; die KI-Anfragen gehen an die OpenAI-API.
+Webseiten müssen explizit über exakte Hostnamen freigegeben sein. schema.org-Rezeptdaten werden bevorzugt; sonst wird sichtbarer Text extrahiert. Interne Adressen, ungültige Redirects und zu große Quellen werden abgewiesen. Dynamisch gerenderte oder blockierte Seiten können nicht immer importiert werden.
 
-## KI, Daten und Kosten
+YouTube-Links werden erkannt und benötigen derzeit ein rechtmäßig bereitgestelltes Transkript (max. 20 KB, angegebene Videolänge bis 20 Minuten). Es findet keine Bild-/Audioanalyse statt. Die modulare `Source`-Übergabe erlaubt spätere sichere Audio-/Frameadapter; diese sind noch nicht implementiert. [Mediengrenzen und Kosten](docs/OPENAI-VIDEO.md).
 
-- Bei einem Import sendet der Server den ausgelesenen Rezepttext an OpenAI. Standardmodell: `gpt-5.4-mini`; festes JSON-Schema und `store: false`.
-- OpenAI ist ein externer Dienst. Die Anbieter-Datenbedingungen gelten; `store: false` bedeutet nicht automatisch keine Aufbewahrung durch den Anbieter.
-- API-Nutzung wird separat vom ChatGPT-Plus-Abo bezahlt. Es werden keine kostenpflichtigen KI-Aufrufe im Hintergrund oder automatische Wiederholungen gestartet.
-- Rezeptdaten, Originaltext, Quelle, Kochliste und Häkchen liegen in `data/recipes.sqlite3` auf deinem App-Server.
-- Der optionale gespeicherte Key liegt in `data/settings.json` mit Dateirechten `0600`, unverschlüsselt. Er wird nicht an den Browser zurückgegeben. Ein Umgebungsschlüssel hat Vorrang.
-- `.gitignore` schließt Schlüssel, `.env`, Datenbanken, Abhängigkeiten und Laufzeitdateien aus. Keine Tracker, externen Schriftarten oder Bilddienste.
-- Gramm/Kilogramm und Milliliter/Liter werden für die Einkaufsliste vereinheitlicht. Produktvarianten, unterschiedliche Hinweise und unbekannte Mengen bleiben getrennt. Synonyme und Packungsgrößen werden nicht automatisch aufgelöst.
-- KI-Angaben können falsch sein. Unsichere Umrechnungen und fehlende Mengen bleiben als Hinweise sichtbar; die nachträgliche Korrektur ist dafür vorgesehen.
+## Tests
+
+```sh
+npm run build
+npm run typecheck
+npm test
+npm run build:worker
+```
+
+Tests verwenden die lokale Workers-/D1-Laufzeit und gemockte Quellen/KI. `build:worker` ist ausschließlich ein Wrangler-Dry-Run. Browserprüfung mit lokalem Fixture-Worker:
+
+```sh
+npx wrangler d1 migrations apply DB --local --config test/wrangler.browser.jsonc --persist-to .runtime/browser
+npx playwright install chromium
+npm run test:browser
+```
+
+Die Fixture ersetzt Quellabruf und KI; es entstehen keine API-Kosten und es werden keine produktiven Ressourcen benötigt. Die CI enthält denselben Pfad. Den aktuellen Prüfnachweis enthält der Migrations-PR.
 
 ## Dokumentation
 
-- [Produktanforderungen und Grenzen](docs/PRODUKT.md)
-- [Architektur, API und Entwicklung](docs/ENTWICKLUNG.md)
-- [Hosting und Backups](docs/HOSTING.md)
-- [Änderungsverlauf](CHANGELOG.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md): Datenfluss, Schema, Rechte und Designentscheidungen
+- [SECURITY.md](SECURITY.md): Authentifizierung, Secrets, SSRF, Kosten und bekannte Risiken
+- [DEPLOYMENT.md](DEPLOYMENT.md): bestehende D1, Access, Worker Secrets, Builds, Previews und Backups
+- [AGENTS.md](AGENTS.md): dauerhafte Entwicklungs- und Freigaberegeln
+- [Bestandsaufnahme](docs/MIGRATION-CLOUDFLARE.md), [OpenAI-/Video-Prüfung](docs/OPENAI-VIDEO.md), [CHANGELOG.md](CHANGELOG.md)
 
-## Entwicklung und Tests
+## Öffentliche Pages-Vorschau und alte Daten
 
-```sh
-npm run check
-npm test
-```
+Die bestehende GitHub-Pages-Version bleibt unverändert eine statische Vorschau. Sie ist nicht mit der privaten D1 oder OpenAI verbunden. Die private App läuft später auf der Access-geschützten Worker-Domain. Die alten Node-/Docker-Anleitungen sind durch die Cloudflare-Anleitung ersetzt; die vorherige Version bleibt in der Git-Historie nachvollziehbar.
 
-GitHub Actions führt zusätzlich Desktop-/Mobil-Browsertests und einen Docker-Build aus. Die Test-KI ist simuliert; Tests benötigen keinen persönlichen Key und verursachen keine API-Kosten. Echte OpenAI-Aufrufe sind erst nach Einrichtung eines Keys zu prüfen.
-
-## Daten aus Version 0.1 übernehmen
-
-Den alten Python-Prozess zuerst beenden. Den bisherigen `data`-Ordner bei beendeter Anwendung sichern und für die Node-Anwendung weiterverwenden. Datenbankname und Schema bleiben kompatibel. Die App niemals gleichzeitig in beiden Versionen auf derselben Datenbank betreiben. Abgehakte Einkaufspositionen können durch die neue Schlüsselbildung neu erscheinen; die nächste Planänderung setzt Häkchen ohnehin zurück.
+Bestehende private SQLite-Dateien werden nicht automatisch in D1 übertragen. Vor einem gesonderten Datenimport sind Sicherung, Prüfung der Quellstruktur und ausdrückliche Freigabe erforderlich. Keine echten Rezepte in GitHub speichern.
 
 ## Lizenz
 
-[MIT](LICENSE). HTML-Parser und IP-Adressprüfung sind Open-Source-Abhängigkeiten; deren Lizenzen bleiben erhalten. Die optionale OpenAI-API ist kein quelloffener Bestandteil der Anwendung.
+[MIT](LICENSE). Die Anwendung ist Open Source; Cloudflare und die optionale OpenAI-API sind externe Dienste mit eigenen Bedingungen und Abrechnung.

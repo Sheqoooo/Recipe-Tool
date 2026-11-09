@@ -1,4 +1,4 @@
-import { parse } from 'parse5';
+import { parse,type DefaultTreeAdapterMap } from 'parse5';
 import ipaddr from 'ipaddr.js';
 import { AppError } from '../shared/errors.js';
 import type { Env, Source } from '../shared/types.js';
@@ -50,7 +50,7 @@ export function checkAllowed(url:URL,env:Env):void{
 }
 export function extractSource(html:string,url:string):Source{
   const tree=parse(html);const scripts:string[]=[],text:string[]=[];
-  const stack:{node:ReturnType<typeof parse>['childNodes'][number]|ReturnType<typeof parse>;hidden:boolean}[]=[{node:tree,hidden:false}];
+  const stack:{node:DefaultTreeAdapterMap['node'];hidden:boolean}[]=[{node:tree,hidden:false}];
   while(stack.length){const current=stack.pop()!;const node=current.node;
     const tag='tagName'in node?node.tagName:'';
     if(tag==='script'&&'attrs'in node&&node.attrs.some(a=>a.name==='type'&&a.value.trim().toLowerCase()==='application/ld+json')&&'childNodes'in node){

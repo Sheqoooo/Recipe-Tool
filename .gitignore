@@ -21,4 +21,7 @@ dist/
 *.db
 *.db-*
 wrangler.*.local.jsonc
+backups/
+private-backup.sql
+*.backup.sql
 .DS_Store

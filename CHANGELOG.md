@@ -1,5 +1,18 @@
 # Änderungsverlauf
 
+## 0.3.0 – Cloudflare-Migration (zur Prüfung)
+
+- Bestandsaufnahme und technische Entscheidungen dokumentiert; vorhandene Gestaltung und Einkaufslogik erhalten.
+- Node-/Dateisystem-Backend durch TypeScript-Worker, relationale D1-Migration und gemeinsame Schema-/Typdefinitionen ersetzt.
+- Access-JWT, aktive Mitgliedschaften, Besitzerrechte und Adminverwaltung ergänzt; kein Key-Eingabeformular mehr in der privaten App.
+- Responses API über offizielles SDK mit Structured Outputs, Timeout, kontrollierten Fehlern und Verbrauchserfassung.
+- Unbekannte Portionen/Zeiten bleiben `null`; Schritte referenzieren Zutaten und zeigen Mengen direkt an.
+- Dauerhafte Rate-, Parallelitäts- und Kostenreservierungen in D1, begrenzte Quellen und explizite Hostfreigaben.
+- YouTube-Erkennung und bereitgestellte Transkripte; kein Video-/Untertitel-Downloader oder unzutreffendes Videoanalyseversprechen.
+- Getrennte lokale/produktive Wrangler-Konfiguration und schreibgeschützte Access-Preview ohne D1/KI.
+- Testworkflow ohne Deployment, SQL-Migrationen ausschließlich lokal getestet; keine produktiven Ressourcen geändert.
+- README, ARCHITECTURE, SECURITY, DEPLOYMENT und AGENTS auf die tatsächliche Architektur ausgerichtet. GitHub Pages unverändert.
+
 ## 0.2.1 – 2026-11-09
 
 - GitHub-Pages-Einstieg ergänzt: gestaltete Oberflächenvorschau statt automatisch angezeigter README.
