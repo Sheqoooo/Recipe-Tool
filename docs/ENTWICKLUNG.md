@@ -1,113 +1,109 @@
-# Technischer Aufbau und Entwicklung
+# Architektur und Entwicklung
 
-Stand: 9. November 2026. Die Beschreibung bezieht sich auf den vorhandenen Code. Geplantes Verhalten steht in [PRODUKT.md](PRODUKT.md).
+Stand: Version 0.2, 9. November 2026.
 
-## Voraussetzungen und Start
+## Voraussetzungen
 
-Python 3.9 oder neuer mit SQLite- und HTTPS-Unterstützung. Alle Python-Module stammen aus der Standardbibliothek. Kein npm-Build und keine Paketinstallation erforderlich.
+Node.js **24.x**, npm und ein schreibbarer Datenordner. SQLite kommt aus `node:sqlite`; es muss kein nativer npm-Datenbanktreiber kompiliert werden. Die Laufzeitabhängigkeiten `parse5` (HTML-Parser) und `ipaddr.js` (IP-Adressklassifikation) sind exakt versioniert und über `package-lock.json` mit Integritätswerten festgehalten.
 
 ```sh
-python3 server.py
+npm ci
+npm start
 ```
 
-Die Anwendung bindet ausschließlich an `127.0.0.1`, standardmäßig Port `8765`. Die Browseroberfläche ist unter `http://127.0.0.1:8765` erreichbar. Beenden mit `Strg+C`.
+`npm start` lädt eine optionale `.env` über Node. `node server.js` ohne diesen Parameter erwartet bereits gesetzte Umgebungsvariablen. Alle Einstellungen stehen in [HOSTING.md](HOSTING.md).
 
-| Variable | Bedeutung | Standard |
-| --- | --- | --- |
-| `PORT` | Lokaler HTTP-Port | `8765` |
-| `REZEPTWERK_DATA` | Ordner für Datenbank und Einstellungen | `data` im Projektordner |
-| `OPENAI_API_KEY` | Optionaler API-Key; hat Vorrang vor den Einstellungen | Nicht gesetzt |
+## Dateien und Verantwortung
 
-`.env`-Dateien werden nicht automatisch geladen. Ein API-Key kann alternativ über die Oberfläche eingegeben werden. Der Server muss bei Änderungen am Python-Code neu gestartet werden; statische Dateien werden bei jeder Anfrage neu gelesen.
+| Datei | Aufgabe |
+| --- | --- |
+| `server.js` | HTTP-Routen, Host-/Origin-Prüfung, Passwort, Sitzungstoken, Importkoordination |
+| `app/source.js` | Öffentliche Quellseiten abrufen, Weiterleitungen prüfen, HTML und schema.org lesen |
+| `app/importer.js` | Festes KI-Schema und deutsche Rezeptaufbereitung |
+| `app/recipes.js` | Validierung, Einheiten und deterministische Einkaufsberechnung |
+| `app/storage.js` | SQLite, atomare Schreibvorgänge und serverseitige Key-Datei |
+| `static/` | HTML, CSS und Browser-JavaScript ohne Build-Schritt |
+| `tests/*.test.js` | Unit- und API-Integrationstests über Node Test Runner |
+| `tests/browser/` | Playwright-Abläufe für Desktop und Mobil |
+| `tests/browser-server.js` | Ausschließlich lokale, temporäre Test-App mit simulierter KI |
 
-## Module und Datenfluss
+## Importablauf
 
 ```text
-Browser (static/index.html, app.js, style.css)
-  → lokale HTTP-API (server.py)
-  → read_source (app/importer.py)
-      → öffentliches HTML abrufen
-      → schema.org/Recipe suchen, sonst sichtbaren Text übernehmen
-  → Source(kind, text, url, recipe)
-  → prepare_recipe
-      → optional OpenAI-Aufruf mit festem JSON-Schema
-      → aktuell: Entwurf zum Browser zurückgeben
-  → aktuell: separates Speichern aus der Bearbeitungsmaske
-  → validate_recipe (app/recipes.py)
-  → SQLite (app/storage.py)
-
-Kochliste + Rezepte → shopping_list → gemeinsame Einkaufsliste
+Linkfeld → POST /api/import
+  → URL normalisieren, vorhandenes Rezept suchen
+  → API-Key prüfen
+  → öffentliche Quelle lesen (HTML / schema.org)
+  → Source {kind, url, text, recipe}
+  → KI-Aufbereitung mit festem JSON-Schema
+  → validateRecipe
+  → SQLite-Transaktion
+  → {id, existing} zurückgeben
+  → Sammlung neu laden und anzeigen
 ```
 
-Der Import speichert derzeit noch nicht selbst. Für den vereinbarten automatischen Ablauf müssen Aufbereitung, Validierung und Speicherung im Importpfad verbunden und die obligatorische Entwurfsmaske entfernt werden. Die vorhandene Bearbeitung kann für spätere Korrekturen weiterverwendet werden.
+Der Import ist in Bezug auf die Speicherung atomar: Fehler vor der erfolgreichen Validierung erzeugen keinen Rezeptdatensatz. Es gibt keine obligatorische Bearbeitungsmaske. API-Fehler werden nicht automatisch wiederholt. Maximal zwei unterschiedliche Importe laufen gleichzeitig; gleiche URLs teilen eine Promise. Diese Koordination gilt für eine Serverinstanz, nicht für mehrere Replikate.
 
-## Rezeptmodell
+## Datenmodell
 
-Ein Rezept enthält `title`, `description`, `servings`, `ingredients`, `steps`, `warnings`, `source_url`, `source_kind` und `original_text`. Persistierte Rezepte erhalten zusätzlich `id` und `created_at`.
+Ein Rezept enthält `title`, `description`, `servings`, `ingredients`, `steps`, `warnings`, `source_url`, `source_kind` und `original_text`. Persistierte Rezepte erhalten `id` und `created_at`. Eine Zutat besteht aus `name`, `amount` (Zahl oder `null`), `unit` und `note`.
 
-Eine Zutat enthält:
+Validierung: Titel, positive Portionenzahl, mindestens eine benannte Zutat und ein Schritt; endliche, begrenzte Zahlen und begrenzte Text-/Array-Längen. Maße werden bei der Validierung normalisiert. KI-Provenienzfelder werden mit den tatsächlich abgerufenen Quelldaten überschrieben. Bei Korrekturen bleiben ursprünglicher Quelltext und Quellenart erhalten.
 
-| Feld | Inhalt |
+| SQLite-Tabelle | Inhalt |
 | --- | --- |
-| `name` | Produktname ohne Menge und Einheit |
-| `amount` | Nicht negative Zahl oder `null` bei unbekannter Menge |
-| `unit` | Einheit, beispielsweise `g`, `ml`, `Stück`, `EL`, `TL` |
-| `note` | Hinweise, Unsicherheiten oder alternative Mengen |
-
-Die Validierung verlangt einen Titel, eine positive Portionenzahl, mindestens eine Zutat und einen Zubereitungsschritt. Zahlen müssen endlich sein. Mengen und Textlängen sind begrenzt. Einheiten wie kg/l werden in g/ml normalisiert. Die Einkaufsberechnung verwendet keine KI.
-
-## SQLite-Tabellen
-
-| Tabelle | Aufgabe |
-| --- | --- |
-| `recipes` | JSON-Rezeptdokumente, ID und Erstellungszeit |
-| `plan` | Ein Eintrag je ausgewähltem Rezept mit Zielportionen |
+| `recipes` | Rezeptdokument als JSON, ID, Erstellungszeit |
+| `plan` | Ausgewählte Rezept-ID und gewünschte Portionen |
 | `checked_items` | Schlüssel abgehakter Einkaufspositionen |
 
-`plan.recipe_id` referenziert `recipes.id` mit `ON DELETE CASCADE`. Kochlistenänderungen und gespeicherte Rezeptänderungen setzen Häkchen zurück. Das initiale Schema trägt `PRAGMA user_version = 1`; vor künftigen Schemaänderungen sind versionierte Migrationen zu ergänzen.
+Schema `user_version=1` bleibt mit Version 0.1 kompatibel. Fremdschlüssel sind aktiv, das Löschen eines Rezepts entfernt seinen Kochlisteneintrag. Schreibvorgänge erfolgen in Transaktionen. WAL-Modus erlaubt konsistentes SQLite-Verhalten; für Dateibackups die App stoppen und den vollständigen Datenordner sichern. Für spätere Schemaänderungen müssen versionierte Migrationen ergänzt werden.
 
-## Lokale API
+## HTTP-API
 
-Antworten sind JSON, außer bei statischen Dateien. Fehler enthalten `{"error":"…"}` mit einem passenden HTTP-Status. Schreibzugriffe benötigen den Sitzungstoken aus `/api/state` im Header `X-Rezeptwerk-Token`.
+Alle API-Antworten sind JSON, Fehler haben `{error: "…"}`. Hosting-Passwortschutz gilt für Oberfläche und API. Alle POSTs brauchen den Token aus `/api/state` im Header `X-Rezeptwerk-Token` und `Content-Type: application/json`.
 
-| Methode und Pfad | Aufgabe / Eingabe |
+| Route | Verhalten |
 | --- | --- |
-| `GET /api/state` | Rezepte, Kochliste, Einkaufsliste, Häkchen, Key-Status und Sitzungstoken; kein API-Key |
-| `POST /api/import` | `{kind: "url" oder "text", value: "…"}`; liefert aktuell einen ungespeicherten Entwurf |
-| `POST /api/recipes/save` | Vollständiges Rezeptdokument; optional `id` zum Bearbeiten; liefert gespeicherte ID |
-| `POST /api/recipes/delete` | `{id: …}`; entfernt Rezept und zugehörige Planung |
-| `POST /api/plan` | `{recipe_id: …, servings: …}`; setzt Zielportionen; mit `remove: true` entfernen |
-| `POST /api/shopping/check` | `{key: "…", checked: true oder false}` |
-| `POST /api/settings` | `{api_key: "…"}`; leerer Wert entfernt den lokal gespeicherten Schlüssel |
+| `GET /health` | Nicht vertraulicher Healthcheck ohne Passwort |
+| `GET /api/state` | Sammlung, Plan, Einkaufsliste, Häkchen, Key-Status und Sitzungstoken; nie den API-Key |
+| `POST /api/import` | `{value: "https://…"}`; importiert und speichert; 201 bei neuem Rezept, 200 bei vorhandenem Link; liefert `{id, existing}` |
+| `POST /api/recipes/save` | Vollständiges Rezept mit bestehender `id`; ausschließlich nachträgliche Korrektur |
+| `POST /api/recipes/delete` | `{id}`; entfernt Rezept und Planung |
+| `POST /api/plan` | `{recipe_id, servings}` oder `{recipe_id, remove: true}` |
+| `POST /api/shopping/check` | `{key, checked}`; Schlüssel muss in aktueller Einkaufsliste existieren |
+| `POST /api/settings` | `{api_key}`; leer entfernt den gespeicherten Key; durch Umgebung verwaltete Keys nicht überschreibbar |
 
-`GET /` liefert die Oberfläche; nur `/app.js` und `/style.css` sind weitere öffentliche Dateien. Andere Dateipfade werden nicht ausgeliefert. Der JSON-Export wird im Browser aus dem geladenen Zustand erzeugt.
+Dateien außerhalb der festen Liste `/`, `/app.js`, `/style.css` werden nicht ausgeliefert. Der JSON-Export entsteht im Browser aus dem Zustand; ein Reimport ist nicht enthalten.
 
-## Sicherheits- und Datenschutzentscheidungen
+## Sicherheit und Datenschutz
 
-- Nur lokale Netzwerkbindung und feste Host-Prüfung; keine öffentliche Mehrbenutzeranwendung.
-- Schreibzugriffe erfordern einen zufälligen Sitzungstoken; fremde Origins werden abgewiesen.
-- HTML-Ausgaben im Browser werden maskiert. Die Content Security Policy beschränkt Skripte, Styles und Verbindungen auf die App.
-- Quellabrufe unterstützen nur HTTP/HTTPS auf Port 80/443. Interne oder nicht global routbare IPs werden blockiert. Jede Weiterleitung wird geprüft und die Verbindung an die geprüfte IP gebunden; HTTPS prüft weiterhin den ursprünglichen Hostnamen.
-- Maximal 2 MB pro Quellseite und 40.000 Zeichen für die KI-Quelle; zu große Inhalte werden abgewiesen oder beim Textimport begrenzt.
-- Der Key wird serverseitig in `data/settings.json` mit Dateirechten `0600` gespeichert. Er ist nicht verschlüsselt. Er wird nie als Teil des Zustands an den Browser gesendet.
-- Beim KI-Import wird der Quelltext an OpenAI gesendet. `store: false` ist gesetzt; es ersetzt nicht die Datenbedingungen des API-Anbieters.
-- Keine Rezeptinhalte, URLs oder Credentials in Zugriffslogs.
-- `.gitignore` schließt persönliche Daten, Schlüsseldateien, `.env` und Laufzeitdateien aus.
+- Standardbindung: `127.0.0.1`. Öffentliches Binden oder `NODE_ENV=production` erfordert HTTPS-`APP_URL` und `APP_PASSWORD` mit mindestens 16 Zeichen. Der HTTPS-Abschluss erfolgt beim Hosting/Reverse Proxy.
+- HTTP-Basic-Passwortschutz für den persönlichen Einbenutzerbetrieb. Benutzername `rezeptwerk`. Kein öffentliches Registrierungs- oder Mehrbenutzersystem.
+- Hostnamen werden mit der konfigurierten Domain abgeglichen; POST-Origin muss zur App passen. Weiterleitungsheader werden nicht zur Freischaltung fremder Hosts ausgewertet.
+- Zufälliger Sitzungstoken schützt Schreibzugriffe zusätzlich. Token und Passwort gelten nur für die eigene Instanz.
+- Der Linkabruf erlaubt HTTP/HTTPS und Port 80/443. Alle DNS-Antworten müssen öffentliche Unicast-Adressen sein. Jede Weiterleitung wird erneut geprüft. HTTP-Verbindungen verwenden die geprüfte IP; TLS prüft den ursprünglichen Hostnamen.
+- Quellseiten sind auf 2 MB, KI-Inhalte auf 40.000 Zeichen und JSON-Anfragen auf 300 KB begrenzt. Quellabrufe haben Zeitlimits, ebenso KI-Anfragen.
+- HTML aus Quellen wird nicht im Browser ausgeführt. Browserausgaben werden maskiert, die Content Security Policy beschränkt Ressourcen auf die App.
+- Keys liegen ausschließlich serverseitig: Umgebungsvariable oder atomar geschriebene Datei mit `0600`. Kein Access-Logging von Rezepten oder Schlüsseln; interne Fehlermeldungen werden nicht an Clients ausgegeben.
+- Bei einem KI-Aufruf werden Quelldaten an OpenAI übertragen. `store: false` ersetzt nicht deren Datenbedingungen.
 
-## Tests und bekannte Prüfgrenzen
+## Tests
 
 ```sh
-python3 -m unittest discover -v
+npm run check
+npm test
 ```
 
-Der aktuelle Stand enthält 22 Tests. Sie prüfen Zutatenparser, Brüche und Einheiten, unsichere Mengenbereiche, Skalierung und Zusammenführung, schema.org-Erkennung, blockierte Quelladressen, KI-Anfrageformat, Persistenz, Dateirechte sowie den Speichern-/Planen-/Abhaken-/Löschen-Ablauf über einen echten lokalen Testserver. Testdaten liegen vorübergehend unter `.runtime` und werden entfernt. API-Aufrufe sind simuliert und kostenfrei.
+Die Tests prüfen Import/Validierung, fehlende Keys und unvollständige KI-Antworten, DNS/Redirect-Sperren, Speicherung und Neustart, Portionsskalierung, Häkchen, Korrektur, Duplikate, parallele Importe, Passwort und Host-/Origin-Prüfung.
 
-Noch nicht verifiziert sind echte OpenAI-Antworten mit einem persönlichen Key und die visuelle Browserbedienung. Die Browserautomatisierung scheiterte an der Ausführungsumgebung; eine zusätzliche JavaScript-Syntaxprüfung konnte wegen fehlender Freigabe nicht laufen. Die Tests sind kein Nachweis für den noch nicht implementierten automatischen Link-Ablauf.
+Für Browsertests nach Installation der regulären Pakete:
 
-## Erweiterung um Videoquellen
+```sh
+npm install --no-save --package-lock=false --ignore-scripts @playwright/test@1.56.1
+npx playwright install chromium
+npx playwright test
+```
 
-Ein künftiger Adapter soll Videozugang, Transkription und gegebenenfalls Bildauswertung übernehmen und ein `Source`-Objekt liefern. Dadurch können Rezeptaufbereitung, Validierung, Speicherung und Einkaufsliste weiterverwendet werden. Vor der Implementierung müssen Quellenzugriff, Kostenbegrenzung, Upload-Verhalten und Umgang mit unklaren Mengen konkretisiert werden. Es existiert derzeit kein Video-Download oder -Analysepfad.
+Der Testserver nutzt eine temporäre Datenbank und simulierte Quell-/KI-Ergebnisse. Desktop und Mobil prüfen den Ablauf Link → Sammlung ohne Dialog → Kochliste → Portionsänderung → Häkchen nach Neuladen → nachträgliche Korrektur. Screenshots entstehen in `test-results/`. GitHub Actions führt diese Tests und einen Docker-Build aus und stellt Browser-Artefakte bereit.
 
-## Sicherung und Wiederherstellung
-
-Die App beenden und den Ordner `data` sichern. Zum Wiederherstellen bei beendeter App zurückkopieren. Der Ordner kann den API-Key enthalten und ist entsprechend privat zu behandeln. Der JSON-Export enthält nur die Rezeptsammlung; er ersetzt keine vollständige Sicherung. Ein JSON-Reimport ist noch nicht implementiert.
+Es sind keine echten API-Aufrufe Bestandteil der Tests. Die persönliche API-Verbindung und das tatsächliche Hosting werden nach deren Einrichtung gesondert geprüft.

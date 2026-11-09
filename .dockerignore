@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+data
+.runtime
+.env
+.env.*
+tests
+docs
+*.py
+__pycache__

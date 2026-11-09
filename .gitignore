@@ -4,4 +4,10 @@ data/*
 __pycache__/
 *.pyc
 .env
+.env.*
+!.env.example
+node_modules/
+coverage/
+test-results/
+playwright-report/
 .DS_Store

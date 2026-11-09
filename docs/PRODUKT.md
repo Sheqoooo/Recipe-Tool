@@ -1,75 +1,56 @@
 # Produktanforderungen
 
-Stand: 9. November 2026. Diese Datei hält die vereinbarten Anforderungen fest. Sie unterscheidet den gewünschten Ablauf von der aktuell implementierten Grundstruktur.
+Stand: 9. November 2026 · Version 0.2.
 
-## Zweck
+## Hauptablauf
 
-Rezeptwerk sammelt Rezepte aus Links, formuliert sie auf Deutsch, vereinheitlicht Maße und speichert sie lokal. Aus ausgewählten Rezepten entsteht eine gemeinsame Einkaufsliste mit anpassbaren Portionen.
+1. Die Startansicht bietet ausschließlich ein Rezeptlink-Feld und eine Importaktion.
+2. Die App ruft die Rezeptseite ab und bevorzugt vorhandene `schema.org/Recipe`-Daten. Andernfalls verwendet sie sichtbaren Seitentext.
+3. Die KI erkennt genau ein Rezept, formuliert es auf Deutsch und vereinheitlicht Maße und Temperaturen.
+4. Ein vollständiges Rezept wird nach der Validierung direkt gespeichert. Kein obligatorischer Entwurf, keine zweite Bestätigung und keine manuelle Erfassung.
+5. Die Sammlung wird angezeigt. Bearbeitung ist ausschließlich für nachträgliche Korrekturen erreichbar.
 
-## Vereinbarter Hauptablauf
-
-1. Die Startansicht zeigt ein Linkfeld und eine Importaktion.
-2. Der Nutzer fügt einen Rezeptlink ein und startet den Import.
-3. Die App ruft die Quelle ab, erkennt das Rezept und bereitet es automatisch auf Deutsch auf.
-4. Zutatenmengen, Einheiten, Temperaturen und Zubereitungsschritte werden strukturiert gespeichert. Die Originalquelle und der ausgelesene Inhalt bleiben erhalten.
-5. Bei erfolgreicher Verarbeitung landet das Rezept **direkt in der Datenbank**. Es öffnet sich keine obligatorische Bearbeitungs- oder Bestätigungsmaske.
-6. Ein gespeichertes Rezept kann bei Bedarf nachträglich korrigiert werden.
-
-Manuelles Erfassen und Einfügen von Rezepttext sind kein Bestandteil der gewünschten Hauptoberfläche. Die erste Implementierung enthält diese Funktionen noch und muss entsprechend angepasst werden.
+Dieser Ablauf ist in Version 0.2 implementiert. Textimport und manuelles Neuanlegen sind aus der Oberfläche und den API-Schreibpfaden entfernt.
 
 ## Fehler und Unsicherheit
 
-- Ist die Quelle blockiert oder kein Rezept erkennbar, zeigt die App eine verständliche Fehlermeldung. Ein leerer Rezeptdatensatz soll nicht gespeichert werden.
-- Fehlt der API-Key, soll die App zur Einrichtung führen. Ohne KI darf sie nicht behaupten, ein fremdsprachiges Rezept übersetzt zu haben.
-- Fehlende Mengen werden nicht erfunden. Unsichere Angaben bleiben sichtbar gekennzeichnet und können später korrigiert werden.
-- Cups lassen sich nur zutatenabhängig in Gramm umrechnen. Annahmen müssen nachvollziehbar bleiben.
-- Fahrenheit-Umrechnung darf keine nicht genannte Ofenart wie Umluft oder Ober-/Unterhitze erfinden.
+- Fehlender API-Key: Einrichtung anzeigen; kein Quellen- oder KI-Aufruf.
+- Blockierte Quelle oder fehlendes/vom Modell nicht vollständig erkanntes Rezept: verständlicher Fehler, keine Speicherung eines leeren Rezepts.
+- Bekannter identischer Link: vorhandenen Datensatz verwenden, keine erneuten KI-Kosten.
+- Gleichzeitige Importe desselben Links teilen einen Importvorgang innerhalb des laufenden Prozesses.
+- Fehlende Zutatenmengen nicht erfinden, sondern `null` und einen Hinweis verwenden.
+- Cups nur zutatenabhängig in Gramm umrechnen. Unsichere Dichte und Näherungswerte sichtbar machen.
+- Fahrenheit in Celsius umrechnen, ohne eine nicht genannte Ofenart zu erfinden.
+- Mengenbereiche und Alternativen erhalten, statt sie stillschweigend auf einen exakten Wert zu reduzieren.
 
 ## Sammlung und Einkaufsliste
 
-- Gespeicherte Rezepte durchsuchen, ansehen und bei Bedarf korrigieren.
-- Ein oder mehrere Rezepte zur Kochliste hinzufügen und gewünschte Portionen einstellen.
-- Einkaufsmengen aus Rezeptmengen und Portionen deterministisch berechnen.
-- Identische Zutaten mit kompatiblen Einheiten zusammenführen. Frische Tomaten und Dosentomaten bleiben getrennt.
-- Unbekannte Mengen und unterschiedliche Hinweise nicht stillschweigend zusammenrechnen.
-- Vorhandene oder gekaufte Zutaten abhaken. Ändert sich die Planung, dürfen alte Häkchen nicht geänderte Mengen verdecken.
+Gespeicherte Rezepte sind nach Namen oder Zutaten durchsuchbar. Sie können angesehen, korrigiert, exportiert und gelöscht werden. Aus ausgewählten Gerichten mit gewünschter Portionenzahl wird eine gemeinsame Einkaufsliste deterministisch berechnet.
 
-## Betrieb und Eigentum
+Identische Zutatennamen und kompatible Einheiten werden addiert. Produktvarianten, unterschiedliche Hinweise und unbekannte Mengen bleiben getrennt. Häkchen bleiben nach Neuladen erhalten und werden bei Plan- oder Rezeptänderungen zurückgesetzt, damit geänderte Mengen nicht als eingekauft erscheinen.
 
-- Quelloffener Anwendungscode unter MIT-Lizenz.
-- Lokale SQLite-Datenbank; kein Supabase- oder anderer Datenbank-Account erforderlich.
-- Die App läuft nur während der Nutzung. Keine dauerhaft laufende lokale KI nötig.
-- Automatische KI-Aufbereitung über einen persönlichen OpenAI-API-Key. API-Verbrauch ist separat vom ChatGPT-Plus-Abo zu bezahlen.
-- Geheimnisse und persönliche Rezeptdaten werden nicht ins Git-Repository aufgenommen.
-- Die optionale externe KI ist kein quelloffener Bestandteil der App; dieser Unterschied muss dokumentiert bleiben.
+## Betrieb
 
-## Später: Instagram und Video
+- HTML/CSS/JavaScript im Browser, JavaScript auf Node.js 24 im Hintergrund.
+- SQLite auf einem dauerhaften lokalen bzw. Hosting-Datenträger; kein externer Datenbank-Account.
+- Lokaler Betrieb oder Hosting mit Node.js/Docker. Reines GitHub Pages reicht nicht.
+- Bei Hosting bleibt der eigene Rechner ausgeschaltet. API-Aufrufe erfordern keine eigene KI-Hardware.
+- Open-Source-Anwendung unter MIT. Optionaler externer KI-Dienst mit persönlichem API-Key und separater Verbrauchsabrechnung.
+- Auf einem öffentlich gebundenen Server sind HTTPS-Domain und persönliches App-Passwort vorgeschrieben; kein Konto- oder Nutzerverwaltungssystem.
 
-Video-Auswertung ist ausdrücklich zurückgestellt. Eine spätere Quellenanbindung soll zunächst verfügbare Rezeptbeschreibungen verwenden und bei Bedarf Ton und ausgewählte Videobilder auswerten. Der Zugriff auf Instagram muss gesondert erprobt werden; eine zuverlässige Auswertung beliebiger Instagram-Links ist nicht zugesichert.
+## Grenzen und spätere Funktionen
 
-Die technische Übergabe `Source` ist bereits vorhanden. Videoabruf, Upload, Transkription und Bildanalyse sind noch nicht implementiert.
+Instagram- und Videoimporte bleiben ausdrücklich zurückgestellt. Ein späterer Adapter kann Transkript und erkannte Einblendungen als `Source`-Inhalt an dieselbe Rezeptaufbereitung übergeben. Ein verlässlicher Abruf beliebiger Instagram-Videos wird nicht zugesichert.
 
-## Aktueller Stand
+Noch nicht enthalten: Browserausführung für JavaScript-only-Rezeptseiten, Synonymdatenbank für Zutaten, Packungsgrößen, Mehrbenutzerbetrieb, JSON-Reimport und eine providerabhängige Live-Veröffentlichung. Das tatsächliche Hosting wird eingerichtet, sobald der Anbieter feststeht.
 
-| Bereich | Stand |
-| --- | --- |
-| Lokaler Server und SQLite | Implementiert |
-| Linkabruf und schema.org-Rezepterkennung | Implementiert; konkrete Webseiten können Abrufe blockieren |
-| KI-Aufbereitung über persönlichen API-Key | Implementiert; noch nicht mit einem echten Key verifiziert |
-| Direkte Speicherung nach Linkimport | Noch umzusetzen; aktuell erscheint ein Entwurf |
-| Auf ein Linkfeld reduzierte Startansicht | Noch umzusetzen |
-| Nachträgliche Bearbeitung und Sammlung | Implementiert |
-| Kochliste, Portionsberechnung und Einkaufsliste | Implementiert und über lokale API getestet |
-| JSON-Export | Implementiert; kein JSON-Reimport |
-| Video-Auswertung | Zurückgestellt |
-| Visuelle Browserprüfung | Durch die aktuelle Ausführungsumgebung blockiert |
+## Abnahmekriterien
 
-## Abnahme des nächsten Entwicklungsschritts
-
-- Ein gültiger Rezeptlink mit eingerichtetem API-Key erzeugt ohne weitere manuelle Eingabe einen gespeicherten Datensatz.
-- Der Import öffnet keine Bearbeitungsmaske und benötigt keine zweite Bestätigung.
-- Nach erfolgreichem Import wird das gespeicherte Rezept oder die aktualisierte Sammlung angezeigt.
-- Die Startansicht verlangt ausschließlich einen Link.
-- Korrekturen sind aus dem gespeicherten Rezept erreichbar.
-- Bei fehlendem Rezept oder technischen Fehlern bleibt die Datenbank unverändert.
-- Ein gespeichertes Rezept kann direkt zur Kochliste hinzugefügt werden und liefert korrekt skalierte Einkaufspositionen.
+- Linkimport erzeugt mit eingerichtetem API-Key automatisch ein gespeichertes Rezept.
+- Nach dem Import ist kein Bearbeitungsdialog geöffnet.
+- Bei Fehlern bleibt die Sammlung unverändert.
+- Bereits gespeicherte Links verursachen keinen zweiten KI-Aufruf.
+- Eine nachträgliche Korrektur verändert den vorhandenen Datensatz.
+- Portionsänderungen skalieren Einkaufsmengen und setzen Häkchen zurück.
+- Passwort und API-Key werden nicht als Teil der Anwendung ausgeliefert.
+- Tests führen keine echten KI-Aufrufe aus. Der Live-Import wird nach Einrichtung eines persönlichen Keys zusätzlich geprüft.

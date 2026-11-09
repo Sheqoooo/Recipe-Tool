@@ -18,9 +18,9 @@
       <button data-view="shopping" class="nav-item"><span>☑</span> Einkaufsliste <b id="plan-count">0</b></button>
     </nav>
     <div class="sidebar-bottom">
-      <div class="local-badge"><i></i> Deine Sammlung bleibt bei dir</div>
+      <div class="local-badge"><i></i> Dein persönliches Rezeptarchiv</div>
       <button data-view="settings" class="nav-item"><span>⚙</span> Einstellungen</button>
-      <span class="version">REZEPTWERK / VERSION 0.1</span>
+      <span class="version">REZEPTWERK / VERSION 0.2</span>
     </div>
   </aside>
   <main>
@@ -32,23 +32,18 @@
       <p class="intro">Entdeckungen aus dem Netz werden zu deinem Kochbuch.<br>Auf Deutsch, mit passenden Mengen und bereit für deine Einkaufsliste.</p>
       <div class="import-layout">
         <div class="panel import-panel">
-          <div class="tabs" role="tablist" aria-label="Importart">
-            <button class="tab active" role="tab" aria-selected="true" data-mode="url">↗ &nbsp; Rezeptlink</button>
-            <button class="tab" role="tab" aria-selected="false" data-mode="text">≡ &nbsp; Rezepttext</button>
-          </div>
           <form id="import-form">
             <label id="source-label" for="source">Wo hast du etwas Leckeres entdeckt?</label>
             <input id="source" type="url" placeholder="https://…" required maxlength="2000">
-            <textarea id="source-text" rows="8" placeholder="Zutaten und Zubereitung hier einfügen …" maxlength="40000" hidden></textarea>
-            <p id="import-hint" class="field-help">Rezeptseiten werden direkt ausgelesen. Für Instagram vorerst die Beschreibung als Text einfügen.</p>
-            <div id="key-hint" class="hint">Ohne API-Key kannst du Rezepte manuell erfassen und strukturierte Rezeptseiten übernehmen. <button type="button" class="text-button" data-view="settings">KI einrichten ↗</button></div>
+            <p id="import-hint" class="field-help">Link rein, fertig. Dein Rezept wird automatisch auf Deutsch aufbereitet und in deiner Sammlung gespeichert.</p>
+            <div id="key-hint" class="hint">Für den automatischen Import einmal deinen API-Key hinterlegen. <button type="button" class="text-button" data-view="settings">KI einrichten ↗</button></div>
             <button id="import-submit" class="primary" type="submit">Rezept importieren <span>↗</span></button>
           </form>
-          <div class="import-footer"><span>✧ Erst prüfen, dann speichern</span><button id="manual-create" class="text-button">Manuell anlegen</button></div>
+          <div class="import-footer"><span>✧ Automatisch gespeichert. Bei Bedarf später korrigieren.</span></div>
         </div>
         <aside class="note-card"><span class="note-symbol">✳</span><h2>Weniger suchen.<br>Mehr kochen.</h2><p>Deine Fundstücke an einem Ort. Wähle später aus, was du kochen möchtest – die Einkaufsliste entsteht daraus automatisch.</p><div class="note-rule"></div><span class="small-label">VON DER IDEE AUF DEN TELLER</span></aside>
       </div>
-      <div class="how-it-works"><div><span>01</span><h3>Rezept entdecken</h3><p>Link oder Beschreibung einfügen.</p></div><div><span>02</span><h3>Zu deinem machen</h3><p>Mit KI übersetzen und Mengen prüfen.</p></div><div><span>03</span><h3>Entspannt einkaufen</h3><p>Gerichte wählen, Zutaten sammeln.</p></div></div>
+      <div class="how-it-works"><div><span>01</span><h3>Rezept entdecken</h3><p>Den Link zum Rezept einfügen.</p></div><div><span>02</span><h3>Automatisch sammeln</h3><p>Auf Deutsch und mit passenden Mengen.</p></div><div><span>03</span><h3>Entspannt einkaufen</h3><p>Gerichte wählen, Zutaten sammeln.</p></div></div>
       <div class="coming"><span>SPÄTER AUF DEM SPEISEPLAN</span><p>Video-Rezepte importieren <b>In Vorbereitung</b></p></div>
     </section>
     <section id="view-collection" class="view" hidden>
@@ -64,8 +59,8 @@
     </section>
     <section id="view-settings" class="view" hidden>
       <div class="eyebrow">SO WIE DU ES BRAUCHST</div><h1>Deine <em>Einstellungen.</em></h1>
-      <div class="panel settings-panel"><h2>Automatisch auf Deutsch aufbereiten</h2><p>Mit deinem OpenAI-API-Key übersetzt Rezeptwerk Rezepttext und bringt Zutaten, Mengen und Schritte in eine einheitliche Form.</p><p class="field-help">Bei einem KI-Import wird der ausgelesene Rezepttext an OpenAI gesendet. Sammlung und Einkaufsliste bleiben lokal. Die API wird separat von ChatGPT Plus nach Verbrauch berechnet.</p><div id="key-status" class="hint"></div><form id="settings-form"><label for="api-key">OpenAI-API-Key</label><input id="api-key" type="password" autocomplete="new-password" placeholder="sk-…" maxlength="500"><p class="field-help">Der Schlüssel wird lokal gespeichert und nicht im Browser hinterlegt. Bitte nicht in einen Chat oder ins Repository kopieren.</p><div class="button-row"><button class="primary compact" type="submit">Schlüssel speichern</button><button id="remove-key" class="secondary" type="button">Schlüssel entfernen</button></div></form></div>
-      <div class="panel settings-panel"><h2>Deine Daten gehören dir</h2><p>Exportiere deine Rezeptsammlung als JSON-Datei. Für ein vollständiges Backup einschließlich Kochliste kannst du bei beendeter App den lokalen Ordner <code>data</code> sichern.</p><button id="export" class="secondary">Rezepte exportieren ↓</button></div>
+      <div class="panel settings-panel"><h2>Automatisch auf Deutsch aufbereiten</h2><p>Mit deinem OpenAI-API-Key übersetzt Rezeptwerk Rezepttext und bringt Zutaten, Mengen und Schritte in eine einheitliche Form.</p><p class="field-help">Bei einem KI-Import wird der ausgelesene Rezepttext an OpenAI gesendet. Sammlung und Einkaufsliste liegen auf deinem Rezeptwerk-Server. Die API wird separat von ChatGPT Plus nach Verbrauch berechnet.</p><div id="key-status" class="hint"></div><form id="settings-form"><label for="api-key">OpenAI-API-Key</label><input id="api-key" type="password" autocomplete="new-password" placeholder="sk-…" maxlength="500"><p class="field-help">Der Schlüssel wird auf deinem Rezeptwerk-Server gespeichert und nicht im Browser hinterlegt. Bitte nicht in einen Chat oder ins Repository kopieren.</p><div class="button-row"><button class="primary compact" type="submit">Schlüssel speichern</button><button id="remove-key" class="secondary" type="button">Schlüssel entfernen</button></div></form></div>
+      <div class="panel settings-panel"><h2>Deine Daten gehören dir</h2><p>Exportiere deine Rezeptsammlung als JSON-Datei. Für ein vollständiges Backup einschließlich Kochliste kannst du bei beendeter App den Datenordner <code>data</code> auf deinem Server sichern.</p><button id="export" class="secondary">Rezepte exportieren ↓</button></div>
     </section>
   </main>
   <dialog id="recipe-dialog"><div class="dialog-header"><span class="eyebrow" id="dialog-caption">DEIN REZEPT</span><button id="close-dialog" class="icon-button" aria-label="Schließen">×</button></div><div id="dialog-content"></div></dialog>

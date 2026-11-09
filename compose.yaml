@@ -1,0 +1,15 @@
+services:
+  rezeptwerk:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      APP_URL: ${APP_URL:?Bitte APP_URL in .env setzen}
+      APP_PASSWORD: ${APP_PASSWORD:?Bitte APP_PASSWORD in .env setzen}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+    volumes:
+      - rezeptwerk-data:/app/data
+volumes:
+  rezeptwerk-data:

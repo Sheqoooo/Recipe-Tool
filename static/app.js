@@ -1,6 +1,5 @@
 'use strict';
 let state = {recipes: [], plan: [], shopping: [], checked: []};
-let mode = 'url';
 let draft = null;
 let currentView = 'import';
 const $ = selector => document.querySelector(selector);
@@ -16,6 +15,7 @@ function notify(message, error = false) {
 async function api(path, data) {
   const options = data === undefined ? {} : {method: 'POST', headers: {'Content-Type':'application/json', 'X-Rezeptwerk-Token':state.token}, body:JSON.stringify(data)};
   const response = await fetch(path, options);
+  if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Die Serververbindung fehlt. Rezeptwerk benötigt ein laufendes Node.js-Hosting; GitHub Pages allein reicht nicht.');
   const body = await response.json();
   if (!response.ok) throw new Error(body.error || 'Die Anfrage konnte nicht verarbeitet werden.');
   return body;
@@ -25,7 +25,7 @@ async function refresh() {
   $('#recipe-count').textContent = state.recipes.length;
   $('#plan-count').textContent = state.plan.length;
   $('#key-hint').hidden = state.has_key;
-  $('#key-status').textContent = state.env_key ? 'Ein API-Key ist über die lokale Umgebung eingerichtet.' : state.has_key ? 'Dein API-Key ist lokal hinterlegt. Bereit für den ersten Import.' : 'Noch kein API-Key hinterlegt. Manuelle Rezepte funktionieren bereits.';
+  $('#key-status').textContent = state.env_key ? 'Ein API-Key ist über die Serverumgebung eingerichtet.' : state.has_key ? 'Dein API-Key ist auf dem Server hinterlegt. Bereit für den ersten Import.' : 'Noch kein API-Key hinterlegt. Bitte einmal einrichten, um Rezepte automatisch zu importieren.';
   $('#api-key').disabled = state.env_key;
   $('#remove-key').disabled = state.env_key || !state.has_key;
   $('#settings-form button[type="submit"]').disabled = state.env_key;
@@ -42,10 +42,10 @@ function empty(title, text) { return `<div class="empty"><h2>${escapeHTML(title)
 function renderRecipes() {
   const search = $('#search').value.toLocaleLowerCase('de');
   const recipes = state.recipes.filter(recipe => (recipe.title + ' ' + recipe.ingredients.map(i => i.name).join(' ')).toLocaleLowerCase('de').includes(search));
-  $('#recipe-grid').innerHTML = recipes.length ? recipes.map((recipe, index) => `<article class="recipe-card"><span class="recipe-number">${String(index + 1).padStart(2,'0')} /</span>${recipe.warnings.length ? '<div class="warning-label">Hinweise zur Prüfung vorhanden</div>' : ''}<h2>${escapeHTML(recipe.title)}</h2><p>${fmt(recipe.servings)} Portionen · ${recipe.ingredients.length} Zutaten</p><footer><button class="text-button" data-open="${recipe.id}">Rezept ansehen ↗</button><button class="secondary" data-add="${recipe.id}">${state.plan.some(p => p.recipe_id === recipe.id) ? '✓ Auf der Kochliste' : '+ Kochliste'}</button></footer></article>`).join('') : empty(search ? 'Kein Treffer.' : 'Hier beginnt dein Kochbuch.', search ? 'Versuche einen anderen Rezeptnamen oder eine Zutat.' : 'Importiere dein erstes Rezept oder lege eines manuell an.');
+  $('#recipe-grid').innerHTML = recipes.length ? recipes.map((recipe, index) => `<article class="recipe-card"><span class="recipe-number">${String(index + 1).padStart(2,'0')} /</span>${recipe.warnings.length ? '<div class="warning-label">Hinweise zur Prüfung vorhanden</div>' : ''}<h2>${escapeHTML(recipe.title)}</h2><p>${fmt(recipe.servings)} Portionen · ${recipe.ingredients.length} Zutaten</p><footer><button class="text-button" data-open="${recipe.id}">Rezept ansehen ↗</button><button class="secondary" data-add="${recipe.id}">${state.plan.some(p => p.recipe_id === recipe.id) ? '✓ Auf der Kochliste' : '+ Kochliste'}</button></footer></article>`).join('') : empty(search ? 'Kein Treffer.' : 'Hier beginnt dein Kochbuch.', search ? 'Versuche einen anderen Rezeptnamen oder eine Zutat.' : 'Füge einen Rezeptlink ein. Dein Rezept wird automatisch gespeichert.');
 }
 function renderShopping() {
-  $('#plan-list').innerHTML = state.plan.length ? state.plan.map(entry => `<article class="plan-card"><h3>${escapeHTML(entry.recipe.title)}</h3><div class="portion-control"><label class="sr-only" for="portion-${entry.recipe_id}">Portionen für ${escapeHTML(entry.recipe.title)}</label><input id="portion-${entry.recipe_id}" type="number" min="0.5" max="1000" step="0.5" value="${entry.servings}" data-portions="${entry.recipe_id}"><span>Portionen</span><button class="text-button danger" data-remove="${entry.recipe_id}">Entfernen</button></div></article>`).join('') : empty('Was möchtest du kochen?', 'Füge in deiner Rezeptsammlung ein Gericht zur Kochliste hinzu.');
+  $('#plan-list').innerHTML = state.plan.length ? state.plan.map(entry => `<article class="plan-card"><h3>${escapeHTML(entry.recipe.title)}</h3><div class="portion-control"><label class="sr-only" for="portion-${entry.recipe_id}">Portionen für ${escapeHTML(entry.recipe.title)}</label><input id="portion-${entry.recipe_id}" type="number" min="0.01" max="1000" step="any" value="${entry.servings}" data-portions="${entry.recipe_id}"><span>Portionen</span><button class="text-button danger" data-remove="${entry.recipe_id}">Entfernen</button></div></article>`).join('') : empty('Was möchtest du kochen?', 'Füge in deiner Rezeptsammlung ein Gericht zur Kochliste hinzu.');
   $('#shopping-list').innerHTML = state.shopping.length ? state.shopping.map(item => `<label class="shopping-row ${state.checked.includes(item.key) ? 'checked' : ''}"><input type="checkbox" data-check="${escapeHTML(item.key)}" ${state.checked.includes(item.key) ? 'checked' : ''}><span><strong>${escapeHTML(quantity(item))} ${escapeHTML(item.name)}</strong>${item.note ? `<small>${escapeHTML(item.note)}</small>` : ''}<small>${escapeHTML(item.recipes.join(' · '))}${item.amount === null ? ' · Menge nach Bedarf / bitte prüfen' : ''}</small></span></label>`).join('') : '<p class="field-help">Hier erscheinen die Zutaten deiner ausgewählten Gerichte.</p>';
   $('#copy-list').disabled = !state.shopping.length;
 }
@@ -69,10 +69,11 @@ function openRecipe(id) {
 function ingredientRow(item = {}) {
   return `<div class="ingredient-edit"><input type="number" aria-label="Menge" min="0" max="1000000" step="any" placeholder="Menge" value="${item.amount ?? ''}"><input aria-label="Einheit" placeholder="g / ml …" maxlength="30" value="${escapeHTML(item.unit || '')}"><input aria-label="Zutat" placeholder="Zutat" maxlength="300" required value="${escapeHTML(item.name || '')}"><button type="button" class="icon-button danger" data-delete-row aria-label="Zutat entfernen">×</button><input class="ingredient-note" aria-label="Hinweis zur Zutat" placeholder="Hinweis, z. B. nach Geschmack oder Umrechnung prüfen" maxlength="300" value="${escapeHTML(item.note || '')}"></div>`;
 }
-function openEditor(recipe = {}) {
+function openEditor(recipe) {
+  if (!recipe?.id) return;
   draft = JSON.parse(JSON.stringify(recipe));
-  $('#dialog-caption').textContent = recipe.id ? 'REZEPT BEARBEITEN' : 'ENTWURF · PRÜFEN & SPEICHERN';
-  $('#dialog-content').innerHTML = `<form id="editor-form"><div id="editor-error" class="dialog-error" role="alert" hidden></div>${recipe.warnings?.length ? `<div class="hint"><strong>Vor dem Speichern prüfen</strong><ul class="warning-list">${recipe.warnings.map(w => `<li>${escapeHTML(w)}</li>`).join('')}</ul></div>` : ''}<div class="editor-grid"><div class="editor-field"><label for="edit-title">Rezeptname</label><input id="edit-title" maxlength="200" required value="${escapeHTML(recipe.title || '')}"></div><div class="editor-field"><label for="edit-servings">Portionen</label><input id="edit-servings" type="number" min="0.5" max="1000" step="0.5" required value="${recipe.servings || 2}"></div></div><div class="editor-field"><label for="edit-description">Kurzbeschreibung</label><input id="edit-description" maxlength="1500" value="${escapeHTML(recipe.description || '')}"></div><div class="editor-field"><label for="edit-source">Originalquelle (optional)</label><input id="edit-source" type="url" maxlength="2000" value="${escapeHTML(recipe.source_url || '')}"></div><div class="editor-head"><h3>Zutaten</h3><button type="button" id="add-ingredient" class="text-button">+ Zutat ergänzen</button></div><p class="field-help">Menge, Einheit und Zutat getrennt eintragen. Eine unbekannte Menge kannst du leer lassen.</p><div id="ingredient-rows">${(recipe.ingredients?.length ? recipe.ingredients : [{}]).map(ingredientRow).join('')}</div><div class="editor-field"><label for="edit-steps">Zubereitung · ein Schritt pro Zeile</label><textarea id="edit-steps" rows="7" required>${escapeHTML((recipe.steps || []).join('\n'))}</textarea></div><div class="editor-field"><label for="edit-warnings">Hinweise zur Prüfung · einer pro Zeile</label><textarea id="edit-warnings" rows="2">${escapeHTML((recipe.warnings || []).join('\n'))}</textarea><p class="field-help">Erledigte Prüfhinweise kannst du hier entfernen.</p></div>${recipe.original_text ? `<details><summary>Importierten Originaltext ansehen</summary><p class="original">${escapeHTML(recipe.original_text)}</p></details>` : ''}<div class="detail-actions"><button class="primary compact" type="submit">Rezept speichern ✓</button><button type="button" id="cancel-edit" class="secondary">Abbrechen</button></div></form>`;
+  $('#dialog-caption').textContent = 'GESPEICHERTES REZEPT KORRIGIEREN';
+  $('#dialog-content').innerHTML = `<form id="editor-form"><div id="editor-error" class="dialog-error" role="alert" hidden></div>${recipe.warnings?.length ? `<div class="hint"><strong>Vor dem Speichern prüfen</strong><ul class="warning-list">${recipe.warnings.map(w => `<li>${escapeHTML(w)}</li>`).join('')}</ul></div>` : ''}<div class="editor-grid"><div class="editor-field"><label for="edit-title">Rezeptname</label><input id="edit-title" maxlength="200" required value="${escapeHTML(recipe.title || '')}"></div><div class="editor-field"><label for="edit-servings">Portionen</label><input id="edit-servings" type="number" min="0.01" max="1000" step="any" required value="${recipe.servings || 2}"></div></div><div class="editor-field"><label for="edit-description">Kurzbeschreibung</label><input id="edit-description" maxlength="1500" value="${escapeHTML(recipe.description || '')}"></div><div class="editor-field"><label for="edit-source">Originalquelle (optional)</label><input id="edit-source" type="url" maxlength="2000" value="${escapeHTML(recipe.source_url || '')}"></div><div class="editor-head"><h3>Zutaten</h3><button type="button" id="add-ingredient" class="text-button">+ Zutat ergänzen</button></div><p class="field-help">Menge, Einheit und Zutat getrennt eintragen. Eine unbekannte Menge kannst du leer lassen.</p><div id="ingredient-rows">${(recipe.ingredients?.length ? recipe.ingredients : [{}]).map(ingredientRow).join('')}</div><div class="editor-field"><label for="edit-steps">Zubereitung · ein Schritt pro Zeile</label><textarea id="edit-steps" rows="7" required>${escapeHTML((recipe.steps || []).join('\n'))}</textarea></div><div class="editor-field"><label for="edit-warnings">Hinweise zur Prüfung · einer pro Zeile</label><textarea id="edit-warnings" rows="2">${escapeHTML((recipe.warnings || []).join('\n'))}</textarea><p class="field-help">Erledigte Prüfhinweise kannst du hier entfernen.</p></div>${recipe.original_text ? `<details><summary>Importierten Originaltext ansehen</summary><p class="original">${escapeHTML(recipe.original_text)}</p></details>` : ''}<div class="detail-actions"><button class="primary compact" type="submit">Rezept speichern ✓</button><button type="button" id="cancel-edit" class="secondary">Abbrechen</button></div></form>`;
   openDialog();
 }
 async function saveEditor(event) {
@@ -94,15 +95,6 @@ document.addEventListener('click', async event => {
   try {
     if (button.matches('a.brand')) {event.preventDefault(); showView('import');}
     if (button.dataset.view) showView(button.dataset.view);
-    if (button.dataset.mode) {
-      mode = button.dataset.mode;
-      document.querySelectorAll('[data-mode]').forEach(b => { b.classList.toggle('active', b.dataset.mode === mode); b.setAttribute('aria-selected', String(b.dataset.mode === mode)); });
-      $('#source').hidden = mode !== 'url'; $('#source').required = mode === 'url';
-      $('#source-text').hidden = mode !== 'text'; $('#source-text').required = mode === 'text';
-      $('#source-label').htmlFor = mode === 'url' ? 'source' : 'source-text';
-      $('#source-label').textContent = mode === 'url' ? 'Wo hast du etwas Leckeres entdeckt?' : 'Was möchtest du in dein Kochbuch aufnehmen?';
-      $('#import-hint').textContent = mode === 'url' ? 'Rezeptseiten werden direkt ausgelesen. Für Instagram vorerst die Beschreibung als Text einfügen.' : 'Füge Zutaten und Zubereitung ein – auch eine kopierte Instagram-Beschreibung funktioniert.';
-    }
     if (button.dataset.open) openRecipe(Number(button.dataset.open));
     if (button.dataset.edit) openEditor(state.recipes.find(r => r.id === Number(button.dataset.edit)));
     if (button.dataset.add) {button.disabled = true; await addToPlan(Number(button.dataset.add)); if ($('#recipe-dialog').open) $('#recipe-dialog').close();}
@@ -111,10 +103,9 @@ document.addEventListener('click', async event => {
       if (confirm('Dieses Rezept aus deiner Sammlung löschen?')) {await api('/api/recipes/delete', {id:Number(button.dataset.delete)}); await refresh(); $('#recipe-dialog').close(); notify('Rezept gelöscht.');}
     }
     if (button.hasAttribute('data-delete-row')) button.closest('.ingredient-edit').remove();
-    if (button.id === 'manual-create') openEditor();
     if (button.id === 'add-ingredient') $('#ingredient-rows').insertAdjacentHTML('beforeend', ingredientRow());
     if (['close-dialog','cancel-edit'].includes(button.id)) $('#recipe-dialog').close();
-    if (button.id === 'remove-key') {await api('/api/settings', {api_key:''}); await refresh(); notify('Der lokal gespeicherte Schlüssel wurde entfernt.');}
+    if (button.id === 'remove-key') {await api('/api/settings', {api_key:''}); await refresh(); notify('Der auf dem Server gespeicherte Schlüssel wurde entfernt.');}
     if (button.id === 'copy-list') {
       const text = state.shopping.filter(i => !state.checked.includes(i.key)).map(i => `☐ ${quantity(i)} ${i.name}${i.note ? ' (' + i.note + ')' : ''}`.trim()).join('\n');
       await navigator.clipboard.writeText(text); notify('Die offenen Zutaten wurden kopiert.');
@@ -134,10 +125,14 @@ document.addEventListener('submit', async event => {
   try {
     if (event.target.id === 'import-form') {
       button.textContent = 'Rezept wird aufbereitet …';
-      const recipe = await api('/api/import', {kind:mode, value:mode === 'url' ? $('#source').value : $('#source-text').value});
-      openEditor(recipe);
+      if (!state.has_key) { showView('settings'); throw new Error('Bitte zuerst deinen API-Key hinterlegen. Dein Rezeptlink bleibt im Importfeld erhalten.'); }
+      const result = await api('/api/import', {value:$('#source').value});
+      await refresh();
+      $('#source').value = '';
+      showView('collection');
+      notify(result.existing ? 'Dieses Rezept ist bereits in deiner Sammlung.' : 'Dein Rezept wurde automatisch auf Deutsch aufbereitet und gespeichert.');
     } else {
-      await api('/api/settings', {api_key:$('#api-key').value}); $('#api-key').value = ''; await refresh(); notify('API-Key lokal gespeichert. Er wird beim nächsten KI-Import verwendet.');
+      await api('/api/settings', {api_key:$('#api-key').value}); $('#api-key').value = ''; await refresh(); notify('API-Key auf dem Server gespeichert. Er wird beim nächsten KI-Import verwendet.');
     }
   } catch (error) {notify(error.message, true);}
   finally {button.disabled = false; if (event.target.id === 'import-form') button.innerHTML = 'Rezept importieren <span>↗</span>';}
@@ -157,4 +152,4 @@ document.addEventListener('change', async event => {
 });
 $('#search').addEventListener('input', renderRecipes);
 showView(location.hash.slice(1));
-refresh().catch(error => notify('Die lokale Anwendung ist nicht erreichbar. ' + error.message, true));
+refresh().catch(error => notify('Die Anwendung ist nicht erreichbar. ' + error.message, true));

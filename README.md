@@ -1,81 +1,69 @@
 # Rezeptwerk
 
-Eine lokale, quelloffene Rezeptsammlung mit deutscher KI-Aufbereitung und gemeinsamer Einkaufsliste. Kein App-Konto und kein Cloud-Datenbankdienst. Python 3.9 oder neuer genügt; es sind keine zusätzlichen Python-Pakete erforderlich.
+**Rezeptlink einfügen → automatisch auf Deutsch aufbereiten → direkt in der Sammlung speichern.** Aus ausgewählten Gerichten wird eine gemeinsame Einkaufsliste mit anpassbaren Portionen.
 
-## Entwicklungsstand und Ziel
+Oberfläche: HTML, CSS und JavaScript. Server: JavaScript mit Node.js 24. Datenbank: SQLite. Open Source unter MIT-Lizenz. Kein Python, kein App-Konto und kein externer Datenbankdienst nötig.
 
-Dies ist die erste technische Grundstruktur. Der gewünschte Hauptablauf lautet: **Link einfügen → automatisch auslesen und auf Deutsch aufbereiten → direkt in der Rezeptdatenbank speichern.** Manuelle Bearbeitung soll nur zur nachträglichen Korrektur dienen.
+## Lokal starten
 
-**Dieser Zielablauf ist noch nicht umgesetzt:** Aktuell öffnet ein Import einen Entwurf, der vor dem Speichern bestätigt werden muss; außerdem enthält die Oberfläche Textimport und manuelles Anlegen. Diese Interaktion wird im nächsten Entwicklungsschritt ersetzt. Die folgende Anleitung beschreibt den tatsächlich vorhandenen Stand.
+Voraussetzung: **Node.js 24.x mit npm**.
 
-Weitere Dokumentation:
+```sh
+npm ci
+npm start
+```
 
-- [Produktanforderungen und Abnahmekriterien](docs/PRODUKT.md)
-- [Architektur, lokale API und Entwicklung](docs/ENTWICKLUNG.md)
+Anschließend **http://127.0.0.1:8765** öffnen. Beenden mit `Strg+C`. Unter macOS kann nach der einmaligen Installation der Pakete auch `Start.command` verwendet werden.
+
+## Verwenden
+
+1. In **Einstellungen** einmal den persönlichen OpenAI-API-Key hinterlegen. Alternativ `OPENAI_API_KEY` auf dem Server setzen.
+2. Den Link zu einer Rezept-Webseite einfügen und **Rezept importieren** klicken.
+3. Die App liest das Rezept aus, übersetzt und strukturiert es und speichert es direkt. Es öffnet sich keine Pflichtmaske zum Bearbeiten oder Bestätigen.
+4. In **Meine Rezepte** gespeicherte Rezepte ansehen oder bei Bedarf nachträglich korrigieren.
+5. Rezepte zur Kochliste hinzufügen, Portionen wählen und in **Einkaufsliste** Zutaten abhaken oder kopieren.
+
+Ein bereits gespeicherter identischer Link wird wiedererkannt, auch bei geändertem URL-Fragment. Dabei fällt kein weiterer KI-Aufruf an. Andere URLs zum gleichen Rezept werden nicht automatisch erkannt.
+
+Fehlt ein API-Key, ist die Quelle nicht zugänglich oder wird kein vollständiges Rezept erkannt, wird kein leerer Datensatz angelegt. Nicht jede Rezeptseite erlaubt automatisches Auslesen. JavaScript-gerenderte Seiten werden noch nicht in einem Browser ausgeführt. Instagram und Videoanalyse sind zurückgestellt.
+
+## Online betreiben
+
+**GitHub Pages kann diese App nicht betreiben**, da es keinen Node.js-Server ausführt. Benötigt wird ein Hosting mit Node.js 24 oder Docker und dauerhaftem Datenspeicher. Die App wird an einer eigenen Domain oder Subdomain ohne URL-Unterpfad betrieben.
+
+Die vollständigen Schritte stehen in [docs/HOSTING.md](docs/HOSTING.md), einschließlich Docker Compose, Umgebungsvariablen, HTTPS, Passwortschutz und Backups. Ein Onlinebetrieb benötigt keine starke KI-Hardware; die KI-Anfragen gehen an die OpenAI-API.
+
+## KI, Daten und Kosten
+
+- Bei einem Import sendet der Server den ausgelesenen Rezepttext an OpenAI. Standardmodell: `gpt-5.4-mini`; festes JSON-Schema und `store: false`.
+- OpenAI ist ein externer Dienst. Die Anbieter-Datenbedingungen gelten; `store: false` bedeutet nicht automatisch keine Aufbewahrung durch den Anbieter.
+- API-Nutzung wird separat vom ChatGPT-Plus-Abo bezahlt. Es werden keine kostenpflichtigen KI-Aufrufe im Hintergrund oder automatische Wiederholungen gestartet.
+- Rezeptdaten, Originaltext, Quelle, Kochliste und Häkchen liegen in `data/recipes.sqlite3` auf deinem App-Server.
+- Der optionale gespeicherte Key liegt in `data/settings.json` mit Dateirechten `0600`, unverschlüsselt. Er wird nicht an den Browser zurückgegeben. Ein Umgebungsschlüssel hat Vorrang.
+- `.gitignore` schließt Schlüssel, `.env`, Datenbanken, Abhängigkeiten und Laufzeitdateien aus. Keine Tracker, externen Schriftarten oder Bilddienste.
+- Gramm/Kilogramm und Milliliter/Liter werden für die Einkaufsliste vereinheitlicht. Produktvarianten, unterschiedliche Hinweise und unbekannte Mengen bleiben getrennt. Synonyme und Packungsgrößen werden nicht automatisch aufgelöst.
+- KI-Angaben können falsch sein. Unsichere Umrechnungen und fehlende Mengen bleiben als Hinweise sichtbar; die nachträgliche Korrektur ist dafür vorgesehen.
+
+## Dokumentation
+
+- [Produktanforderungen und Grenzen](docs/PRODUKT.md)
+- [Architektur, API und Entwicklung](docs/ENTWICKLUNG.md)
+- [Hosting und Backups](docs/HOSTING.md)
 - [Änderungsverlauf](CHANGELOG.md)
 
-## Starten
+## Entwicklung und Tests
 
 ```sh
-python3 server.py
+npm run check
+npm test
 ```
 
-Anschließend **http://127.0.0.1:8765** im Browser öffnen. Auf macOS lässt sich alternativ `Start.command` doppelklicken. Beenden im Terminal mit `Strg+C`. Der Rechner muss nur während der Nutzung laufen.
+GitHub Actions führt zusätzlich Desktop-/Mobil-Browsertests und einen Docker-Build aus. Die Test-KI ist simuliert; Tests benötigen keinen persönlichen Key und verursachen keine API-Kosten. Echte OpenAI-Aufrufe sind erst nach Einrichtung eines Keys zu prüfen.
 
-## Erste Schritte
+## Daten aus Version 0.1 übernehmen
 
-1. Unter **Einstellungen** einen OpenAI-API-Key hinterlegen. Dieser Schritt ist optional; manuelle Rezepte funktionieren ohne Key.
-2. Einen Rezeptlink oder vollständigen Rezepttext einfügen. Text kann auch aus einer Instagram-Beschreibung stammen.
-3. Den Entwurf prüfen, fehlende Angaben ergänzen und speichern. Originaltext und Quelle bleiben erhalten.
-4. In **Meine Rezepte** Gerichte zur Kochliste hinzufügen.
-5. In **Einkaufsliste** Portionen anpassen und Zutaten abhaken oder offene Zutaten kopieren.
-
-Ohne API-Key liest der Linkimport vorhandene `schema.org/Recipe`-Daten aus. Er übersetzt dann nicht automatisch. Ohne strukturierte Daten wird ein leerer Entwurf mit dem Originaltext zur manuellen Erfassung geöffnet. Nicht jede Webseite erlaubt automatisches Abrufen; bei blockierten Seiten den Text einfügen.
-
-## KI und Kosten
-
-Die KI-Anbindung nutzt derzeit `gpt-5.4-mini` über die OpenAI Chat Completions API mit festem JSON-Schema und `store: false`. Bei jedem KI-Import wird der ausgelesene Rezepttext an OpenAI übertragen; deren API-Datenbedingungen gelten weiterhin. Datenbank und Einkaufslistenberechnung bleiben lokal. Es gibt keine Analyse- oder Trackingdienste, keine extern geladenen Schriftarten und keine automatischen KI-Hintergrundanfragen.
-
-Ein ChatGPT-Plus-Abo bezahlt die API-Nutzung nicht. API-Zahlungen/Guthaben werden separat eingerichtet. Fehlende Zutatenmengen werden nicht ergänzt; KI-Umrechnungen und Rezeptangaben müssen vor dem Speichern geprüft werden.
-
-Den Key in den Einstellungen eingeben oder vor dem Start als `OPENAI_API_KEY` setzen. Ein Umgebungsschlüssel hat Vorrang. Die lokale Schlüsseldatei `data/settings.json` wird mit Dateirechten `0600` gespeichert und nicht an den Browser zurückgegeben. Sie ist nicht verschlüsselt. Schlüssel, Datenbanken und Laufzeitdateien werden durch `.gitignore` vom Repository ausgeschlossen.
-
-## Daten und Sicherung
-
-- `data/recipes.sqlite3`: Rezepte, Originaltexte, Kochliste und abgehakte Zutaten.
-- `data/settings.json`: optionaler lokaler API-Key.
-- Unter **Einstellungen → Rezepte exportieren** lässt sich die Sammlung als JSON exportieren. Ein JSON-Reimport ist noch nicht implementiert.
-- Für eine vollständige Sicherung die Anwendung beenden und den Ordner `data` kopieren. Zum Wiederherstellen bei beendeter App zurückkopieren. Die Sicherung enthält gegebenenfalls den API-Key.
-- Identische Zutatennamen und kompatible Einheiten werden addiert; g/kg und ml/l werden vereinheitlicht. Produktvarianten, unterschiedliche Hinweise und unbekannte Mengen bleiben getrennt. Synonyme und Packungsgrößen werden nicht automatisch aufgelöst.
-- Änderungen an Kochliste oder Rezepten setzen Häkchen zurück, damit geänderte Mengen nicht als bereits eingekauft gelten.
-
-## Aufbau
-
-```text
-server.py          Lokaler HTTP-Server und API, nur 127.0.0.1
-app/importer.py    Quellenadapter, schema.org, KI-Aufbereitung
-app/recipes.py     Validierung, Einheiten und Einkaufslistenberechnung
-app/storage.py     SQLite und lokale Einstellungen
-static/           Oberfläche ohne Build-Schritt
-tests/            Offline-Tests
-```
-
-Der Server prüft Host und Schreibzugriffe mit einem Sitzungstoken. Der Linkabruf blockiert interne IP-Adressen und prüft jede Weiterleitung; Verbindungen werden an die geprüfte öffentliche IP gebunden. Die App ist für die persönliche lokale Nutzung ausgelegt, nicht zur unveränderten Veröffentlichung im Internet.
-
-`PORT` ändert den lokalen Port; `REZEPTWERK_DATA` den Datenordner. Beispiel: `PORT=8766 python3 server.py`.
-
-## Tests
-
-```sh
-python3 -m unittest discover -v
-```
-
-Die Tests verwenden keinen echten API-Key und verursachen keine API-Kosten.
-
-## Video später ergänzen
-
-`Source` in `app/importer.py` ist die gemeinsame Übergabe zwischen Quellen und Rezeptaufbereitung. Ein späterer Video-Adapter kann Transkript und erkannte Einblendungen in `Source.text` liefern und denselben Prüf- und Speicherprozess verwenden. Video-Upload, Transkription und automatischer Instagram-Abruf sind in dieser Version noch nicht implementiert. Instagram-Links zeigen einen Hinweis zum Textimport.
+Den alten Python-Prozess zuerst beenden. Den bisherigen `data`-Ordner bei beendeter Anwendung sichern und für die Node-Anwendung weiterverwenden. Datenbankname und Schema bleiben kompatibel. Die App niemals gleichzeitig in beiden Versionen auf derselben Datenbank betreiben. Abgehakte Einkaufspositionen können durch die neue Schlüsselbildung neu erscheinen; die nächste Planänderung setzt Häkchen ohnehin zurück.
 
 ## Lizenz
 
-MIT, siehe [LICENSE](LICENSE). Der App-Code ist Open Source; die optionale OpenAI-API ist ein externer Dienst.
+[MIT](LICENSE). HTML-Parser und IP-Adressprüfung sind Open-Source-Abhängigkeiten; deren Lizenzen bleiben erhalten. Die optionale OpenAI-API ist kein quelloffener Bestandteil der Anwendung.
