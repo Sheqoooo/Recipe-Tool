@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import http from 'node:http';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -99,7 +100,13 @@ test('Sitzungstoken, Host- und Origin-Prüfung sperren fremde Schreibzugriffe', 
   const app = await application(t);
   assert.equal((await app.post('/api/import', { value: 'https://example.com/' }, { 'X-Rezeptwerk-Token': '' })).status, 403);
   assert.equal((await app.post('/api/import', { value: 'https://example.com/' }, { Origin: 'https://evil.example' })).status, 403);
-  assert.equal((await fetch(app.base + '/api/state', { headers: { Host: 'evil.example' } })).status, 403);
+  // fetch normalizes Host, so use a raw HTTP client to exercise a foreign Host.
+  const foreignHostStatus = await new Promise((resolve, reject) => {
+    http.get(app.base + '/api/state', { headers: { Host: 'evil.example' } }, response => {
+      response.resume(); resolve(response.statusCode);
+    }).on('error', reject);
+  });
+  assert.equal(foreignHostStatus, 403);
   assert.equal(app.calls.source, 0);
 });
 
