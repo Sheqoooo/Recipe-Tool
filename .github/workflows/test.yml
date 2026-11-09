@@ -17,6 +17,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
+      - run: node --test scripts/hosting-guard.test.mjs
       - run: npm run build
       - run: npm run typecheck
       - run: npm test

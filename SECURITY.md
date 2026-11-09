@@ -6,7 +6,7 @@ Die Anwendung ist ein privates gemeinsames Kochbuch. Vor einer Veröffentlichung
 
 ## Authentifizierung und Rechte
 
-Cloudflare Access schützt die vollständige Domain. Zusätzlich prüft der Worker jedes `Cf-Access-Jwt-Assertion` kryptografisch, einschließlich Aussteller, Audience und höchstens 24 Stunden Tokenalter. Access-Sitzungen entsprechend auf maximal 24 Stunden konfigurieren. Ungeschützte alternative Hosts dürfen nicht eingerichtet werden; `workers_dev` und alte `preview_urls` sind deaktiviert. Alle Static Assets laufen zuerst durch den Worker. Direkte Identitätsheader werden nicht verwendet. Access-Aussteller müssen eine feste `*.cloudflareaccess.com`-Teamadresse sein; sie kommen nie aus dem Request.
+Cloudflare Access schützt den gesamten Worker mit der Einstellung **All traffic**, einschließlich seiner kostenlosen `workers.dev`-Adresse, aller Pfade/API-Endpunkte und neuer Workers Previews. Eine Allow-Richtlinie enthält ausschließlich ausdrücklich freigegebene einzelne E-Mail-Adressen. Zusätzlich prüft der Worker jedes `Cf-Access-Jwt-Assertion` kryptografisch, einschließlich Aussteller, Audience und höchstens 24 Stunden Tokenalter. Access-Sitzungen entsprechend auf maximal 24 Stunden konfigurieren. Ungeschützte alternative Hosts dürfen nicht eingerichtet werden; `workers_dev:true` ist der vorgesehene primäre Zugang, alte Versions-URLs bleiben mit `preview_urls:false` deaktiviert. Alle Static Assets laufen zuerst durch den Worker. Direkte Identitätsheader werden nicht verwendet. Access-Aussteller müssen eine feste `*.cloudflareaccess.com`-Teamadresse sein; sie kommen nie aus dem Request.
 
 Das JWT reicht allein nicht: E-Mail und Subject werden an eine aktive D1-Mitgliedschaft gebunden. Nicht eingeladene oder gesperrte Nutzer erhalten keinen Zugang. Initiale Admins werden ausschließlich aus `BOOTSTRAP_ADMIN_EMAILS` nach erfolgreicher JWT-Prüfung aufgenommen. Eine nachträglich geänderte Bootstrap-Liste befördert keine vorhandenen Mitglieder automatisch.
 
@@ -16,7 +16,7 @@ Mitglieder bearbeiten nur eigene Rezepte. Admins dürfen alle bearbeiten/lösche
 
 Lokale Testidentität ist nur bei `APP_ENV=local`, `AUTH_MODE=local` **und Loopback-URL** zulässig. Sie ist keine Produktionsanmeldung. Nicht mit einem öffentlichen Tunnel oder `--remote` betreiben. Standardlokalentwicklung verwendet ausschließlich lokal emuliertes D1.
 
-Neue Workers Previews sind gesondert konfiguriert: Access-Audience für Vorschauen, keine D1-Bindung und kein OpenAI-Secret. Der Worker verweigert die Vorschau vollständig, wenn dort dennoch DB oder Key gebunden sind. Schreibzugriffe sind gesperrt. Keine produktiven Secrets in „Previews Base“ importieren. Bei fehlender Access-Konfiguration schlägt die Vorschau geschlossen fehl. GitHub Pages enthält nur den unveränderten öffentlichen UI-Prototyp und hat keine private Worker-Verbindung.
+Neue Workers Previews sind gesondert konfiguriert: die Audience der Worker-weiten Access-Anwendung auch für Vorschauen, keine D1-Bindung und kein OpenAI-Secret. Der Worker verweigert die Vorschau vollständig, wenn dort dennoch DB oder Key gebunden sind. Schreibzugriffe sind gesperrt. Keine produktiven Secrets in „Previews Base“ importieren. Bei fehlender Access-Konfiguration schlägt die Vorschau geschlossen fehl. GitHub Pages enthält nur den unveränderten öffentlichen UI-Prototyp und hat keine private Worker-Verbindung.
 
 ## Secrets und Datenschutz
 

@@ -1,13 +1,14 @@
 // These commands are preparation for the operator. This script is never run by tests or GitHub Actions.
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { validateHosting } from './hosting-guard.mjs';
 const action=process.argv[2];
 const config=JSON.parse(readFileSync('wrangler.production.jsonc','utf8'));
 const fail=message=>{throw new Error(message);};
 if(!['production','preview','migrate'].includes(action))fail('Unknown release action');
 const vars=action==='preview'?config.previews.vars:config.vars;
 if(vars.AUTH_MODE!=='access'||vars.APP_ENV!==(action==='preview'?'preview':'production'))fail('Releases require Access and the correct isolated environment.');
-if(config.workers_dev!==false||config.preview_urls!==false)fail('Do not expose unprotected alternative production/version URLs.');
+validateHosting(config);
 if('OPENAI_API_KEY'in vars)fail('OPENAI_API_KEY must be a Worker Secret, never a config variable.');
 if(Object.values(vars).some(v=>String(v).includes('REPLACE_WITH')))fail('Fill in Access and application configuration before release.');
 if(config.assets.run_worker_first!==true)fail('All assets must pass authentication.');

@@ -15,3 +15,5 @@
 - GitHub Pages nicht eigenmächtig abschalten. Bestehende statische Vorschau bleibt unabhängig von der privaten Worker-App.
 - Dokumentation ist Teil jeder Änderung. Architektur, Deployment, Sicherheit, Testbefehle und tatsächliche Grenzen synchron halten.
 - Vor Übergabe Typen, Build, Worker-/D1-Tests und Browserabläufe prüfen; blockierte oder ungetestete Teile ehrlich benennen.
+
+- Hosting vorerst ausschließlich über die kostenlose workers.dev-Adresse für Frontend und API. Worker-weites Cloudflare Access auf All traffic mit expliziten E-Mail-Freigaben schützt auch Vorschauen. Keine eigene Domain voraussetzen und GitHub Pages unverändert lassen.

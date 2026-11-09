@@ -23,18 +23,24 @@ Diese Werte in `wrangler.production.jsonc` unter `d1_databases[0].database_name`
 
 Vor Anwendung der Migration prüfen, ob die vorhandene D1 leer ist oder bereits Tabellen/Daten enthält. Die SQL-Datei setzt kein bestehendes Anwendungsschema zurück; Namenskonflikte müssen vorab geklärt werden. Keine alte private SQLite-Datei ungeprüft importieren.
 
-## 3. Worker und Domain vorbereiten
+## 3. Kostenlose workers.dev-Adresse vorbereiten
 
 Im Dashboard einen Worker für dieses Projekt vorbereiten oder einen dafür vorgesehenen bestehenden Worker auswählen. Den Namen mit `name` in `wrangler.production.jsonc` abgleichen. Der Betreiber führt diese Kontoschritte aus; Codex legt keine Ressourcen eigenständig an.
 
-Eine eigene Domain/Subdomain verwenden, z. B. `https://rezepte.example.de`. Diese in `vars.APP_ORIGIN` eintragen. Worker und Static Assets werden gemeinsam unter dieser Origin betrieben. Keine Route nur für `/api` schützen. `workers_dev:false`, `preview_urls:false` und `assets.run_worker_first:true` beibehalten.
+Keine eigene Domain und keine DNS-Einträge nötig. Unter **Workers & Pages** steht die Konto-Subdomain bei **Your subdomain**. Der Workername `recipe-tool` ergibt die Adresse `https://recipe-tool.DEINE-SUBDOMAIN.workers.dev`. Die tatsächliche Adresse des Workers kopieren und als `vars.APP_ORIGIN` in der Konfiguration eintragen, ohne abschließenden Schrägstrich. Die Konto-Subdomain ist noch unbekannt; der Platzhalter ist kein funktionsfähiger Link.
+
+Frontend und `/api/*` laufen gemeinsam unter dieser Origin. `workers_dev:true`, `preview_urls:false` und `assets.run_worker_first:true` beibehalten. `preview_urls:false` deaktiviert alte Versions-URLs; die neuen Workers Previews sind separat konfiguriert. `scripts/hosting-guard.mjs` prüft den exakten Workerhost, die Asset-Authentifizierung und beide Access-Konfigurationen vor einem Release. Es kann die tatsächliche Dashboard-Richtlinie nicht prüfen. [Offizielle workers.dev-Konfiguration](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
 
 ## 4. Cloudflare Access
 
-In **Zero Trust → Access controls → Applications** eine **Self-hosted Application** für die vollständige App-Domain inklusive aller Pfade anlegen. Eine Allow-Richtlinie mit den tatsächlich eingeladenen E-Mail-Adressen bzw. einer kontrollierten Gruppe verwenden. Keine Bypass-/Everyone-Richtlinie für die private App. Sitzungsdauer auf höchstens 24 Stunden einstellen; der Worker verweigert ältere Tokens.
+Zuerst Zero Trust im Cloudflare-Konto einrichten, falls noch nicht aktiv. Für die Anmeldung per E-Mail **One-time PIN** als Loginmethode aktivieren (Zero Trust → Settings → Authentication → Login methods). Dadurch sind keine zusätzlichen Benutzerkonten bei einem Identitätsanbieter nötig.
+
+Dann **Workers & Pages → recipe-tool → Access → Protect this Worker behind Access** öffnen. **All traffic** auswählen, ausdrücklich nicht nur **Previews only**. Unter **Authentication policy** eine **Allow**-Richtlinie mit **Include → Emails** erstellen und ausschließlich einzelne freigegebene E-Mail-Adressen eintragen. Keine Freigabe einer gesamten E-Mail-Domain, keine Everyone-/Bypass-Richtlinie. Sitzungsdauer auf höchstens 24 Stunden setzen und **Apply Access** wählen.
+
+Diese Worker-weite Access-Anwendung schützt alle zugehörigen URLs einschließlich `workers.dev`, sämtlicher Pfade, API-Endpunkte und Vorschauen. Nicht die kontoübergreifende Option „Protect all Workers“ verwenden: Andere Projekte und die vorhandene Pages-Seite sollen unverändert bleiben. Access muss vor dem ersten App-Deployment eingerichtet und geprüft werden. Die hier beschriebenen Kontoaktionen führt ausschließlich der Betreiber aus. [Offizieller Dashboard-Ablauf](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)
 
 - Teamdomain aus den Zero-Trust-Einstellungen als `ACCESS_ISSUER`: `https://DEIN-TEAM.cloudflareaccess.com`.
-- Den **Application Audience (AUD) Tag** unter **Configure → Additional settings** der Access-Anwendung als `ACCESS_AUD` eintragen.
+- Unter **Zero Trust → Access controls → Applications** die für `recipe-tool` angelegte Anwendung öffnen. Den **Application Audience (AUD) Tag** unter **Configure → Additional settings** als `vars.ACCESS_AUD` und `previews.vars.ACCESS_AUD` eintragen. Beide Umgebungen verwenden dieselbe Worker-weite Access-Anwendung; der Aussteller muss ebenfalls in beiden Blöcken stehen.
 - Eigene erste Admin-E-Mail in `BOOTSTRAP_ADMIN_EMAILS` eintragen, mehrere mit Komma getrennt. Erst ein gültiges Access-JWT ermöglicht die Aufnahme in D1.
 - Rezeptquellen als exakte Hostnamen in `RECIPE_ALLOWED_HOSTS` freigeben, z. B. tatsächlich verwendete Rezeptanbieter samt benötigter `www`-Variante. Keine Wildcards.
 
@@ -82,7 +88,9 @@ Vor Verbinden automatische Produktionsbuilds kontrollieren, damit keine vorhande
 
 Wrangler ist auf eine Version mit neuen Workers Previews festgelegt. `wrangler.production.jsonc` enthält einen separaten `previews`-Block mit `APP_ENV=preview`, **ohne D1-Bindung und ohne KI-Secret**. Die Vorschau ist schreibgeschützt und enthält keine echten Rezepte. Ein versehentlich gebundener Key oder eine DB sperrt sie vollständig.
 
-Für die Preview-Domain eine separate Access-Anwendung/Audience konfigurieren und deren AUD unter `previews.vars.ACCESS_AUD` eintragen. Team-Aussteller ebenfalls separat angeben. Auch Preview-URLs müssen durch Access oder die Worker-JWT-Prüfung geschlossen sein. Im Dashboard **Previews Base** keine produktiven Secrets importieren; insbesondere `OPENAI_API_KEY` dort nicht setzen.
+Die in Schritt 4 eingerichtete Worker-weite Access-Anwendung muss auf **All traffic** stehen und schützt damit auch neue Preview-URLs. Deren Audience und Team-Aussteller ausdrücklich im `previews.vars`-Block eintragen; sie werden dort nicht automatisch aus `vars` übernommen. Im Dashboard **Previews Base** keine produktiven Secrets importieren; insbesondere `OPENAI_API_KEY` dort nicht setzen. Die Preview hat keine D1 und ist schreibgeschützt; dies ist zusätzlich zum Access-Schutz eine Isolation der Ressourcen.
+
+Vor Aktivierung automatischer Builds in einem privaten Browserfenster die Hauptadresse, `/api/state`, eine Asset-Adresse wie `/app.js` sowie eine vorhandene Preview-Adresse öffnen: Ohne Anmeldung muss Access zur Anmeldung führen oder blockieren. Eine nicht erlaubte E-Mail darf auch nach PIN-Eingabe nicht zugreifen. Eine freigegebene E-Mail darf die Preview öffnen, aber keine Importe starten. Diese Live-Prüfungen sind noch nicht durchgeführt; es gibt keinen freigegebenen Deploy in diesem Auftrag.
 
 Die offiziellen neuen Previews erben D1 nicht automatisch, benötigen aber ausdrücklich sichere eigene Bindings. Dieses Projekt bindet vorsichtshalber gar keine Preview-Datenbank. Eine spätere interaktive Preview mit Test-D1 und eigener Test-KI wäre eine gesonderte Betreiberentscheidung. Keine produktiven Ressourcen dafür wiederverwenden. [Preview-Konfiguration](https://developers.cloudflare.com/workers/previews/configuration/)
 
@@ -106,4 +114,4 @@ Exportdateien gehören außerhalb des Repositories; `private-backup.sql` vor Ver
 - **TRANSCRIPT_REQUIRED:** YouTube-Link allein ist nicht ausreichend. Rechtmäßig bereitgestelltes Transkript verwenden.
 - **GitHub Pages:** Öffentliche statische Vorschau, keine private D1-/OpenAI-Verbindung. Für die echte App die Access-geschützte Worker-Domain verwenden.
 
-Noch vor Veröffentlichung einzutragen: bestehender D1-Name und UUID, Workername, Domain, Access-Teamdomain, produktive AUD, Preview-AUD, Bootstrap-Admin-E-Mail, erlaubte Rezeptdomains und das Secret im eigenen Cloudflare-Dashboard.
+Die bestehende D1 `recipe-prod` / `58577ba1-de20-4078-915d-9c0a2962f555` ist bereits eingetragen. Noch vor Veröffentlichung fehlen: tatsächliche Konto-Subdomain bzw. workers.dev-Adresse, Access-Teamdomain und Worker-AUD (in beiden Umgebungen), Bootstrap-Admin-E-Mail, erlaubte Rezeptdomains sowie das Secret im eigenen Cloudflare-Dashboard. Keine eigene Domain erforderlich. GitHub-Verbindung und automatische Deployments erst nach Review, Access-Einrichtung und ausdrücklicher Aktivierung freischalten; das Verbinden kann bereits einen Build auslösen.

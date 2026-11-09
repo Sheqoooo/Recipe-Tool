@@ -38,6 +38,6 @@ Keine individuellen Nutzer oder Rollen; keine Vorbereitungs-/Kochzeiten; fehlend
 - Strenge explizite Quellen-Hostliste statt beliebiger URLs. Keine Wildcards, keine internen Hosts/IPs, HTTPS, Redirect-Prüfung und zusätzliche DNS-Prüfung. Workers-Fetch statt eigener Netzwerk- oder Tunnel-Bindings. Die verbleibende Vertrauensannahme für die DNS-Inhaberschaft freigegebener Hosts wird in SECURITY.md benannt.
 - D1 reserviert Anfragekontingent und konservatives Kostenbudget atomar vor dem Abruf. Fehlgeschlagene/unklare Anfragen behalten ihre Reservierung; keine automatischen kostenpflichtigen Retries.
 - YouTube-Link wird erkannt und mit `TRANSCRIPT_REQUIRED` beantwortet. Autorisiert bereitgestellte Transkripte sind der implementierte Alternativpfad; kein allgemeiner Video-/Untertitel-Downloader. Audio-/Frame-Adapter bleiben ausdrücklich ein späterer Schritt.
-- Der Betreiber muss bestehende D1-ID/-Name, Access-Aussteller/Audience und Domain selbst konfigurieren. Keine Ressourcen werden durch diese Migration erstellt oder veröffentlicht.
+- Der Betreiber muss die vorhandene D1-Zuordnung prüfen und Access-Aussteller/Audience sowie die kostenlose workers.dev-Adresse konfigurieren; eine eigene Domain ist nicht erforderlich. Keine Ressourcen werden durch diese Migration erstellt oder veröffentlicht.
 
 Prüfgrundlagen und aktuelle Video-/API-Grenzen: [OPENAI-VIDEO.md](OPENAI-VIDEO.md). Deployment- und Sicherheitsentscheidungen: [DEPLOYMENT.md](../DEPLOYMENT.md), [SECURITY.md](../SECURITY.md).

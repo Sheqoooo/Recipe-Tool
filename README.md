@@ -30,7 +30,7 @@ npm run dev
 
 Andere Betreiber benötigen eigene Cloudflare-Ressourcen, eine Access-Anwendung und einen eigenen OpenAI-API-Key. Dieses Projekt enthält keinerlei produktive Zugangsdaten. Für diese konkrete Installation existiert bereits eine manuell angelegte D1: **keine zweite produktive Datenbank erstellen**.
 
-`wrangler.production.jsonc` enthält Platzhalter für die bestehende D1, Domain und Access-Audiences. Defaults für lokale Entwicklung stehen separat in `wrangler.jsonc`. Produktionsmigrationen und Deployments sind voneinander getrennte, explizit bestätigte Betreiberaktionen. GitHub Actions führt nur Tests aus. Workers Builds soll erst nach Konfiguration und Nutzerfreigabe an `main` angeschlossen werden.
+`wrangler.production.jsonc` verwendet die bestehende D1 `recipe-prod` und enthält noch Platzhalter für die kostenlose `workers.dev`-Adresse und Cloudflare Access. Defaults für lokale Entwicklung stehen separat in `wrangler.jsonc`. Produktionsmigrationen und Deployments sind voneinander getrennte, explizit bestätigte Betreiberaktionen. GitHub Actions führt nur Tests aus. Workers Builds soll erst nach Konfiguration und Nutzerfreigabe an `main` angeschlossen werden.
 
 Vollständige Anleitung: [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -76,7 +76,7 @@ Die Fixture ersetzt Quellabruf und KI; es entstehen keine API-Kosten und es werd
 
 ## Öffentliche Pages-Vorschau und alte Daten
 
-Die bestehende GitHub-Pages-Version bleibt unverändert eine statische Vorschau. Sie ist nicht mit der privaten D1 oder OpenAI verbunden. Die private App läuft später auf der Access-geschützten Worker-Domain. Die alten Node-/Docker-Anleitungen sind durch die Cloudflare-Anleitung ersetzt; die vorherige Version bleibt in der Git-Historie nachvollziehbar.
+Die bestehende GitHub-Pages-Version bleibt unverändert eine statische Vorschau. Sie ist nicht mit der privaten D1 oder OpenAI verbunden. Die private App läuft später auf der Access-geschützten `workers.dev`-Adresse (Frontend und API gemeinsam, keine eigene Domain nötig). Die alten Node-/Docker-Anleitungen sind durch die Cloudflare-Anleitung ersetzt; die vorherige Version bleibt in der Git-Historie nachvollziehbar.
 
 Bestehende private SQLite-Dateien werden nicht automatisch in D1 übertragen. Vor einem gesonderten Datenimport sind Sicherung, Prüfung der Quellstruktur und ausdrückliche Freigabe erforderlich. Keine echten Rezepte in GitHub speichern.
 
