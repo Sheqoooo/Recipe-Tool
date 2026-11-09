@@ -51,10 +51,11 @@ test('Link eingeben, automatisch speichern, einkaufen und erst danach korrigiere
   page.on('pageerror', error => errors.push(error.message));
   const state = await (await page.request.get('/api/state')).json();
   for (const recipe of state.recipes) await page.request.post('/api/recipes/delete', {
-    headers: { 'X-Rezeptwerk-Token': state.token }, data: { id: recipe.id },
+    headers: { Origin: 'http://127.0.0.1:8877', 'X-Rezeptwerk-Request': '1' }, data: { id: recipe.id },
   });
   await page.goto('/');
   await expect(page.locator('#key-hint')).toBeHidden();
+  await expect(page.locator('#api-key')).toHaveCount(0);
   await expect(page.locator('#source-text')).toHaveCount(0);
   await expect(page.locator('#manual-create')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('import.png'), fullPage: true });

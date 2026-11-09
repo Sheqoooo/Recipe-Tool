@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#254f39">
+  <title>Rezeptwerk · Deine Rezeptsammlung</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#import"><span class="brand-mark">r.</span> rezeptwerk<span class="brand-dot">●</span></a>
+    <div class="sidebar-caption">DEINE KÜCHE. DEINE SAMMLUNG.</div>
+    <nav aria-label="Hauptnavigation">
+      <button data-view="import" class="nav-item active"><span>↗</span> Rezept importieren</button>
+      <button data-view="collection" class="nav-item"><span>▤</span> Meine Rezepte <b id="recipe-count">0</b></button>
+      <button data-view="shopping" class="nav-item"><span>☑</span> Einkaufsliste <b id="plan-count">0</b></button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="local-badge"><i></i> Dein persönliches Rezeptarchiv</div>
+      <button data-view="settings" class="nav-item"><span>⚙</span> Einstellungen</button>
+      <span class="version">REZEPTWERK / VERSION 0.3</span>
+    </div>
+  </aside>
+  <main>
+    <header class="topbar"><span>Ein guter Ort für gute Rezepte.</span><span class="pill">Dein persönliches Kochbuch</span></header>
+    <div id="notice" class="notice" role="status" hidden></div>
+    <section id="view-import" class="view">
+      <div class="eyebrow">SAMMELN. KOCHEN. GENIESSEN.</div>
+      <h1>Ein Link. Ein neues<br><em>Lieblingsrezept.</em></h1>
+      <p class="intro">Entdeckungen aus dem Netz werden zu deinem Kochbuch.<br>Auf Deutsch, mit passenden Mengen und bereit für deine Einkaufsliste.</p>
+      <div class="import-layout">
+        <div class="panel import-panel">
+          <form id="import-form">
+            <label id="source-label" for="source">Wo hast du etwas Leckeres entdeckt?</label>
+            <input id="source" type="url" placeholder="https://…" required maxlength="2000">
+            <p id="import-hint" class="field-help">Link rein, fertig. Dein Rezept wird automatisch auf Deutsch aufbereitet und in deiner Sammlung gespeichert.</p>
+            <div id="key-hint" class="hint">Der Administrator muss das OpenAI-Secret auf dem Worker einrichten. <button type="button" class="text-button" data-view="settings">Verbindung ansehen ↗</button></div>
+            <div id="transcript-panel" hidden><label for="transcript">Rechtmäßig bereitgestelltes YouTube-Transkript</label><textarea id="transcript" rows="7" maxlength="20000" placeholder="Transkript einfügen …"></textarea><label for="video-duration">Videolänge in Minuten (maximal 20)</label><input id="video-duration" type="number" min="0.1" max="20" step="any"><label class="authorization"><input id="transcript-authorized" type="checkbox"> Ich darf dieses Transkript verwenden.</label><p class="field-help">Kein automatischer Video- oder Untertitel-Download. Es wird nur der bereitgestellte Text ausgewertet.</p></div>
+            <button id="import-submit" class="primary" type="submit">Rezept importieren <span>↗</span></button>
+          </form>
+          <div class="import-footer"><span>✧ Automatisch gespeichert. Bei Bedarf später korrigieren.</span></div>
+        </div>
+        <aside class="note-card"><span class="note-symbol">✳</span><h2>Weniger suchen.<br>Mehr kochen.</h2><p>Deine Fundstücke an einem Ort. Wähle später aus, was du kochen möchtest – die Einkaufsliste entsteht daraus automatisch.</p><div class="note-rule"></div><span class="small-label">VON DER IDEE AUF DEN TELLER</span></aside>
+      </div>
+      <div class="how-it-works"><div><span>01</span><h3>Rezept entdecken</h3><p>Den Link zum Rezept einfügen.</p></div><div><span>02</span><h3>Automatisch sammeln</h3><p>Auf Deutsch und mit passenden Mengen.</p></div><div><span>03</span><h3>Entspannt einkaufen</h3><p>Gerichte wählen, Zutaten sammeln.</p></div></div>
+      <div class="coming"><span>VIDEOIMPORT IN ENTWICKLUNG</span><p>YouTube derzeit nur mit bereitgestelltem Transkript. Keine automatische Video-, Bild- oder Audioanalyse. Der automatische Videoimport bleibt das langfristige Ziel.</p></div>
+    </section>
+    <section id="view-collection" class="view" hidden>
+      <div class="eyebrow">DEIN PERSÖNLICHES KOCHBUCH</div><h1>Gutes bleibt <em>gesammelt.</em></h1>
+      <div class="section-tools"><p class="intro">Alle deine Rezepte. Bereit fürs nächste Essen.</p><button class="primary compact" data-view="import">+ Rezept hinzufügen</button></div>
+      <label class="sr-only" for="search">Rezepte durchsuchen</label><input id="search" class="search" type="search" placeholder="Nach Rezept oder Zutat suchen …">
+      <div id="recipe-grid" class="recipe-grid"></div>
+    </section>
+    <section id="view-shopping" class="view" hidden>
+      <div class="eyebrow">GUT GEPLANT SCHMECKT BESSER</div><h1>Alles auf <em>einer Liste.</em></h1>
+      <p class="intro">Gerichte auswählen, Portionen anpassen, zusammen einkaufen.</p>
+      <div class="shopping-layout"><div><h2 class="section-title">Das wird gekocht</h2><div id="plan-list"></div></div><div class="panel shopping-panel"><div class="section-tools"><h2>Deine Zutaten</h2><button id="copy-list" class="text-button">Liste kopieren ↗</button></div><p class="field-help">Vorhandene oder gekaufte Zutaten einfach abhaken.</p><div id="shopping-list"></div></div></div>
+    </section>
+    <section id="view-settings" class="view" hidden>
+      <div class="eyebrow">SO WIE DU ES BRAUCHST</div><h1>Deine <em>Einstellungen.</em></h1>
+      <div class="panel settings-panel"><h2>KI-Verbindung</h2><div id="key-status" class="hint"></div><p>Der API-Key wird ausschließlich als Cloudflare Worker Secret verwaltet. Du musst ihn nicht im Browser eingeben.</p><p id="identity" class="field-help"></p></div>
+      <div id="members-panel" class="panel settings-panel" hidden><h2>Mitglieder</h2><p class="field-help">Zugriff hier erlauben und zusätzlich die Cloudflare-Access-Richtlinie pflegen. Es werden keine Einladungs-E-Mails versendet.</p><form id="member-form"><label for="member-email">E-Mail-Adresse</label><input id="member-email" type="email" required maxlength="254"><label for="member-role">Rolle</label><select id="member-role"><option value="member">Mitglied</option><option value="admin">Administrator</option></select><button class="primary compact" type="submit">Zugriff erlauben</button></form><div id="member-list"></div></div>
+      <div class="panel settings-panel"><h2>Importverlauf</h2><div id="import-history"></div></div>
+      <div class="panel settings-panel"><h2>Deine Daten gehören dir</h2><p>Exportiere deine Rezeptsammlung als JSON-Datei. Für ein vollständiges Backup nutzt der Administrator Cloudflare D1 Export oder Time Travel.</p><button id="export" class="secondary">Rezepte exportieren ↓</button></div>
+    </section>
+  </main>
+  <dialog id="recipe-dialog"><div class="dialog-header"><span class="eyebrow" id="dialog-caption">DEIN REZEPT</span><button id="close-dialog" class="icon-button" aria-label="Schließen">×</button></div><div id="dialog-content"></div></dialog>
+</body>
+</html>

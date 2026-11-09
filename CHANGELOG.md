@@ -1,5 +1,25 @@
 # Änderungsverlauf
 
+## 0.3.0 – Cloudflare-Migration (zur Prüfung)
+
+- Bestandsaufnahme und technische Entscheidungen dokumentiert; vorhandene Gestaltung und Einkaufslogik erhalten.
+- Node-/Dateisystem-Backend durch TypeScript-Worker, relationale D1-Migration und gemeinsame Schema-/Typdefinitionen ersetzt.
+- Access-JWT, aktive Mitgliedschaften, Besitzerrechte und Adminverwaltung ergänzt; kein Key-Eingabeformular mehr in der privaten App.
+- Responses API über offizielles SDK mit Structured Outputs, Timeout, kontrollierten Fehlern und Verbrauchserfassung.
+- Unbekannte Portionen/Zeiten bleiben `null`; Schritte referenzieren Zutaten und zeigen Mengen direkt an.
+- Dauerhafte Rate-, Parallelitäts- und Kostenreservierungen in D1, begrenzte öffentliche Quellen ohne Pflicht-Hostliste; optionale zusätzliche Hostbeschränkung.
+- YouTube-Erkennung und bereitgestellte Transkripte; kein Video-/Untertitel-Downloader oder unzutreffendes Videoanalyseversprechen.
+- Getrennte lokale/produktive Wrangler-Konfiguration und schreibgeschützte Access-Preview ohne D1/KI.
+- Testworkflow ohne Deployment, SQL-Migrationen ausschließlich lokal getestet; keine produktiven Ressourcen geändert.
+- README, ARCHITECTURE, SECURITY, DEPLOYMENT und AGENTS auf die tatsächliche Architektur ausgerichtet. GitHub Pages unverändert.
+
+### Ergänzungen nach externem Review
+
+- Große Webseiten auf den Rezeptkern reduzieren: JSON-LD-Metadaten auslassen, Rezeptkarten und vollständige Zutaten-/Zubereitungsabschnitte priorisieren; keine still abgeschnittenen Kochangaben.
+- Erweitertes Erkennen sensibler Quell-URLs einschließlich OAuth-/API-/Cloud-Signaturparametern und Kodierungsvarianten. Validierung vor Speicherung, Ausblenden unsicherer historischer Quell-URLs in API-Ausgaben.
+- Zutaten/Schritte nur für die ausgewählten 500 Rezepte laden und linear zuordnen. Versionierte Migration 0002 ergänzt den Listenindex; keine Remote-Anwendung.
+- Konkrete noch ausstehende Live-Smoke-Test-Checkliste; automatischer YouTube-Videoimport bleibt Produktziel, Transkriptimport ist ausdrücklich nur ein eingeschränkter Zwischenstand.
+
 ## 0.2.1 – 2026-11-09
 
 - GitHub-Pages-Einstieg ergänzt: gestaltete Oberflächenvorschau statt automatisch angezeigter README.
