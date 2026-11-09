@@ -72,6 +72,7 @@ export function createApp(deps:Dependencies={}){
         const importId=await repo.reserve(actor,{url:canonical,kind:source?.kind||'web'},env,reservationCost(env));
         try{
           source||=await(deps.read||readWeb)(canonical,env);
+          source.url=normalizeUrl(source.url).href;
           const generated=await(deps.generate||generateRecipe)(source,env,importId);
           const recipe=validateRecipe(generated.recipe);
           const recipeId=await repo.save(recipe,actor,source,importId,generated.usage);

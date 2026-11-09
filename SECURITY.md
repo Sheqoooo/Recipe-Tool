@@ -28,7 +28,7 @@ Keine Rohfehlermeldungen, Keys oder Quelltexte werden geloggt. Importhistorie sp
 
 ## Fremde URLs und SSRF
 
-Nur HTTPS ohne Benutzer-/Passwortanteil, IP-Literale oder Sonderport. Links mit typischen Zugangsschlüssel-Parametern werden abgelehnt. Öffentliche Rezeptquellen benötigen keine vorherige Freigabe. `RECIPE_ALLOWED_HOSTS` ist eine optionale zusätzliche Einschränkung auf exakte Hostnamen; leer bedeutet öffentliche Quellen zulassen, keine Wildcard-Konfiguration nötig. Jede Weiterleitung wird erneut auf URL und öffentliche DNS-Adressen geprüft. Lokale Namensräume, die eigene App und Access-Anmeldedomains bleiben gesperrt.
+Nur HTTPS ohne Benutzer-/Passwortanteil, IP-Literale oder Sonderport. Links mit erkennbaren Zugangsschlüssel-Parametern werden abgelehnt, unter anderem access_token, apikey/API-KEY, Authorization, client_secret, session_id sowie X-Amz-/X-Goog-Signaturen. Namen werden unabhängig von Großschreibung, Trennzeichen und begrenzter Mehrfachkodierung geprüft; verschachtelte URL-Parameter ebenfalls. Die Fehlermeldung wiederholt weder URL noch Wert. Vor Reservierung und Speicherung validiert das Repository erneut; unsichere historische Quell-URLs werden in API-Sammlung und Historie als leere Quelle ausgegeben. Öffentliche Rezeptquellen benötigen keine vorherige Freigabe. `RECIPE_ALLOWED_HOSTS` ist eine optionale zusätzliche Einschränkung auf exakte Hostnamen; leer bedeutet öffentliche Quellen zulassen, keine Wildcard-Konfiguration nötig. Jede Weiterleitung wird erneut auf URL und öffentliche DNS-Adressen geprüft. Lokale Namensräume, die eigene App und Access-Anmeldedomains bleiben gesperrt.
 
 Öffentliche A-/AAAA-Adressen werden zusätzlich über Cloudflares DNS-over-HTTPS geprüft. Private, reservierte, gemappte und lokale Adressen werden abgewiesen. Der eigentliche Abruf verwendet Workers globales Fetch ohne VPC-/Tunnel-/interne Service-Bindings. Authentifizierungsheader oder Cookies werden nicht weitergeleitet. Maximal drei Redirects, 15 Sekunden je Seitenabruf, 5 Sekunden je DNS-Prüfung und 2 MB HTML.
 
@@ -47,3 +47,11 @@ Der aktuell implementierte Medienweg ist nur Text. Videolänge bis 20 Minuten is
 ## Wartung
 
 Betreiber verantwortet Access-Richtlinien, Mitgliedschaften, Secrets, öffentliche Egress-Isolation, optionale Quellenbeschränkungen, aktuelle Modellpreise, D1-Backups und Aktualisierungen. Sicherheitsrelevante Änderungen über geschützte PRs prüfen. Produktionsmigrationen erst nach Backup, SQL-Review und ausdrücklicher Freigabe durchführen. Keine persönlichen Daten oder Geheimnisse in öffentliche Issues posten.
+
+## Grenzen der URL-Erkennung und manueller Nachweis
+
+Eine URL kann Geheimnisse auch unter unbekannten Parameternamen oder im Pfad tragen. Heuristiken können das nicht allgemein erkennen. Nutzer dürfen nur öffentliche Rezeptlinks ohne Zugangsdaten einfügen; die Erkennung ist zusätzliche Absicherung, kein Beweis der Geheimnisfreiheit beliebiger Inhalte. Nicht sensible Query-Parameter werden für funktionierende Rezeptlinks und Duplikaterkennung erhalten. Bekannte sensible Links werden vollständig abgewiesen, statt nur den Parameter zu entfernen und versehentlich eine andere Quelle zu importieren.
+
+Die API-Redaktion schützt vor Ausgabe bestehender unsicherer source_url-Werte; sie ist keine rückwirkende Datenbereinigung. Bei tatsächlichem Altbestand ist nach gesonderter Freigabe eine private Prüfung/Bereinigung und gegebenenfalls Rotation betroffener Zugangsdaten nötig. Tests verwenden ausschließlich erfundene Marker.
+
+Die noch ausstehende [Live-Smoke-Test-Checkliste](docs/SMOKE-TEST.md) trennt lesende Access-/D1-Prüfungen, freizugebende Datenänderungen und gesondert freizugebende kostenpflichtige OpenAI-Aufrufe.

@@ -1,6 +1,7 @@
 import type { Env } from "./env.js";
 import type { Member, Recipe, RecipeData, Source, SourceKind, Usage,  ImportRecord, PlanEntry } from '../shared/types.js';
 import { AppError } from '../shared/errors.js';
+import { normalizeSourceUrl,publicSourceUrl } from '../shared/source-url.js';
 import { positiveServings } from '../shared/recipe.js';
 
 interface Row {
@@ -42,22 +43,30 @@ export class Repository {
     if(!result.meta.changes)throw new AppError('NOT_FOUND','Mitglied nicht gefunden.',404);
   }
   async recipes(actor: Member): Promise<Recipe[]> {
-    const [rows, ingredients, steps] = await Promise.all([
-      this.db.prepare('SELECT * FROM recipes ORDER BY created_at DESC,id DESC LIMIT 500').all<Row>(),
-      this.db.prepare('SELECT * FROM ingredients ORDER BY recipe_id,position').all<{recipe_id:number;name:string;amount:number|null;unit:string;note:string}>(),
-      this.db.prepare('SELECT * FROM steps ORDER BY recipe_id,position').all<{recipe_id:number;text:string;ingredient_indices_json:string}>(),
+    // One D1 batch gives all three queries the same selected-recipe snapshot.
+    const selection='SELECT id FROM recipes ORDER BY created_at DESC,id DESC LIMIT 500';
+    type IngredientRow={recipe_id:number;name:string;amount:number|null;unit:string;note:string};
+    type StepRow={recipe_id:number;text:string;ingredient_indices_json:string};
+    const result=await this.db.batch([
+      this.db.prepare('SELECT * FROM recipes WHERE id IN ('+selection+') ORDER BY created_at DESC,id DESC'),
+      this.db.prepare('SELECT * FROM ingredients WHERE recipe_id IN ('+selection+') ORDER BY recipe_id,position'),
+      this.db.prepare('SELECT * FROM steps WHERE recipe_id IN ('+selection+') ORDER BY recipe_id,position'),
     ]);
-    return rows.results.map(row => ({ id:row.id,owner_id:row.owner_id,title:row.title,description:row.description,
-      servings:row.servings,prep_minutes:row.prep_minutes,cook_minutes:row.cook_minutes,source_url:row.source_url,
+    function group<T extends {recipe_id:number}>(values:T[]):Map<number,T[]>{
+      const groups=new Map<number,T[]>();for(const value of values){const entries=groups.get(value.recipe_id)||[];entries.push(value);groups.set(value.recipe_id,entries);}return groups;
+    }
+    const ingredients=group(result[1].results as IngredientRow[]),steps=group(result[2].results as StepRow[]);
+    return (result[0].results as Row[]).map(row => ({ id:row.id,owner_id:row.owner_id,title:row.title,description:row.description,
+      servings:row.servings,prep_minutes:row.prep_minutes,cook_minutes:row.cook_minutes,source_url:publicSourceUrl(row.source_url),
       source_kind:row.source_kind,revision:row.revision,created_at:row.created_at,updated_at:row.updated_at,
       warnings: JSON.parse(row.warnings_json) as string[],
-      ingredients: ingredients.results.filter(i => i.recipe_id === row.id).map(i => ({ name:i.name, amount:i.amount, unit:i.unit, note:i.note })),
-      steps: steps.results.filter(s => s.recipe_id === row.id).map(s => ({ text:s.text, ingredient_indices:JSON.parse(s.ingredient_indices_json) as number[] })),
+      ingredients: (ingredients.get(row.id)||[]).map(i => ({ name:i.name, amount:i.amount, unit:i.unit, note:i.note })),
+      steps: (steps.get(row.id)||[]).map(s => ({ text:s.text, ingredient_indices:JSON.parse(s.ingredient_indices_json) as number[] })),
       can_edit: actor.role === 'admin' || row.owner_id === actor.id, can_delete: actor.role === 'admin',
     }));
   }
   async byId(id: number): Promise<Row | null> { return this.db.prepare('SELECT * FROM recipes WHERE id=?').bind(id).first<Row>(); }
-  async bySource(url: string): Promise<{id:number} | null> { return this.db.prepare('SELECT id FROM recipes WHERE source_url=? ORDER BY id LIMIT 1').bind(url).first(); }
+  async bySource(url: string): Promise<{id:number} | null> { url=normalizeSourceUrl(url).href;return this.db.prepare('SELECT id FROM recipes WHERE source_url=? ORDER BY id LIMIT 1').bind(url).first(); }
   async plan(recipes: Recipe[]): Promise<PlanEntry[]> {
     const rows = (await this.db.prepare('SELECT * FROM plan ORDER BY recipe_id').all<{recipe_id:number;servings:number}>()).results;
     return rows.flatMap(row => { const recipe=recipes.find(r => r.id===row.recipe_id); return recipe ? [{...row,recipe}] : []; });
@@ -75,6 +84,7 @@ export class Repository {
     await this.db.prepare(checked?'INSERT OR IGNORE INTO checked_items VALUES(?)':'DELETE FROM checked_items WHERE key=?').bind(key).run();
   }
   async reserve(actor:Member, source:Pick<Source,'url'|'kind'>, env:Env, cost:number):Promise<string> {
+    const sourceUrl=normalizeSourceUrl(source.url).href;
     const now=Date.now(), day=new Date().toISOString().slice(0,10), month=new Date().toISOString().slice(0,7);
     const dayStart=Date.parse(day+'T00:00:00Z'), monthStart=Date.parse(month+'-01T00:00:00Z');
     await this.db.prepare("UPDATE imports SET status='failed',error_code='LEASE_EXPIRED' WHERE status='running' AND lease_expires_at<=?").bind(now).run();
@@ -87,7 +97,7 @@ export class Repository {
         AND (SELECT COUNT(*) FROM imports WHERE status='running') < ?
         AND COALESCE((SELECT SUM(reserved_cost_microusd) FROM imports WHERE created_at>=?),0)+? <= ?
         AND COALESCE((SELECT SUM(reserved_cost_microusd) FROM imports WHERE created_at>=?),0)+? <= ?`)
-        .bind(id,actor.id,source.url,source.kind,now,now+180000,cost,
+        .bind(id,actor.id,sourceUrl,source.kind,now,now+180000,cost,
           actor.id,now-60000,intConfig(env.USER_IMPORTS_PER_MINUTE,5,100),
           actor.id,dayStart,intConfig(env.USER_IMPORTS_PER_DAY,30,10000),intConfig(env.MAX_PARALLEL_IMPORTS,2,10),
           dayStart,cost,intConfig(env.DAILY_BUDGET_MICROUSD,2000000),monthStart,cost,intConfig(env.MONTHLY_BUDGET_MICROUSD,10000000)).run();
@@ -102,13 +112,14 @@ export class Repository {
   async history(actor:Member):Promise<ImportRecord[]> {
     const statement=actor.role==='admin' ? this.db.prepare('SELECT * FROM imports ORDER BY created_at DESC LIMIT 30')
       :this.db.prepare('SELECT * FROM imports WHERE owner_id=? ORDER BY created_at DESC LIMIT 30').bind(actor.id);
-    return (await statement.all<ImportRecord>()).results.map(r=>({id:r.id,source_url:r.source_url,source_kind:r.source_kind,status:r.status,
+    return (await statement.all<ImportRecord>()).results.map(r=>({id:r.id,source_url:publicSourceUrl(r.source_url),source_kind:r.source_kind,status:r.status,
       error_code:r.error_code,created_at:r.created_at,input_tokens:r.input_tokens,output_tokens:r.output_tokens,estimated_cost_microusd:r.estimated_cost_microusd}));
   }
   async save(recipe:RecipeData, actor:Member, source:Pick<Source,'url'|'kind'>, importId:string,usage:Usage):Promise<number> {
+    const sourceUrl=normalizeSourceUrl(source.url).href;
     const id=Number.parseInt(crypto.randomUUID().replaceAll('-','').slice(0,13),16);
     const statements=[this.db.prepare(`INSERT INTO recipes(id,owner_id,title,description,servings,prep_minutes,cook_minutes,source_url,source_kind,warnings_json)
-      SELECT ?,?,?,?,?,?,?,?,?,? FROM imports WHERE id=? AND status='running' AND lease_expires_at>?`).bind(id,actor.id,recipe.title,recipe.description,recipe.servings,recipe.prep_minutes,recipe.cook_minutes,source.url,source.kind,JSON.stringify(recipe.warnings),importId,Date.now())];
+      SELECT ?,?,?,?,?,?,?,?,?,? FROM imports WHERE id=? AND status='running' AND lease_expires_at>?`).bind(id,actor.id,recipe.title,recipe.description,recipe.servings,recipe.prep_minutes,recipe.cook_minutes,sourceUrl,source.kind,JSON.stringify(recipe.warnings),importId,Date.now())];
     recipe.ingredients.forEach((i,p)=>statements.push(this.db.prepare('INSERT INTO ingredients VALUES(?,?,?,?,?,?)').bind(id,p,i.name,i.amount,i.unit,i.note)));
     recipe.steps.forEach((s,p)=>statements.push(this.db.prepare('INSERT INTO steps VALUES(?,?,?,?)').bind(id,p,s.text,JSON.stringify(s.ingredient_indices))));
     statements.push(this.db.prepare("UPDATE imports SET status='completed',recipe_id=?,input_tokens=?,output_tokens=?,model=?,estimated_cost_microusd=? WHERE id=? AND status='running'")

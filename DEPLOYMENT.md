@@ -58,7 +58,7 @@ Zusätzlich `BOOTSTRAP_ADMIN_EMAILS` auf demselben Weg als Production-Secret spe
 
 ## 6. Migrationen separat freigeben
 
-Versionierte SQL-Dateien liegen in `migrations/`. Lokale Migrationen sind Teil der Prüfung. Produktive Migrationen sind **kein** Build- oder Deploy-Schritt.
+Versionierte SQL-Dateien liegen in `migrations/`: `0001_shared_cookbook.sql` für sieben Anwendungstabellen, `0002_recipe_listing_index.sql` für den Listenindex. Beide gehören zum initialen Stand; bei bereits angewendetem 0001 nur ausstehende Migrationen über Wrangler anwenden. Lokale Migrationen sind Teil der Prüfung. Produktive Migrationen sind **kein** Build- oder Deploy-Schritt.
 
 Vor einem freigegebenen Remote-Schritt D1-Export/Time Travel prüfen, das tatsächliche bestehende Schema inspizieren und SQL reviewen. Erst danach kann der Betreiber ausdrücklich ausführen:
 
@@ -115,3 +115,7 @@ Exportdateien gehören außerhalb des Repositories; `private-backup.sql` vor Ver
 - **GitHub Pages:** Öffentliche statische Vorschau, keine private D1-/OpenAI-Verbindung. Für die echte App die Access-geschützte Worker-Domain verwenden.
 
 Die bestehende D1 `recipe-prod` / `58577ba1-de20-4078-915d-9c0a2962f555` ist bereits eingetragen. Worker-Adresse, Access-Teamdomain und Worker-AUD sind ebenfalls eingetragen. Der Betreiber hat die Secrets `OPENAI_API_KEY` und `BOOTSTRAP_ADMIN_EMAILS` nach eigener Angabe ausschließlich für Production hinterlegt; ihre Werte wurden nicht ausgelesen. Vor Veröffentlichung bleiben die getrennt freizugebende Migration und die GitHub-/Build-Einrichtung sowie die Live-Prüfung der tatsächlichen App. Keine eigene Domain erforderlich. GitHub-Verbindung und automatische Deployments erst nach Review, Access-Einrichtung und ausdrücklicher Aktivierung freischalten; das Verbinden kann bereits einen Build auslösen.
+
+## Smoke-Test nach Freigabe
+
+Vor Nutzung die [konkrete manuelle Checkliste](docs/SMOKE-TEST.md) abarbeiten und Ergebnisse protokollieren. Access vor Assets/API und Preview, D1-Migrationsstand, Rollen, Quellen-/URL-Grenzen und Persistenz prüfen. Echte OpenAI-Imports benötigen eine ausdrückliche separate Kostenfreigabe. Die Checkliste ist noch nicht live durchgeführt; der funktionierende Hello-World-Login beweist nicht die vollständige App-Integration.

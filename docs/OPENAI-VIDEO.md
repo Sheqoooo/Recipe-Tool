@@ -35,3 +35,7 @@ Die Anwendung speichert Input-/Output-Tokens und eine Schätzung in Mikro-US-Dol
 ## Aufbewahrung
 
 Quelldaten werden nach der Rezeptverarbeitung nicht in D1 abgelegt. `store:false` verhindert reguläre Speicherung als abrufbares Response-Objekt; es garantiert ohne entsprechende Anbietervereinbarung keine vollständige Nullaufbewahrung in Missbrauchsprotokollen. Der Betreiber muss die geltenden OpenAI-Datenkontrollen prüfen. [OpenAI-Datenkontrollen](https://developers.openai.com/api/docs/guides/your-data)
+
+## Produktziel und aktueller Zwischenstand
+
+Der automatische YouTube-Videoimport ist weiterhin das langfristige Produktziel. Der bereitgestellte Transkripttext ist ausdrücklich eine eingeschränkte Zwischenlösung: Ohne Text kein Rezeptimport aus dem Link, keine automatische Beschaffung, keine visuelle/akustische Prüfung. Diese Einschränkung wird auch in der aktiven Oberfläche angezeigt. Der spätere automatische Weg muss zunächst einen technisch zuverlässigen und rechtmäßigen Zugriff auf Medien/Transkripte sowie eigene Dauer-, Größen- und Kostenlimits erhalten. [Manuelle Prüfungen](SMOKE-TEST.md) kennzeichnen den Transkripttest getrennt vom noch fehlenden Videoimport.

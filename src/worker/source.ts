@@ -1,19 +1,12 @@
 import type { Env } from "./env.js";
-import { parse,type DefaultTreeAdapterMap } from 'parse5';
 import ipaddr from 'ipaddr.js';
 import { AppError } from '../shared/errors.js';
 import type {  Source } from '../shared/types.js';
+import { normalizeSourceUrl } from '../shared/source-url.js';
+import { extractRecipeContent } from './extract.js';
 
 export const MAX_SOURCE_BYTES=20000;
-export function normalizeUrl(value:unknown):URL {
-  if(typeof value!=='string'||value.length>2000)throw new AppError('INVALID_URL','Bitte einen gültigen Rezeptlink angeben.');
-  let url:URL;try{url=new URL(value);}catch{throw new AppError('INVALID_URL','Bitte einen vollständigen HTTPS-Link angeben.');}
-  if(url.protocol!=='https:'||url.username||url.password||url.port||!url.hostname.includes('.')||url.hostname.endsWith('.')||ipaddr.isValid(url.hostname.replace(/^\[|\]$/g,''))) {
-    throw new AppError('INVALID_URL','Nur öffentliche HTTPS-Links ohne Zugangsdaten oder Sonderport sind erlaubt.');
-  }
-  if([...url.searchParams.keys()].some(k=>/^(token|key|api_key|auth|password|signature)$/i.test(k)))throw new AppError('PRIVATE_URL','Bitte keine Links mit Zugangsschlüsseln verwenden.');
-  url.hash='';return url;
-}
+export const normalizeUrl=normalizeSourceUrl;
 export function isYouTube(url:URL):boolean{return ['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(url.hostname);}
 export function youtubeUrl(value:unknown):URL {
   const url=normalizeUrl(value);
@@ -55,28 +48,7 @@ export function checkAllowed(url:URL,env:Env):void{
   }
 }
 export function extractSource(html:string,url:string):Source{
-  const tree=parse(html);const scripts:string[]=[],text:string[]=[];
-  const stack:{node:DefaultTreeAdapterMap['node'];hidden:boolean}[]=[{node:tree,hidden:false}];
-  while(stack.length){const current=stack.pop()!;const node=current.node;
-    const tag='tagName'in node?node.tagName:'';
-    if(tag==='script'&&'attrs'in node&&node.attrs.some(a=>a.name==='type'&&a.value.trim().toLowerCase()==='application/ld+json')&&'childNodes'in node){
-      scripts.push(node.childNodes.map(n=>'value'in n?n.value:'').join(''));
-    }
-    const hidden=current.hidden||['script','style','noscript','svg','nav','footer'].includes(tag);
-    if(!hidden&&'value'in node&&node.value.trim())text.push(node.value.trim());
-    if('childNodes'in node)for(let i=node.childNodes.length-1;i>=0;i--)stack.push({node:node.childNodes[i],hidden});
-  }
-  function find(value:unknown,depth=0):unknown{
-    if(!value||typeof value!=='object'||depth>40)return null;
-    const obj=value as Record<string,unknown>,type=obj['@type'];
-    if(type==='Recipe'||Array.isArray(type)&&type.includes('Recipe'))return obj;
-    for(const child of Object.values(obj)){const found=find(child,depth+1);if(found)return found;}return null;
-  }
-  let structured:unknown=null;for(const script of scripts){try{structured=find(JSON.parse(script));}catch{continue;}if(structured)break;}
-  const content=structured?JSON.stringify(structured):text.join('\n');
-  if(!content.trim())throw new AppError('NO_RECIPE','Kein lesbarer Rezeptinhalt gefunden.',422);
-  if(new TextEncoder().encode(content).byteLength>MAX_SOURCE_BYTES)throw new AppError('SOURCE_TOO_LARGE','Der Rezeptinhalt überschreitet das Textlimit.',413);
-  return {kind:'web',url,text:content};
+  return {kind:'web',url:normalizeUrl(url).href,text:extractRecipeContent(html,MAX_SOURCE_BYTES)};
 }
 export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch):Promise<Source>{
   let url=normalizeUrl(value);
