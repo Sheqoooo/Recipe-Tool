@@ -14,6 +14,7 @@ export function validateHosting(config) {
   for(const [vars,environment] of [[config.vars,'production'],[config.previews?.vars,'preview']]) {
     if(vars?.AUTH_MODE!=='access'||vars.APP_ENV!==environment||!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(vars.ACCESS_ISSUER??'')||!vars.ACCESS_AUD)throw new Error('Production and previews require Access issuer, audience and environment configuration.');
     if('OPENAI_API_KEY'in vars)throw new Error('API keys must be Worker Secrets.');
+    if('BOOTSTRAP_ADMIN_EMAILS'in vars)throw new Error('Bootstrap administrator addresses must be Worker Secrets, not public configuration.');
   }
   if(config.previews.d1_databases?.length)throw new Error('Previews must not bind a database.');
 }

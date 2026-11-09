@@ -40,7 +40,7 @@ export function createApp(deps:Dependencies={}){
       // Authentication runs before every asset AND API response.
       if(env.APP_ENV==='preview'){
         const identity=await verifyIdentity(request,env);
-        if(env.DB||env.OPENAI_API_KEY)throw new AppError('PREVIEW_ISOLATION','Die Vorschau ist wegen unsicherer Ressourcenbindung gesperrt.',503);
+        if(env.DB||env.OPENAI_API_KEY||env.BOOTSTRAP_ADMIN_EMAILS)throw new AppError('PREVIEW_ISOLATION','Die Vorschau ist wegen unsicherer Ressourcenbindung gesperrt.',503);
         if(request.method!=='GET')throw new AppError('PREVIEW_READ_ONLY','Diese Vorschau ist schreibgeschützt.',403);
         if(path==='/api/state')return json({recipes:[],plan:[],shopping:[],checked:[],members:[],imports:[],has_key:false,read_only:true,user:{id:identity.sub,email:identity.email,role:'member',active:1}} satisfies AppState);
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);

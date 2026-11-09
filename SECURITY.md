@@ -2,7 +2,7 @@
 
 ## Verbindliche Betriebsgrenzen
 
-Die Anwendung ist ein privates gemeinsames Kochbuch. Vor einer Veröffentlichung müssen Access, die bestehende D1-Datenbank, Admins und Worker Secrets konfiguriert werden. Die mitgelieferten produktiven Platzhalter sind absichtlich nicht veröffentlichungsfähig. Es gibt weder automatische Produktionsmigrationen noch ein Deployment aus GitHub Actions.
+Die Anwendung ist ein privates gemeinsames Kochbuch. Vor einer Veröffentlichung müssen Access, die bestehende D1-Datenbank, Admins und Worker Secrets konfiguriert werden. Die accountbezogene Konfiguration ersetzt keine geprüften Dashboard-Richtlinien, Mitgliedschaften und ausschließlich produktiv gebundenen Secrets. Es gibt weder automatische Produktionsmigrationen noch ein Deployment aus GitHub Actions.
 
 ## Authentifizierung und Rechte
 
@@ -20,7 +20,7 @@ Neue Workers Previews sind gesondert konfiguriert: die Audience der Worker-weite
 
 ## Secrets und Datenschutz
 
-`OPENAI_API_KEY` ausschließlich als Cloudflare Worker Secret hinterlegen. Die aktive Oberfläche hat kein Key-Formular; es existiert kein Endpunkt zum Speichern eines Keys. Lokal ist eine ignorierte `.dev.vars` möglich. Schlüssel, `.env*`, `.dev.vars*`, D1-Kopien und Laufzeitdateien sind ausgeschlossen. Beispiele enthalten nur Platzhalter. Die öffentlichen Pages-Dateien enthalten keinen echten Schlüssel.
+`OPENAI_API_KEY` und `BOOTSTRAP_ADMIN_EMAILS` ausschließlich als Cloudflare Worker Secrets für Production hinterlegen. Die Admin-Adressen gehören nicht ins öffentliche Repository; der Release-Schutz lehnt sie im `vars`-Block ab. Eine Preview mit diesem Admin-Secret wird ebenfalls gesperrt. Die aktive Oberfläche hat kein Key-Formular; es existiert kein Endpunkt zum Speichern eines Keys. Lokal ist eine ignorierte `.dev.vars` möglich. Schlüssel, `.env*`, `.dev.vars*`, D1-Kopien und Laufzeitdateien sind ausgeschlossen. Beispiele enthalten nur Platzhalter. Die öffentlichen Pages-Dateien enthalten keinen echten Schlüssel.
 
 OpenAI erhält ausschließlich den begrenzten für die Analyse nötigen Quelltext, keine Nutzer-E-Mail. `store:false` ist gesetzt, keine Conversations, Tools, Hintergrundjobs oder hochgeladenen Files. Rezept und minimale Importmetadaten werden gespeichert; vollständige Quelldaten werden nicht dauerhaft abgelegt. API-Daten werden laut OpenAI standardmäßig nicht zum Training verwendet; Missbrauchsprotokolle können ohne gesondert genehmigte Datenkontrollen dennoch bis zu 30 Tage aufbewahrt werden. `store:false` ist kein Zero-Data-Retention-Vertrag. [OpenAI-Datenkontrollen](https://developers.openai.com/api/docs/guides/your-data)
 

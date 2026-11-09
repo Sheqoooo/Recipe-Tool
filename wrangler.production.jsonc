@@ -12,7 +12,7 @@
     "APP_ENV": "production", "AUTH_MODE": "access",
     "APP_ORIGIN": "https://recipe-tool.sahin-erengil92.workers.dev",
     "ACCESS_ISSUER": "https://round-lab-d812.cloudflareaccess.com", "ACCESS_AUD": "a5d9fe68a636276a09809bfacb4045255cfecc5df5795bce43d1820c253b69fa",
-    "BOOTSTRAP_ADMIN_EMAILS": "", "RECIPE_ALLOWED_HOSTS": "",
+    "RECIPE_ALLOWED_HOSTS": "",
     "OPENAI_MODEL": "gpt-5.4-mini", "MODEL_INPUT_USD_PER_MILLION": "0.75", "MODEL_OUTPUT_USD_PER_MILLION": "4.50",
     "MAX_PARALLEL_IMPORTS": "2", "USER_IMPORTS_PER_MINUTE": "5", "USER_IMPORTS_PER_DAY": "30",
     "DAILY_BUDGET_MICROUSD": "2000000", "MONTHLY_BUDGET_MICROUSD": "10000000"

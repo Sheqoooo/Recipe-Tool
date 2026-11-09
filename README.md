@@ -30,7 +30,7 @@ npm run dev
 
 Andere Betreiber benötigen eigene Cloudflare-Ressourcen, eine Access-Anwendung und einen eigenen OpenAI-API-Key. Dieses Projekt enthält keinerlei produktive Zugangsdaten. Für diese konkrete Installation existiert bereits eine manuell angelegte D1: **keine zweite produktive Datenbank erstellen**.
 
-`wrangler.production.jsonc` verwendet die bestehende D1 `recipe-prod` und enthält noch Platzhalter für die kostenlose `workers.dev`-Adresse und Cloudflare Access. Defaults für lokale Entwicklung stehen separat in `wrangler.jsonc`. Produktionsmigrationen und Deployments sind voneinander getrennte, explizit bestätigte Betreiberaktionen. GitHub Actions führt nur Tests aus. Workers Builds soll erst nach Konfiguration und Nutzerfreigabe an `main` angeschlossen werden.
+`wrangler.production.jsonc` verwendet die bestehende D1 `recipe-prod` mit eingetragener kostenloser `workers.dev`-Adresse und Cloudflare Access. Selbsthoster ersetzen die Ressourcenkennungen und Access-Werte durch ihre eigenen; `OPENAI_API_KEY` und `BOOTSTRAP_ADMIN_EMAILS` werden ausschließlich als Production Worker Secrets hinterlegt. Defaults für lokale Entwicklung stehen separat in `wrangler.jsonc`. Produktionsmigrationen und Deployments sind voneinander getrennte, explizit bestätigte Betreiberaktionen. GitHub Actions führt nur Tests aus. Workers Builds soll erst nach Konfiguration und Nutzerfreigabe an `main` angeschlossen werden.
 
 Vollständige Anleitung: [DEPLOYMENT.md](DEPLOYMENT.md).
 

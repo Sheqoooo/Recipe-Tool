@@ -27,7 +27,7 @@ Vor Anwendung der Migration prüfen, ob die vorhandene D1 leer ist oder bereits 
 
 Im Dashboard einen Worker für dieses Projekt vorbereiten oder einen dafür vorgesehenen bestehenden Worker auswählen. Den Namen mit `name` in `wrangler.production.jsonc` abgleichen. Der Betreiber führt diese Kontoschritte aus; Codex legt keine Ressourcen eigenständig an.
 
-Keine eigene Domain und keine DNS-Einträge nötig. Unter **Workers & Pages** steht die Konto-Subdomain bei **Your subdomain**. Der Workername `recipe-tool` ergibt die Adresse `https://recipe-tool.DEINE-SUBDOMAIN.workers.dev`. Die tatsächliche Adresse des Workers kopieren und als `vars.APP_ORIGIN` in der Konfiguration eintragen, ohne abschließenden Schrägstrich. Die Konto-Subdomain ist noch unbekannt; der Platzhalter ist kein funktionsfähiger Link.
+Keine eigene Domain und keine DNS-Einträge nötig. Unter **Workers & Pages** steht die Konto-Subdomain bei **Your subdomain**. Der Workername `recipe-tool` ergibt die Adresse `https://recipe-tool.DEINE-SUBDOMAIN.workers.dev`. Die tatsächliche Adresse des Workers kopieren und als `vars.APP_ORIGIN` in der Konfiguration eintragen, ohne abschließenden Schrägstrich. Für dieses Projekt ist bereits `https://recipe-tool.sahin-erengil92.workers.dev` eingetragen. Selbsthoster ersetzen diese Adresse durch ihre eigene.
 
 Frontend und `/api/*` laufen gemeinsam unter dieser Origin. `workers_dev:true`, `preview_urls:false` und `assets.run_worker_first:true` beibehalten. `preview_urls:false` deaktiviert alte Versions-URLs; die neuen Workers Previews sind separat konfiguriert. `scripts/hosting-guard.mjs` prüft den exakten Workerhost, die Asset-Authentifizierung und beide Access-Konfigurationen vor einem Release. Es kann die tatsächliche Dashboard-Richtlinie nicht prüfen. [Offizielle workers.dev-Konfiguration](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
 
@@ -41,7 +41,7 @@ Diese Worker-weite Access-Anwendung schützt alle zugehörigen URLs einschließl
 
 - Teamdomain aus den Zero-Trust-Einstellungen als `ACCESS_ISSUER`: `https://DEIN-TEAM.cloudflareaccess.com`.
 - Unter **Zero Trust → Access controls → Applications** die für `recipe-tool` angelegte Anwendung öffnen. Den **Application Audience (AUD) Tag** unter **Configure → Additional settings** als `vars.ACCESS_AUD` und `previews.vars.ACCESS_AUD` eintragen. Beide Umgebungen verwenden dieselbe Worker-weite Access-Anwendung; der Aussteller muss ebenfalls in beiden Blöcken stehen.
-- Eigene erste Admin-E-Mail in `BOOTSTRAP_ADMIN_EMAILS` eintragen, mehrere mit Komma getrennt. Erst ein gültiges Access-JWT ermöglicht die Aufnahme in D1.
+- Eigene erste Admin-E-Mail als **Worker Secret `BOOTSTRAP_ADMIN_EMAILS` nur für Production** hinterlegen, mehrere mit Komma getrennt. Nicht unter `vars` oder im öffentlichen Repository eintragen. Erst ein gültiges Access-JWT ermöglicht die Aufnahme in D1. Fehlt das Secret, wird kein erster Administrator automatisch angelegt.
 - `RECIPE_ALLOWED_HOSTS` leer lassen: Öffentliche HTTPS-Rezeptseiten benötigen keine einzelne Freigabe. Optional schränkt eine kommaseparierte Liste exakter Hostnamen die Quellen zusätzlich ein. `global_fetch_strictly_public` beibehalten und keine privaten Netzwerk-/Service-Bindings hinzufügen.
 
 Der Worker prüft das JWT zusätzlich selbst und vertraut keinem ungesicherten E-Mail-Header. Bei Static Assets kann `ctx.access` fehlen; deshalb ist die direkte JWT-Verifikation absichtlich Bestandteil des Codes. [Offizielle Besonderheiten](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)
@@ -54,7 +54,7 @@ Auf dem Worker unter **Settings → Variables and Secrets → Add → Secret** d
 npx wrangler secret put OPENAI_API_KEY --config wrangler.production.jsonc
 ```
 
-Dieser Befehl verändert den Worker und wird nicht von Codex ohne Freigabe ausgeführt. Kein Key ist in Build-Schritten oder im Frontend erforderlich. `OPENAI_MODEL` und Preise sind normale Konfiguration; bei Modellwechsel die dazugehörigen Preise aktualisieren. [Secrets-Dokumentation](https://developers.cloudflare.com/workers/configuration/secrets/)
+Zusätzlich `BOOTSTRAP_ADMIN_EMAILS` auf demselben Weg als Production-Secret speichern. Beide Secrets bleiben im Worker und werden durch normale Wrangler-Code-Deployments beibehalten; niemals ihren Inhalt ins Build-System kopieren. Dieser Befehl verändert den Worker und wird nicht von Codex ohne Freigabe ausgeführt. Kein Key ist in Build-Schritten oder im Frontend erforderlich. `OPENAI_MODEL` und Preise sind normale Konfiguration; bei Modellwechsel die dazugehörigen Preise aktualisieren. [Secrets-Dokumentation](https://developers.cloudflare.com/workers/configuration/secrets/)
 
 ## 6. Migrationen separat freigeben
 
@@ -88,7 +88,7 @@ Vor Verbinden automatische Produktionsbuilds kontrollieren, damit keine vorhande
 
 Wrangler ist auf eine Version mit neuen Workers Previews festgelegt. `wrangler.production.jsonc` enthält einen separaten `previews`-Block mit `APP_ENV=preview`, **ohne D1-Bindung und ohne KI-Secret**. Die Vorschau ist schreibgeschützt und enthält keine echten Rezepte. Ein versehentlich gebundener Key oder eine DB sperrt sie vollständig.
 
-Die in Schritt 4 eingerichtete Worker-weite Access-Anwendung muss auf **All traffic** stehen und schützt damit auch neue Preview-URLs. Deren Audience und Team-Aussteller ausdrücklich im `previews.vars`-Block eintragen; sie werden dort nicht automatisch aus `vars` übernommen. Im Dashboard **Previews Base** keine produktiven Secrets importieren; insbesondere `OPENAI_API_KEY` dort nicht setzen. Die Preview hat keine D1 und ist schreibgeschützt; dies ist zusätzlich zum Access-Schutz eine Isolation der Ressourcen.
+Die in Schritt 4 eingerichtete Worker-weite Access-Anwendung muss auf **All traffic** stehen und schützt damit auch neue Preview-URLs. Deren Audience und Team-Aussteller ausdrücklich im `previews.vars`-Block eintragen; sie werden dort nicht automatisch aus `vars` übernommen. Im Dashboard **Previews Base** keine produktiven Secrets importieren; insbesondere `OPENAI_API_KEY` und `BOOTSTRAP_ADMIN_EMAILS` dort nicht setzen. Die Preview hat keine D1 und ist schreibgeschützt; dies ist zusätzlich zum Access-Schutz eine Isolation der Ressourcen.
 
 Vor Aktivierung automatischer Builds in einem privaten Browserfenster die Hauptadresse, `/api/state`, eine Asset-Adresse wie `/app.js` sowie eine vorhandene Preview-Adresse öffnen: Ohne Anmeldung muss Access zur Anmeldung führen oder blockieren. Eine nicht erlaubte E-Mail darf auch nach PIN-Eingabe nicht zugreifen. Eine freigegebene E-Mail darf die Preview öffnen, aber keine Importe starten. Diese Live-Prüfungen sind noch nicht durchgeführt; es gibt keinen freigegebenen Deploy in diesem Auftrag.
 
@@ -114,4 +114,4 @@ Exportdateien gehören außerhalb des Repositories; `private-backup.sql` vor Ver
 - **TRANSCRIPT_REQUIRED:** YouTube-Link allein ist nicht ausreichend. Rechtmäßig bereitgestelltes Transkript verwenden.
 - **GitHub Pages:** Öffentliche statische Vorschau, keine private D1-/OpenAI-Verbindung. Für die echte App die Access-geschützte Worker-Domain verwenden.
 
-Die bestehende D1 `recipe-prod` / `58577ba1-de20-4078-915d-9c0a2962f555` ist bereits eingetragen. Noch vor Veröffentlichung fehlen: tatsächliche Konto-Subdomain bzw. workers.dev-Adresse, Access-Teamdomain und Worker-AUD (in beiden Umgebungen), Bootstrap-Admin-E-Mail sowie das Secret im eigenen Cloudflare-Dashboard. Keine eigene Domain erforderlich. GitHub-Verbindung und automatische Deployments erst nach Review, Access-Einrichtung und ausdrücklicher Aktivierung freischalten; das Verbinden kann bereits einen Build auslösen.
+Die bestehende D1 `recipe-prod` / `58577ba1-de20-4078-915d-9c0a2962f555` ist bereits eingetragen. Worker-Adresse, Access-Teamdomain und Worker-AUD sind ebenfalls eingetragen. Der Betreiber hat die Secrets `OPENAI_API_KEY` und `BOOTSTRAP_ADMIN_EMAILS` nach eigener Angabe ausschließlich für Production hinterlegt; ihre Werte wurden nicht ausgelesen. Vor Veröffentlichung bleiben die getrennt freizugebende Migration und die GitHub-/Build-Einrichtung sowie die Live-Prüfung der tatsächlichen App. Keine eigene Domain erforderlich. GitHub-Verbindung und automatische Deployments erst nach Review, Access-Einrichtung und ausdrücklicher Aktivierung freischalten; das Verbinden kann bereits einen Build auslösen.
