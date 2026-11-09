@@ -72,6 +72,7 @@ Die Fixture ersetzt Quellabruf und KI; es entstehen keine API-Kosten und es werd
 - [DEPLOYMENT.md](DEPLOYMENT.md): bestehende D1, Access, Worker Secrets, Builds, Previews und Backups
 - [AGENTS.md](AGENTS.md): dauerhafte Entwicklungs- und Freigaberegeln
 - [Bestandsaufnahme](docs/MIGRATION-CLOUDFLARE.md), [OpenAI-/Video-Prüfung](docs/OPENAI-VIDEO.md), [CHANGELOG.md](CHANGELOG.md)
+- [Prüfnachweis mit CI-Ergebnissen und ausdrücklich ungetesteten Teilen](docs/VALIDATION.md)
 
 ## Öffentliche Pages-Vorschau und alte Daten
 

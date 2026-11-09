@@ -17,7 +17,7 @@ Adresse: `http://127.0.0.1:8787`. `wrangler.jsonc` bindet nur eine lokale D1-Emu
 
 ## 2. Bereits angelegte D1 finden
 
-Im Cloudflare-Dashboard **Workers & Pages → D1 SQL Database → die bereits vorhandene Datenbank** öffnen. Auf der Übersichtsseite stehen der **Datenbankname** und die **Database ID** (UUID). Falls die Navigation anders angeordnet ist, nach „D1“ suchen. Beide Werte sind Ressourcenkennungen, keine API-Schlüssel.
+Im Cloudflare-Dashboard **Storage & Databases → D1 SQL Database → die bereits vorhandene Datenbank** öffnen. Auf der Übersichtsseite stehen der **Datenbankname** und die **Database ID** (UUID). Falls die Navigation anders angeordnet ist, nach „D1“ suchen. Beide Werte sind Ressourcenkennungen, keine API-Schlüssel.
 
 Diese Werte in `wrangler.production.jsonc` unter `d1_databases[0].database_name` und `database_id` eintragen. Bindingname bleibt **`DB`**. **Keine zweite produktive Datenbank erstellen.** Die lokale und die Browser-Test-ID sind Platzhalter für lokale Emulation, keine produktiven Ressourcen.
 
@@ -31,10 +31,10 @@ Eine eigene Domain/Subdomain verwenden, z. B. `https://rezepte.example.de`. Dies
 
 ## 4. Cloudflare Access
 
-In **Zero Trust → Access → Applications** eine **Self-hosted Application** für die vollständige App-Domain inklusive aller Pfade anlegen. Eine Allow-Richtlinie mit den tatsächlich eingeladenen E-Mail-Adressen bzw. einer kontrollierten Gruppe verwenden. Keine Bypass-/Everyone-Richtlinie für die private App. Sitzungsdauer auf höchstens 24 Stunden einstellen; der Worker verweigert ältere Tokens.
+In **Zero Trust → Access controls → Applications** eine **Self-hosted Application** für die vollständige App-Domain inklusive aller Pfade anlegen. Eine Allow-Richtlinie mit den tatsächlich eingeladenen E-Mail-Adressen bzw. einer kontrollierten Gruppe verwenden. Keine Bypass-/Everyone-Richtlinie für die private App. Sitzungsdauer auf höchstens 24 Stunden einstellen; der Worker verweigert ältere Tokens.
 
 - Teamdomain aus den Zero-Trust-Einstellungen als `ACCESS_ISSUER`: `https://DEIN-TEAM.cloudflareaccess.com`.
-- Den **Application Audience (AUD) Tag** aus den Einstellungen der Access-Anwendung als `ACCESS_AUD` eintragen.
+- Den **Application Audience (AUD) Tag** unter **Configure → Additional settings** der Access-Anwendung als `ACCESS_AUD` eintragen.
 - Eigene erste Admin-E-Mail in `BOOTSTRAP_ADMIN_EMAILS` eintragen, mehrere mit Komma getrennt. Erst ein gültiges Access-JWT ermöglicht die Aufnahme in D1.
 - Rezeptquellen als exakte Hostnamen in `RECIPE_ALLOWED_HOSTS` freigeben, z. B. tatsächlich verwendete Rezeptanbieter samt benötigter `www`-Variante. Keine Wildcards.
 
