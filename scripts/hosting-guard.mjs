@@ -6,7 +6,7 @@ export function validateHosting(config) {
   let url;
   try { url=new URL(origin); } catch { throw new Error('Set an exact HTTPS workers.dev APP_ORIGIN.'); }
   const expected=new RegExp(`^${config.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.workers\\.dev$`);
-  if(url.protocol!=='https:'||url.origin!==origin||!expected.test(url.hostname))throw new Error('APP_ORIGIN must match this Worker and the account workers.dev subdomain, without a path or port.');
+  if(url.protocol!=='https:'||url.port||url.origin!==origin||!expected.test(url.hostname))throw new Error('APP_ORIGIN must match this Worker and the account workers.dev subdomain, without a path or port.');
   for(const [vars,environment] of [[config.vars,'production'],[config.previews?.vars,'preview']]) {
     if(vars?.AUTH_MODE!=='access'||vars.APP_ENV!==environment||!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(vars.ACCESS_ISSUER??'')||!vars.ACCESS_AUD)throw new Error('Production and previews require Access issuer, audience and environment configuration.');
     if('OPENAI_API_KEY'in vars)throw new Error('API keys must be Worker Secrets.');

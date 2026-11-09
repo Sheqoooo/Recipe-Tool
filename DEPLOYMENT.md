@@ -33,7 +33,7 @@ Frontend und `/api/*` laufen gemeinsam unter dieser Origin. `workers_dev:true`, 
 
 ## 4. Cloudflare Access
 
-Zuerst Zero Trust im Cloudflare-Konto einrichten, falls noch nicht aktiv. Für die Anmeldung per E-Mail **One-time PIN** als Loginmethode aktivieren (Zero Trust → Settings → Authentication → Login methods). Dadurch sind keine zusätzlichen Benutzerkonten bei einem Identitätsanbieter nötig.
+Zuerst Zero Trust im Cloudflare-Konto einrichten, falls noch nicht aktiv. Für die Anmeldung per E-Mail **One-time PIN** als Loginmethode aktivieren (Zero Trust → Integrations → Identity providers → Add new identity provider → One-time PIN). Dadurch sind keine zusätzlichen Benutzerkonten bei einem Identitätsanbieter nötig.
 
 Dann **Workers & Pages → recipe-tool → Access → Protect this Worker behind Access** öffnen. **All traffic** auswählen, ausdrücklich nicht nur **Previews only**. Unter **Authentication policy** eine **Allow**-Richtlinie mit **Include → Emails** erstellen und ausschließlich einzelne freigegebene E-Mail-Adressen eintragen. Keine Freigabe einer gesamten E-Mail-Domain, keine Everyone-/Bypass-Richtlinie. Sitzungsdauer auf höchstens 24 Stunden setzen und **Apply Access** wählen.
 
