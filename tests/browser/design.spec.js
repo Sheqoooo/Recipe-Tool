@@ -116,3 +116,24 @@ test('importierte Lebensmittelvorschläge funktionieren lokal und zeigen Herkunf
  await expect(page.locator('.catalog-attribution')).toContainText('BLS 4.0');await expect(page.locator('.catalog-attribution')).toContainText('Open Food Facts');
  expect(network).toEqual([]);
 });
+
+test('mobile Einkaufseingabe bleibt unten, Vorschläge öffnen nach oben und Tastatur wird berücksichtigt',async({page},info)=>{
+ await page.goto(demo);await page.getByRole('button',{name:/Meine Einkaufsliste/}).click();
+ const form=page.locator('#shopping-form'),nav=page.locator('#app-navigation');
+ if(info.project.name==='desktop'){await expect(form).toHaveCSS('position','relative');return;}
+ await expect(form).toHaveCSS('position','fixed');
+ await expect.poll(async()=>{const f=await form.boundingBox(),n=await nav.boundingBox();return Math.abs(f.y+f.height-n.y);}).toBeLessThan(3);
+ await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));
+ await expect.poll(async()=>{const f=await form.boundingBox(),n=await nav.boundingBox();return Math.abs(f.y+f.height-n.y);}).toBeLessThan(3);
+ await page.locator('#shopping-name').fill('Spül');
+ await expect(page.locator('#shopping-suggestions')).toBeVisible();
+ const f=await form.boundingBox(),s=await page.locator('#shopping-suggestions').boundingBox();expect(s.y+s.height).toBeLessThanOrEqual(f.y);
+ await page.screenshot({path:info.outputPath('mobile-shopping-dock.png')});
+ await page.evaluate(()=>{Object.defineProperty(visualViewport,'height',{configurable:true,get:()=>420});Object.defineProperty(visualViewport,'offsetTop',{configurable:true,get:()=>0});visualViewport.dispatchEvent(new Event('resize'));});
+ await expect(page.locator('body')).toHaveAttribute('data-grocery-keyboard','true');await expect(nav).toBeHidden();
+ await expect.poll(async()=>{const box=await form.boundingBox();return Math.abs(box.y+box.height-420);}).toBeLessThan(3);
+ await page.getByRole('option',{name:'Spülmittel',exact:true}).click();await expect(page.locator('#shopping-name')).toHaveValue('');
+ await page.evaluate(()=>{Object.defineProperty(visualViewport,'height',{configurable:true,get:()=>innerHeight});visualViewport.dispatchEvent(new Event('resize'));});
+ await expect(nav).toBeVisible();
+ await page.setViewportSize({width:320,height:740});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

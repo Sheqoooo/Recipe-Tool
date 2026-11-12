@@ -1,3 +1,4 @@
+import {installShoppingDock} from './shopping-dock.js';
 declare const __REZEPTWERK_DEMO__:boolean;
 import type { AppState,Recipe,RecipeData } from '../src/shared/types.js';
 import {groupShopping} from '../src/shared/shopping-order.js';
@@ -20,6 +21,7 @@ const fmt=(v:number|null)=>v===null?'':v.toLocaleString('de-DE',{maximumFraction
 const quantity=(i:{amount:number|null;unit:string})=>[fmt(i.amount),i.unit].filter(Boolean).join(' ');
 const preview=location.protocol==='file:'||new URLSearchParams(location.search).get('preview')==='1';
 let timer:ReturnType<typeof setTimeout>|undefined;
+let refreshDock=()=>{};
 function notify(message:string,error=false){$('#notice').textContent=message;$('#notice').hidden=false;$('#notice').classList.toggle('error',error);clearTimeout(timer);timer=setTimeout(()=>{$('#notice').hidden=true;},error?15000:6000);}
 async function api<T>(path:string,data?:unknown):Promise<T>{
   if(__REZEPTWERK_DEMO__){const {demoApi}=await import('./demo.js');return demoApi<T>(path,data);}
@@ -40,7 +42,7 @@ function showView(view:string){
   document.querySelectorAll<HTMLElement>('.view').forEach(e=>{e.hidden=e.id!=='view-'+view;});
   $('#app-header').hidden=view==='import';$('#app-navigation').hidden=view==='import';
   document.querySelectorAll<HTMLElement>('.nav-item').forEach(e=>{const active=e.dataset.view===view;e.classList.toggle('active',active);if(active)e.setAttribute('aria-current','page');else e.removeAttribute('aria-current');});
-  history.replaceState(null,'','#'+view);window.scrollTo(0,0);
+  history.replaceState(null,'','#'+view);window.scrollTo(0,0);refreshDock();
 }
 function presentation(r:Recipe):[string,string]{
   const title=r.title.toLowerCase();
@@ -98,7 +100,7 @@ async function selectProduct(index:number){
  input('#shopping-name').value=name;$('#shopping-emoji').textContent=productFor(name).emoji;
  await saveShoppingEntry(name);
 }
-function resetShoppingForm(){shoppingEditId=undefined;$<HTMLFormElement>('#shopping-form').reset();$('#shopping-edit-hint').hidden=true;$('#cancel-shopping-edit').hidden=true;$('#shopping-emoji').textContent='🛒';hideSuggestions();}
+function resetShoppingForm(){shoppingEditId=undefined;$<HTMLFormElement>('#shopping-form').reset();$('#shopping-edit-hint').hidden=true;$('#cancel-shopping-edit').hidden=true;$('#shopping-emoji').textContent='🛍️';hideSuggestions();}
 function manualTile(i:NonNullable<AppState['manual_items']>[number],tone:string):string{
  const p=productFor(i.name);return '<article class="grocery-tile tone-'+tone+'"><label class="grocery-check"><input type="checkbox" data-manual-check="'+esc(i.id)+'" aria-label="'+esc(i.name)+' erledigt"><span class="grocery-emoji" aria-hidden="true">'+p.emoji+'</span><strong>'+esc(i.name)+'</strong><small>'+esc(i.quantity)+'</small></label><div class="grocery-tile-tools"><button type="button" data-manual-edit="'+esc(i.id)+'" aria-label="'+esc(i.name)+' bearbeiten">✎</button><button type="button" data-manual-delete="'+esc(i.id)+'" aria-label="'+esc(i.name)+' entfernen">×</button></div></article>';
 }
@@ -167,7 +169,7 @@ document.addEventListener('click',async event=>{
     if(b.dataset.view)showView(b.dataset.view);
     if(b.dataset.productIndex!==undefined){await selectProduct(Number(b.dataset.productIndex));return;}
     if(b.id==='cancel-shopping-edit'){resetShoppingForm();return;}
-    if(b.dataset.manualEdit){const item=state.manual_items?.find(i=>i.id===b.dataset.manualEdit);if(item){shoppingEditId=item.id;input('#shopping-name').value=item.name;input('#shopping-quantity').value=item.quantity;$('#shopping-emoji').textContent=productFor(item.name).emoji;$('#shopping-edit-hint').hidden=false;$('#cancel-shopping-edit').hidden=false;input('#shopping-name').focus();$('#shopping-form').scrollIntoView({block:'center',behavior:'smooth'});}return;}
+    if(b.dataset.manualEdit){const item=state.manual_items?.find(i=>i.id===b.dataset.manualEdit);if(item){shoppingEditId=item.id;input('#shopping-name').value=item.name;input('#shopping-quantity').value=item.quantity;$('#shopping-emoji').textContent=productFor(item.name).emoji;$('#shopping-edit-hint').hidden=false;$('#cancel-shopping-edit').hidden=false;input('#shopping-name').focus({preventScroll:true});if(matchMedia('(min-width:1001px), (min-width:700px) and (pointer:fine)').matches)$('#shopping-form').scrollIntoView({block:'center',behavior:'smooth'});refreshDock();}return;}
     if(b.dataset.manualDelete){await api('/api/shopping/items/delete',{id:b.dataset.manualDelete});if(shoppingEditId===b.dataset.manualDelete)resetShoppingForm();await refresh();notify('Artikel entfernt.');return;}
     if(b.dataset.recent){b.disabled=true;try{await api('/api/shopping/items/check',{id:b.dataset.recent,checked:false});await refresh();notify('Wieder auf deiner Einkaufsliste.');}finally{b.disabled=false;}return;}
     if(b.dataset.ingredientsAdd){
@@ -222,6 +224,7 @@ input('#shopping-name').addEventListener('keydown',event=>{
 document.addEventListener('click',event=>{if(event.target instanceof Node&&!$('#shopping-form').contains(event.target))hideSuggestions();});
 input('#search').addEventListener('input',renderRecipes);
 input('#source').addEventListener('input',()=>{try{$('#transcript-panel').hidden=!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(new URL(input('#source').value).hostname);}catch{$('#transcript-panel').hidden=true;}});
+refreshDock=installShoppingDock();
 showView(location.hash.slice(1)||(location.pathname.startsWith('/shopping/')?'shopping':'import'));
 if(__REZEPTWERK_DEMO__){$('#demo-banner').hidden=false;refresh().catch(e=>notify(e.message,true));}
 else if(preview){render();notify('Statische Vorschau ohne private Datenbank oder KI.');clearTimeout(timer);}

@@ -175,3 +175,6 @@ Build generiert die beiden Installationsseiten, Manifeste und PNG-Symbole automa
 
 ### Freigabestand für Veröffentlichung
 Der Nutzer hat Import und Veröffentlichung beauftragt. Der Produktkatalog wird mit dem Build ausgeliefert und benötigt keinen D1-Import. Vor dem Zusammenführen/Deploy müssen die produktiven Schemastände 0003–0005 nach Backup geprüft und gegebenenfalls angewendet werden. Diese Schritte bleiben separat; der Deploymentbefehl führt sie nicht aus. Codex besitzt in dieser Umgebung keinen nutzbaren Cloudflare-Accountzugriff. Solange die Migrationen nicht bestätigt sind, nicht in einen fehlerhaften Produktivstand deployen. Die vorbereiteten Migrationen enthalten keine DROP-/DELETE-Anweisungen gegen bestehende Rezepte.
+
+### Mobile Einkaufsleiste / gefüllte Tüte
+Diese Änderung benötigt keine D1-Migration und keine neuen Secrets. PNGs und der dunkle Installations-Einstieg werden im Build erzeugt; alle Assets bleiben hinter Access. Nach Freigabe automatisch über den bestehenden GitHub-/Cloudflare-Prozess veröffentlichen. Im iOS-Smoke-Test Leiste bei Scrollen und eingeblendeter Tastatur sowie Home-Symbol nach erneutem Hinzufügen prüfen. Alte installierte Icons werden eventuell von iOS zwischengespeichert.

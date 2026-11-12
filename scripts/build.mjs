@@ -23,6 +23,10 @@ if(!demo){
   await writeFile(output+'/'+app.key+'.webmanifest',JSON.stringify(appManifest(app),null,2));
  }
  await writeFile(output+'/index.html',appHtml(html,appDefinitions[0]));
+ const darkShopping={...appDefinitions[1],iconAppearance:'dark'};
+ await mkdir(output+'/shopping/dark',{recursive:true});
+ await writeFile(output+'/shopping/dark/index.html',appHtml(html,darkShopping));
+ await writeFile(output+'/shopping-dark.webmanifest',JSON.stringify(appManifest(darkShopping),null,2));
 }
 
 if(!demo){await mkdir(output+'/catalog',{recursive:true});for(const file of ['bls.json','open-food-facts.json','search.json','SOURCES.json','LICENSE.md','README.md'])await copyFile('data/catalog/'+file,output+'/catalog/'+file);}

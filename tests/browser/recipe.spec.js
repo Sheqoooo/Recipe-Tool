@@ -102,9 +102,16 @@ test('Rezepte und Einkaufsliste sind direkt erreichbar und getrennt auf iOS inst
  await page.goto('/');await page.getByRole('button',{name:/Meine Einkaufsliste/}).click();
  await expect(page).toHaveURL(/\/shopping\//);await expect(page.locator('#view-shopping')).toBeVisible();
  for(const key of ['recipes','shopping']){
-  const response=await page.request.get('/'+key+'/');const html=await response.text();expect(html).toContain('/'+key+'.webmanifest');expect(html).toContain('/icons/'+key+'-180.png');
+  const response=await page.request.get('/'+key+'/');const html=await response.text();expect(html).toContain('/'+key+'.webmanifest');expect(html).toContain(key==='shopping'?'/icons/shopping-bag-auto-180-v2.png':'/icons/recipes-180.png');
   const manifest=await(await page.request.get('/'+key+'.webmanifest')).json();expect(manifest.id).toBe('/'+key+'/');expect(manifest.start_url).toBe('/'+key+'/');expect(manifest.display).toBe('standalone');
   const icon=await page.request.get('/icons/'+key+'-180.png');expect(icon.status()).toBe(200);expect([...((await icon.body()).subarray(0,8))]).toEqual([137,80,78,71,13,10,26,10]);
  }
  await page.getByRole('button',{name:/Meine Rezepte/}).click();await expect(page).toHaveURL(/\/recipes\/#collection/);
+});
+
+test('shopping icon metadata uses the filled bag and offers an explicit dark installation entry',async({page})=>{
+ const normal=await(await page.request.get('/shopping/')).text(),dark=await(await page.request.get('/shopping/dark/')).text();
+ expect(normal).toContain('shopping-bag-auto-180-v2.png');expect(dark).toContain('shopping-bag-dark-180-v2.png');expect(dark).toContain('/shopping-dark.webmanifest');
+ const manifest=await(await page.request.get('/shopping-dark.webmanifest')).json();expect(manifest.id).toBe('/shopping/');expect(manifest.start_url).toBe('/shopping/dark/');
+ const icon=await(await page.request.get('/icons/shopping-bag-auto-180-v2.png')).body();expect(icon[25]).toBe(6);
 });
