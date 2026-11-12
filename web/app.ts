@@ -80,9 +80,10 @@ function renderRecipes(){
 function hideSuggestions(){input('#shopping-name').setAttribute('aria-expanded','false');input('#shopping-name').removeAttribute('aria-activedescendant');$('#shopping-suggestions').hidden=true;suggestionIndex=-1;}
 function renderSuggestions(){
   const name=input('#shopping-name').value;
+  $('#shopping-search-clear').hidden=!name;
   $('#shopping-emoji').textContent=productFor(name).emoji;
   const suggestions=productSuggestions(name,personalProducts);suggestionNames=suggestions.map(p=>p.name);suggestionIndex=-1;
-  $('#shopping-suggestions').innerHTML=suggestions.map((p,n)=>'<button type="button" role="option" aria-selected="false" id="product-option-'+n+'" data-product-index="'+n+'"><span aria-hidden="true">'+p.emoji+'</span><span>'+esc(p.name)+'</span><span class="suggestion-arrow" aria-hidden="true">↖</span></button>').join('');
+  $('#shopping-suggestions').innerHTML=suggestions.map((p,n)=>'<button type="button" class="suggestion-tile tone-'+p.tone+'" role="option" aria-selected="false" id="product-option-'+n+'" data-product-index="'+n+'"><span aria-hidden="true">'+p.emoji+'</span><span>'+esc(p.name)+'</span></button>').join('');
   $('#shopping-suggestions').hidden=!suggestions.length;input('#shopping-name').setAttribute('aria-expanded',String(Boolean(suggestions.length)));input('#shopping-name').removeAttribute('aria-activedescendant');
 }
 async function saveShoppingEntry(name:string){
@@ -92,7 +93,7 @@ async function saveShoppingEntry(name:string){
  submit.disabled=true;input('#shopping-name').disabled=true;input('#shopping-quantity').disabled=true;
  try{
   await api('/api/shopping/items/save',{...(shoppingEditId?{id:shoppingEditId}:{}),name,quantity:input('#shopping-quantity').value});
-  resetShoppingForm();await refresh();notify('Auf deiner Einkaufsliste.');
+  resetShoppingForm();await refresh();if($('#shopping-form').contains(document.activeElement)&&document.activeElement instanceof HTMLElement)document.activeElement.blur();refreshDock();notify('Auf deiner Einkaufsliste.');
  }finally{shoppingSaving=false;submit.disabled=state.read_only;input('#shopping-name').disabled=state.read_only;input('#shopping-quantity').disabled=state.read_only;}
 }
 async function selectProduct(index:number){
@@ -100,7 +101,7 @@ async function selectProduct(index:number){
  input('#shopping-name').value=name;$('#shopping-emoji').textContent=productFor(name).emoji;
  await saveShoppingEntry(name);
 }
-function resetShoppingForm(){shoppingEditId=undefined;$<HTMLFormElement>('#shopping-form').reset();$('#shopping-edit-hint').hidden=true;$('#cancel-shopping-edit').hidden=true;$('#shopping-emoji').textContent='🛍️';hideSuggestions();}
+function resetShoppingForm(){shoppingEditId=undefined;$<HTMLFormElement>('#shopping-form').reset();$('#shopping-edit-hint').hidden=true;$('#cancel-shopping-edit').hidden=true;$('#shopping-emoji').textContent='🛍️';$('#shopping-search-clear').hidden=true;hideSuggestions();}
 function manualTile(i:NonNullable<AppState['manual_items']>[number],tone:string):string{
  const p=productFor(i.name);return '<article class="grocery-tile tone-'+tone+'"><label class="grocery-check"><input type="checkbox" data-manual-check="'+esc(i.id)+'" aria-label="'+esc(i.name)+' erledigt"><span class="grocery-emoji" aria-hidden="true">'+p.emoji+'</span><strong>'+esc(i.name)+'</strong><small>'+esc(i.quantity)+'</small></label><details class="grocery-menu"><summary aria-label="Aktionen für '+esc(i.name)+'">⋯</summary><div class="grocery-tile-tools"><button type="button" data-manual-edit="'+esc(i.id)+'" aria-label="'+esc(i.name)+' bearbeiten">Bearbeiten</button><button type="button" data-manual-delete="'+esc(i.id)+'" aria-label="'+esc(i.name)+' entfernen">Entfernen</button></div></details></article>';
 }
@@ -168,6 +169,8 @@ document.addEventListener('click',async event=>{
   try{
     if(b.dataset.view)showView(b.dataset.view);
     if(b.dataset.productIndex!==undefined){await selectProduct(Number(b.dataset.productIndex));return;}
+    if(b.id==='shopping-search-clear'){input('#shopping-name').value='';input('#shopping-name').focus({preventScroll:true});renderSuggestions();return;}
+    if(b.id==='shopping-search-cancel'||b.id==='shopping-search-backdrop'){resetShoppingForm();if(document.activeElement instanceof HTMLElement)document.activeElement.blur();refreshDock();return;}
     if(b.id==='cancel-shopping-edit'){resetShoppingForm();return;}
     if(b.dataset.manualEdit){const item=state.manual_items?.find(i=>i.id===b.dataset.manualEdit);if(item){shoppingEditId=item.id;input('#shopping-name').value=item.name;input('#shopping-quantity').value=item.quantity;$('#shopping-emoji').textContent=productFor(item.name).emoji;$('#shopping-edit-hint').hidden=false;$('#cancel-shopping-edit').hidden=false;input('#shopping-name').focus({preventScroll:true});if(matchMedia('(min-width:1001px), (min-width:700px) and (pointer:fine)').matches)$('#shopping-form').scrollIntoView({block:'center',behavior:'smooth'});refreshDock();}return;}
     if(b.dataset.manualDelete){await api('/api/shopping/items/delete',{id:b.dataset.manualDelete});if(shoppingEditId===b.dataset.manualDelete)resetShoppingForm();await refresh();notify('Artikel entfernt.');return;}
@@ -213,12 +216,13 @@ document.addEventListener('change',async event=>{const e=event.target;if(!(e ins
 input('#shopping-name').addEventListener('input',renderSuggestions);
 input('#shopping-name').addEventListener('focus',renderSuggestions);
 input('#shopping-name').addEventListener('keydown',event=>{
-  if(event.key==='Escape'){hideSuggestions();return;}
+  if(event.key==='Escape'){hideSuggestions();input('#shopping-name').blur();refreshDock();return;}
   if($('#shopping-suggestions').hidden)return;
   if(event.key==='ArrowDown'||event.key==='ArrowUp'){
     event.preventDefault();suggestionIndex=(suggestionIndex+(event.key==='ArrowDown'?1:-1)+suggestionNames.length)%suggestionNames.length;
     $('#shopping-suggestions').querySelectorAll<HTMLElement>('[role="option"]').forEach((e,n)=>e.setAttribute('aria-selected',String(n===suggestionIndex)));
     input('#shopping-name').setAttribute('aria-activedescendant','product-option-'+suggestionIndex);
+    $('#product-option-'+suggestionIndex).scrollIntoView({block:'nearest'});
   }else if(event.key==='Enter'&&suggestionIndex>=0){event.preventDefault();selectProduct(suggestionIndex).catch(error=>notify(error instanceof Error?error.message:'Artikel konnte nicht gespeichert werden.',true));}
 });
 document.addEventListener('click',event=>{if(event.target instanceof Node&&!$('#shopping-form').contains(event.target))hideSuggestions();});

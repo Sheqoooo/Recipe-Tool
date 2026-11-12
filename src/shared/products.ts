@@ -40,5 +40,5 @@ export function productFor(value:string):Product{
 export function productSuggestions(value:string,personal:string[]=[]):Product[]{
  const key=productKey(value);if(!key)return [];
  const candidates=[...personal.slice(0,1000).map(name=>({...productFor(name),name})),...products];
- const seen=new Set<string>();return candidates.map((p,index)=>({p,index,score:Math.min(...names(p).map(n=>n===key?0:n.startsWith(key)?1:n.split(' ').some(w=>w.startsWith(key))?2:n.includes(key)?3:9))})).filter(c=>c.score<9).sort((a,b)=>a.score-b.score||a.index-b.index).filter(c=>{const k=productKey(c.p.name);if(seen.has(k))return false;seen.add(k);return true;}).slice(0,6).map(c=>c.p);
+ const seen=new Set<string>();return candidates.map((p,index)=>({p,index,score:Math.min(...names(p).map(n=>n===key?0:n.startsWith(key)?1:n.split(' ').some(w=>w.startsWith(key))?2:n.includes(key)?3:9))})).filter(c=>c.score<9).sort((a,b)=>a.score-b.score||a.index-b.index).filter(c=>{const k=productKey(c.p.name);if(seen.has(k))return false;seen.add(k);return true;}).slice(0,12).map(c=>c.p);
 }

@@ -138,3 +138,19 @@ test('mobile Einkaufseingabe bleibt unten, Vorschläge öffnen nach oben und Tas
  await expect(nav).toBeVisible();
  await page.setViewportSize({width:320,height:740});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
+
+test('mobile Artikelsuche zeigt Kachelraster, Leeren und Abbrechen ohne versteckte Navigation',async({page},info)=>{
+ if(info.project.name!=='mobile')return;
+ await page.goto(demo);await page.getByRole('button',{name:/Meine Einkaufsliste/}).click();
+ const name=page.locator('#shopping-name'),nav=page.locator('#app-navigation'),suggestions=page.locator('#shopping-suggestions');
+ await name.fill('Tom');
+ await expect(nav).toBeHidden();await expect(page.locator('#shopping-search-backdrop')).toBeVisible();
+ await expect(suggestions).toBeVisible();await expect(suggestions).toHaveCSS('display','grid');
+ const options=suggestions.getByRole('option');expect(await options.count()).toBeGreaterThan(2);
+ const a=await options.nth(0).boundingBox(),b=await options.nth(1).boundingBox();
+ expect(Math.abs(a.width-a.height)).toBeLessThan(2);expect(Math.abs(a.y-b.y)).toBeLessThan(2);expect(b.x).toBeGreaterThan(a.x);
+ await page.screenshot({path:info.outputPath('shopping-suggestion-grid.png')});
+ await page.getByRole('button',{name:'Suche leeren',exact:true}).click();await expect(name).toHaveValue('');await expect(suggestions).toBeHidden();
+ await name.fill('Tom');await page.getByRole('button',{name:'Abbrechen',exact:true}).click();
+ await expect(name).toHaveValue('');await expect(nav).toBeVisible();await expect(page.locator('#shopping-search-backdrop')).toBeHidden();
+});
