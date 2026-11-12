@@ -66,7 +66,7 @@ test('Einkaufskacheln: Vorschläge, Mengen, Emoji, Bearbeiten und Wiederverwende
  await expect(tile).toContainText('2 Flaschen');await expect(tile.locator('.grocery-emoji')).toHaveText('🧼');
  await tile.getByRole('checkbox').click();await expect(page.getByRole('button',{name:'Spülmittel erneut hinzufügen',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Spülmittel erneut hinzufügen',exact:true}).click();
- await page.getByRole('button',{name:'Spülmittel bearbeiten',exact:true}).click();await name.fill('Spülmittel sensitiv');await page.locator('#shopping-quantity').fill('1 Flasche');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
+ await page.locator('#manual-shopping-list').getByLabel('Aktionen für Spülmittel',{exact:true}).click();await page.getByRole('button',{name:'Spülmittel bearbeiten',exact:true}).click();await name.fill('Spülmittel sensitiv');await page.locator('#shopping-quantity').fill('1 Flasche');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
  await expect(page.locator('#manual-shopping-list')).toContainText('Spülmittel sensitiv');
  await name.fill('Mein Spezialprodukt');await page.locator('#shopping-quantity').fill('1 Packung');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
  const custom=page.locator('#manual-shopping-list .grocery-tile').filter({hasText:'Mein Spezialprodukt'});await expect(custom.locator('.grocery-emoji')).toHaveText('🛒');
