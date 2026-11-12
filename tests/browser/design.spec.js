@@ -128,7 +128,7 @@ test('mobile Einkaufseingabe bleibt unten, Vorschläge öffnen nach oben und Tas
  await expect.poll(async()=>{const f=await form.boundingBox(),n=await nav.boundingBox();return Math.abs(f.y+f.height-n.y);}).toBeLessThan(3);
  await page.locator('#shopping-name').fill('Spül');
  await expect(page.locator('#shopping-suggestions')).toBeVisible();
- const f=await form.boundingBox(),s=await page.locator('#shopping-suggestions').boundingBox();expect(s.y+s.height).toBeLessThanOrEqual(f.y);
+ await expect.poll(()=>page.evaluate(()=>{const f=document.querySelector('#shopping-form').getBoundingClientRect(),s=document.querySelector('#shopping-suggestions').getBoundingClientRect();return Math.abs(s.bottom-f.top);})).toBeLessThan(1);
  await page.screenshot({path:info.outputPath('mobile-shopping-dock.png')});
  await page.evaluate(()=>{Object.defineProperty(visualViewport,'height',{configurable:true,get:()=>420});Object.defineProperty(visualViewport,'offsetTop',{configurable:true,get:()=>0});visualViewport.dispatchEvent(new Event('resize'));});
  await expect(page.locator('body')).toHaveAttribute('data-grocery-keyboard','true');await expect(nav).toBeHidden();
