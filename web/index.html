@@ -41,7 +41,7 @@
 <div id="recipe-grid" class="recipe-grid"></div>
 </section>
 <section id="view-shopping" class="view content-view" hidden>
-<div class="page-heading"><div><span class="page-emoji" aria-hidden="true">🛍️</span><h1>Einkaufsliste</h1><p class="intro">Für den Kühlschrank. Und alles andere.</p></div></div>
+<div class="shopping-heading"><h1>Einkaufsliste</h1></div>
 <form id="shopping-form" class="grocery-composer" autocomplete="off">
 <label class="sr-only" for="shopping-name">Was möchtest du einkaufen?</label>
 <div class="grocery-input-row"><span id="shopping-emoji" aria-hidden="true">🛍️</span><input id="shopping-name" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="shopping-suggestions" placeholder="Was möchtest du einkaufen?" maxlength="100" required><button type="submit" class="primary grocery-add" aria-label="Artikel hinzufügen">+</button></div>
@@ -49,9 +49,10 @@
 <div class="grocery-quantity-row"><label class="sr-only" for="shopping-quantity">Menge (optional)</label><input id="shopping-quantity" placeholder="Menge, z. B. 2 Flaschen (optional)" maxlength="60"><button id="cancel-shopping-edit" type="button" class="text-button" hidden>Abbrechen</button></div>
 <p id="shopping-edit-hint" class="field-help" hidden>Artikel bearbeiten – Änderungen mit + speichern.</p>
 </form>
-<section class="manual-shopping-section"><div class="section-tools"><h2>Auf deiner Liste <span id="manual-count" class="count">0</span></h2><button id="copy-list" class="text-button">Liste kopieren ↗</button></div><p class="catalog-attribution">Lebensmittelbegriffe: <a href="https://blsdb.de/download" target="_blank" rel="noopener noreferrer">MRI · BLS 4.0</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>) und <a href="https://world.openfoodfacts.org/" target="_blank" rel="noopener noreferrer">Open Food Facts</a> (<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>). <a href="https://github.com/Sheqoooo/Recipe-Tool/tree/main/data/catalog" target="_blank" rel="noopener noreferrer">Daten & Herkunft ↗</a></p><p class="shopping-route-help">Nach Einkaufsbereichen sortiert · Kühl- und Tiefkühlware am Ende</p><div id="shopping-list"><div id="manual-shopping-list"></div></div></section>
+<section class="manual-shopping-section" aria-label="Einkaufsartikel"><div id="shopping-list"><div id="manual-shopping-list"></div></div></section>
 <section id="recent-shopping-section" class="recent-shopping-section" hidden><h2>Zuletzt verwendet</h2><p class="field-help">Antippen, um einen Artikel erneut einzukaufen.</p><div id="recent-shopping-list" class="grocery-grid"></div></section>
 <div id="recipe-shopping" class="shopping-layout"><div><h2 class="section-title">Geplante Gerichte</h2><div id="plan-list"></div></div></div>
+<footer class="shopping-footer"><div class="section-tools"><h2>Auf deiner Liste <span id="manual-count" class="count">0</span></h2><button id="copy-list" class="text-button">Liste kopieren ↗</button></div><p class="catalog-attribution">Lebensmittelbegriffe: <a href="https://blsdb.de/download" target="_blank" rel="noopener noreferrer">MRI · BLS 4.0</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>) und <a href="https://world.openfoodfacts.org/" target="_blank" rel="noopener noreferrer">Open Food Facts</a> (<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>). <a href="https://github.com/Sheqoooo/Recipe-Tool/tree/main/data/catalog" target="_blank" rel="noopener noreferrer">Daten & Herkunft ↗</a></p><p class="shopping-route-help">Nach Einkaufsbereichen sortiert · Kühl- und Tiefkühlware am Ende</p></footer>
 </section>
 <section id="view-settings" class="view content-view" hidden>
 <div class="page-heading"><div><span class="page-emoji" aria-hidden="true">⚙️</span><h1>Einstellungen</h1><p id="identity" class="intro"></p></div></div>

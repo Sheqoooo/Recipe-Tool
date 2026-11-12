@@ -93,3 +93,13 @@ dialog{max-width:none;width:100%;height:100dvh;max-height:100dvh;margin:0;border
  body[data-view="shopping"] #shopping-form .field-help{margin:6px 4px 0}
  body[data-view="shopping"][data-grocery-keyboard="true"] .bottom-navigation{visibility:hidden;pointer-events:none}
 }
+
+/* Keep products first; supporting information remains available after the list. */
+#view-shopping{padding-top:20px}
+.shopping-heading{margin:0 0 16px}
+.shopping-heading h1{font-size:24px;letter-spacing:-.6px}
+.manual-shopping-section>.shopping-department:first-child,#manual-shopping-list>.shopping-department:first-child{margin-top:0}
+.shopping-footer{border-top:1px solid #edf0e9;margin-top:32px;padding-top:16px}
+.shopping-footer .section-tools{margin-bottom:8px}
+.shopping-footer .section-tools h2{font-size:14px;font-weight:500;letter-spacing:0}
+.shopping-footer .catalog-attribution,.shopping-footer .shopping-route-help{font-size:10px;line-height:1.7}
