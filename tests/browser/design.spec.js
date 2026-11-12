@@ -44,3 +44,14 @@ test('Produktionsbundle enthält keine Demo-Daten und URL-Parameter schaltet Dem
   expect(bundle).not.toContain('demo@example.invalid');expect(bundle).not.toContain('Knackiger Kichererbsensalat');
   await page.goto('/?demo=1');await expect(page.locator('#demo-banner')).toBeHidden();
 });
+
+test('Futterluke zeigt Bild, Nachweis und Emoji-Fallback offline',async({page},info)=>{
+  await page.goto(demo);await expect(page.locator('.wordmark')).toContainText('Futterluke');await expect(page.locator('.start-caption')).toHaveText('Umwandlung von Rezepten');
+  await page.getByRole('button',{name:/Meine Rezepte/}).click();
+  const photo=page.locator('.recipe-photo').first();await expect(photo).toBeVisible();expect(await photo.evaluate(e=>e.complete&&e.naturalWidth>0)).toBe(true);
+  await page.getByRole('button',{name:'Zitronenpasta mit Parmesan ansehen'}).click();
+  await expect(page.locator('.image-credit')).toContainText('Demo-Illustration · Futterluke');
+  await page.screenshot({path:info.outputPath('design-photo.png')});
+  await page.locator('#recipe-dialog .recipe-photo').evaluate(e=>e.dispatchEvent(new Event('error')));
+  await expect(page.locator('#recipe-dialog .recipe-photo')).toHaveCount(0);await expect(page.locator('.detail-hero-art')).toContainText('🍋');
+});

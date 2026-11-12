@@ -55,3 +55,6 @@ Eine URL kann Geheimnisse auch unter unbekannten Parameternamen oder im Pfad tra
 Die API-Redaktion schützt vor Ausgabe bestehender unsicherer source_url-Werte; sie ist keine rückwirkende Datenbereinigung. Bei tatsächlichem Altbestand ist nach gesonderter Freigabe eine private Prüfung/Bereinigung und gegebenenfalls Rotation betroffener Zugangsdaten nötig. Tests verwenden ausschließlich erfundene Marker.
 
 Die noch ausstehende [Live-Smoke-Test-Checkliste](docs/SMOKE-TEST.md) trennt lesende Access-/D1-Prüfungen, freizugebende Datenänderungen und gesondert freizugebende kostenpflichtige OpenAI-Aufrufe.
+
+### Bilder fremder Rezeptseiten
+Bilder sind nicht vertrauenswürdig. HTTPS, Secret-Query-Prüfung, öffentliche DNS-/Egress-Prüfung pro Redirect, maximal zwei Redirects, fünf Sekunden Abruf-Timeout je Hop, maximal 1 MiB und 16 Megapixel; nur JPEG/PNG/WebP mit passenden Signaturen. SVG/HTML werden abgewiesen. Diese Prüfung ist keine vollständige Bilddecoder-Validierung; beschädigte Bilder können vom Browser verworfen werden. Ausgabe ausschließlich über authentifizierte Same-Origin-Route mit nosniff und private/no-store. Keine Drittanbieter-Requests beim Öffnen; keine Original-Bild-URLs in API-Antworten. Quellen-/Urhebertexte werden escaped. Ein Quellenlink ersetzt keine Bildnutzungsrechte; Betreiber müssen die Nutzung für ihr privates Kochbuch prüfen.

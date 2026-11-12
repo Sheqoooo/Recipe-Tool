@@ -59,7 +59,7 @@ it('gesperrte/nicht eingeladene Identitäten werden abgewiesen',async()=>{
 it('Assets und API werden vor Auslieferung authentifiziert',async()=>{
   const app=appFixture();app.config.APP_ENV='production';app.config.AUTH_MODE='access';app.config.APP_ORIGIN='https://app.example';app.config.ACCESS_ISSUER='https://recipe-test.cloudflareaccess.com';app.config.ACCESS_AUD='test';
   const asset=vi.fn(async()=>new Response('private'));app.config.ASSETS={fetch:asset} as Fetcher;
-  for(const path of ['/','/app.js','/style.css','/api/state','/api/import'])expect((await app.app.fetch(new Request('https://app.example'+path),app.config)).status).toBe(401);
+  for(const path of ['/','/app.js','/style.css','/api/state','/api/import','/api/recipes/1/image'])expect((await app.app.fetch(new Request('https://app.example'+path),app.config)).status).toBe(401);
   expect(asset).not.toHaveBeenCalled();expect(app.generate).not.toHaveBeenCalled();
 });
 it('abgelaufene Import-Lease kann keine späte Speicherung verursachen',async()=>{
@@ -129,9 +129,30 @@ it('große Sammlungen laden nur Details der gewählten 500 Rezepte mit stabiler 
   let counts:number[]=[];
   const db={prepare:(sql:string)=>env.DB.prepare(sql),batch:async(statements:D1PreparedStatement[])=>{const result=await env.DB.batch(statements);counts=result.map(r=>r.results.length);return result;}} as unknown as D1Database;
   const recipes=await new Repository(db).recipes(owner);
-  expect(counts).toEqual([500,500,500]);expect(recipes).toHaveLength(500);
+  expect(counts).toEqual([500,500,500,0]);expect(recipes).toHaveLength(500);
   expect(recipes[0].id).toBe(505);expect(recipes[499].id).toBe(6);
   expect(recipes[0].ingredients[0].name).toBe('Rezept 505');expect(recipes[499].steps[0].text).toBe('Rezept 6');
   const plan=await env.DB.prepare('EXPLAIN QUERY PLAN SELECT id FROM recipes ORDER BY created_at DESC,id DESC LIMIT 500').all<{detail:string}>();
   expect(plan.results.some(row=>row.detail.includes('recipes_listing'))).toBe(true);
+});
+
+it('Rezeptbilder werden separat gespeichert, authentifiziert ausgeliefert und mit dem Rezept gelöscht',async()=>{
+  const f=appFixture();
+  const app=createApp({read:async(url)=>({kind:'web',url,text:'Recipe',image:{url:'https://images.example/food.png',credit:'Foto: Test'}}),generate:async()=>structuredClone(generated),
+    image:async()=>({bytes:new Uint8Array([1,2,3]).buffer,mime:'image/png',original_url:'https://images.example/food.png',credit:'Foto: Test'})});
+  const response=await app.fetch(new Request('http://localhost/api/import',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify({value:'https://recipes.example/photo'})}),f.config);
+  expect(response.status).toBe(201);const {id}=await response.json() as {id:number};
+  const state=await(await app.fetch(new Request('http://localhost/api/state'),f.config)).json() as AppState;
+  expect(state.recipes[0].image).toEqual({url:'/api/recipes/'+id+'/image',source_url:'https://recipes.example/photo',credit:'Foto: Test'});
+  expect(JSON.stringify(state)).not.toContain('https://images.example');
+  const picture=await app.fetch(new Request('http://localhost/api/recipes/'+id+'/image'),f.config);
+  expect(picture.status).toBe(200);expect(picture.headers.get('Content-Type')).toBe('image/png');expect(picture.headers.get('Cache-Control')).toContain('private');
+  expect([...new Uint8Array(await picture.arrayBuffer())]).toEqual([1,2,3]);
+  await f.post('/api/recipes/delete',{id});expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM recipe_images').first('n')).toBe(0);
+});
+it('fehlerhafter Bildabruf verhindert keinen erfolgreichen Rezeptimport',async()=>{
+  const f=appFixture();const image=vi.fn(async()=>{throw new Error('Private details');});
+  const app=createApp({read:async(url)=>({kind:'web',url,text:'Recipe',image:{url:'https://images.example/food.png',credit:''}}),generate:async()=>structuredClone(generated),image});
+  const response=await app.fetch(new Request('http://localhost/api/import',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify({value:'https://recipes.example/no-photo'})}),f.config);
+  expect(response.status).toBe(201);expect(await response.text()).not.toContain('Private details');expect(image).toHaveBeenCalledTimes(1);
 });

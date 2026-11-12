@@ -4,6 +4,7 @@ import { AppError } from '../shared/errors.js';
 import type {  Source } from '../shared/types.js';
 import { normalizeSourceUrl } from '../shared/source-url.js';
 import { extractRecipeContent } from './extract.js';
+import { extractSourceImage } from './source-image.js';
 
 export const MAX_SOURCE_BYTES=20000;
 export const normalizeUrl=normalizeSourceUrl;
@@ -47,8 +48,9 @@ export function checkAllowed(url:URL,env:Env):void{
     throw new AppError('SOURCE_NOT_ALLOWED','Diese Quelle liegt außerhalb der optionalen Quellenbeschränkung.',422);
   }
 }
-export function extractSource(html:string,url:string):Source{
-  return {kind:'web',url:normalizeUrl(url).href,text:extractRecipeContent(html,MAX_SOURCE_BYTES)};
+export function extractSource(html:string,url:string,documentUrl=url):Source{
+  const image=extractSourceImage(html,documentUrl);
+  return {kind:'web',url:normalizeUrl(url).href,text:extractRecipeContent(html,MAX_SOURCE_BYTES),...(image?{image}:{})};
 }
 export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch):Promise<Source>{
   let url=normalizeUrl(value);
@@ -63,7 +65,7 @@ export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch):P
     }
     if(!response.ok)throw new AppError('SOURCE_UNAVAILABLE','Die Rezeptseite ist momentan nicht auslesbar.',422);
     if(!/^(text\/html|application\/xhtml\+xml)(;|$)/i.test(response.headers.get('content-type')||''))throw new AppError('SOURCE_TYPE','Der Link liefert keine Rezept-Webseite.',422);
-    return extractSource(await limitedText(response,2000000),value);
+    return extractSource(await limitedText(response,2000000),value,url.href);
   }
   throw new AppError('SOURCE_REDIRECT','Zu viele Weiterleitungen.',422);
 }

@@ -91,3 +91,6 @@ Die konkrete [Smoke-Test-Checkliste](docs/SMOKE-TEST.md) umfasst Access einschli
 ## Design ohne API-Kosten testen
 
 `npm run demo` startet eine separate lokale Design-Demo mit Beispielrezepten und simuliertem Import. Ohne D1, Cloudflare-Konto oder OpenAI-Key. Alternativ die portable `rezeptwerk-demo.html` aus dem CI-Artefakt `design-demo` im Browser öffnen. Produktionsbuild und Daten bleiben getrennt. [Bedienung, Mengenanzeige und Grenzen](docs/DESIGN-DEMO.md).
+
+### Futterluke: Rezeptbilder
+Die Oberfläche heißt Futterluke, mit dem Untertitel „Umwandlung von Rezepten“. Neue Webseitenimporte übernehmen nach Möglichkeit ein Bild aus Recipe-/Open-Graph-/Twitter-Metadaten. Bilder erscheinen in Sammlung und Rezept, mit Link zur Quellseite und vorhandenem Bildnachweis. Ohne geeignetes Bild bleibt das Emoji. Keine zusätzlichen KI-Aufrufe. Details: [Rezeptbilder](docs/RECIPE-IMAGES.md).
