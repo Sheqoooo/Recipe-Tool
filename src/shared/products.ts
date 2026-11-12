@@ -1,7 +1,7 @@
 import importedRows from '../../data/catalog/search.json';
 import type {DepartmentId} from './shopping-order.js';
-import {z} from 'zod';
-import {AppError} from './errors.js';
+import {productKey} from './shopping-entry.js';
+export {productKey,validateShoppingEntry,shoppingItemId,shoppingEntriesFromIngredients} from './shopping-entry.js';
 export type ProductTone='mint'|'lemon'|'peach'|'lilac'|'blue'|'rose';
 export interface Product {name:string;emoji:string;tone:ProductTone;aliases?:string[];department?:DepartmentId}
 // Maintained locally: suggestions never send shopping entries to an AI provider.
@@ -23,7 +23,7 @@ const importedProducts:Product[]=importedRows.map(row=>{
  return {name,aliases,department:category,emoji,tone};
 });
 export const products:Product[]=[...curatedProducts,...importedProducts];
-export function productKey(value:string):string{return value.normalize('NFKC').toLocaleLowerCase('de').replace(/ß/g,'ss').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ae/g,'a').replace(/oe/g,'o').replace(/ue/g,'u').replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
+
 const keyCache=new WeakMap<Product,string[]>();
 const names=(p:Product)=>{let cached=keyCache.get(p);if(!cached){cached=[p.name,...p.aliases||[]].map(productKey);keyCache.set(p,cached);}return cached;};
 const catalogIndex=products.map(p=>({p,keys:names(p)}));
@@ -41,13 +41,4 @@ export function productSuggestions(value:string,personal:string[]=[]):Product[]{
  const key=productKey(value);if(!key)return [];
  const candidates=[...personal.slice(0,1000).map(name=>({...productFor(name),name})),...products];
  const seen=new Set<string>();return candidates.map((p,index)=>({p,index,score:Math.min(...names(p).map(n=>n===key?0:n.startsWith(key)?1:n.split(' ').some(w=>w.startsWith(key))?2:n.includes(key)?3:9))})).filter(c=>c.score<9).sort((a,b)=>a.score-b.score||a.index-b.index).filter(c=>{const k=productKey(c.p.name);if(seen.has(k))return false;seen.add(k);return true;}).slice(0,6).map(c=>c.p);
-}
-const field=(max:number)=>z.string().trim().min(1).max(max).refine(v=>!/[\u0000-\u001f\u007f]/.test(v),'Steuerzeichen sind nicht erlaubt.');
-const entry=z.object({id:z.uuid().optional(),name:field(100),quantity:z.string().trim().max(60).refine(v=>!/[\u0000-\u001f\u007f]/.test(v)).default('')}).strict();
-export function validateShoppingEntry(input:unknown){const result=entry.safeParse(input);if(!result.success)throw new AppError('INVALID_SHOPPING_ITEM','Bitte Artikelname (max. 100 Zeichen) und Menge (max. 60 Zeichen) prüfen.');const name=result.data.name.normalize('NFKC').replace(/\s+/g,' ');if(name.length>100||!productKey(name))throw new AppError('INVALID_SHOPPING_ITEM','Bitte einen Artikelnamen eingeben.');return {...result.data,name};}
-export function shoppingItemId(input:unknown):string{const result=z.uuid().safeParse(input);if(!result.success)throw new AppError('INVALID_SHOPPING_ITEM','Ungültiger Einkaufsartikel.');return result.data;}
-export function shoppingEntriesFromIngredients(ingredients:{name:string;amount:number|null;unit:string}[]){
- const grouped=new Map<string,{name:string;quantities:string[]}>();
- for(const row of ingredients){const key=productKey(row.name),item=grouped.get(key)||{name:row.name,quantities:[]};item.quantities.push(row.amount===null?'Menge offen':[row.amount.toLocaleString('de-DE',{maximumFractionDigits:6}),row.unit].filter(Boolean).join(' '));grouped.set(key,item);}
- return [...grouped.values()].map(i=>validateShoppingEntry({name:i.name,quantity:i.quantities.join(' + ')}));
 }

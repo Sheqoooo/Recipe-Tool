@@ -85,3 +85,5 @@ Der Build erstellt `/recipes/index.html` und `/shopping/index.html`, getrennte M
 
 ### Importierte Suchdaten
 `data/catalog/bls.json` und `open-food-facts.json` sind getrennte, öffentlich lizenzierte Auszüge. `search.json` ist die deduplizierte Suchprojektion; `SOURCES.json` enthält Versionen, Hashes und Zählungen. `scripts/import-product-data.py` erzeugt sie deterministisch aus lokal bereitgestellten offiziellen Quelldateien, ohne Netz- oder Datenbankzugriff. Die Anwendung lädt die Suchprojektion im Bundle. Exakte Namens-/Synonymzuordnung verwendet Maps, beschreibende Zusätze kurze Wortgruppen; keine wiederholte Volltextklassifizierung aller 5.000 Begriffe pro Artikel. Kategorien sind Heuristiken. Produktionsbuild enthält zusätzlich herunterladbare, geschützte `/catalog/`-Kopien. Private Nutzerdaten bleiben ausschließlich in D1.
+
+Katalogdaten und Suchindizes laufen nur im Frontend. Gemeinsame Schreibvalidierung liegt separat in shopping-entry.ts; der Worker importiert keine öffentlichen Lebensmittel-Datensätze und baut keine Suchindizes pro Isolat auf.

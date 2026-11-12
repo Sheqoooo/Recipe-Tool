@@ -3,7 +3,7 @@ import type { Member, Recipe, RecipeData, Source, SourceKind, Usage, ImportRecor
 import { AppError } from '../shared/errors.js';
 import { normalizeSourceUrl,publicSourceUrl } from '../shared/source-url.js';
 import { positiveServings } from '../shared/recipe.js';
-import {productKey,validateShoppingEntry,shoppingItemId,shoppingEntriesFromIngredients} from '../shared/products.js';
+import {productKey,validateShoppingEntry,shoppingItemId,shoppingEntriesFromIngredients} from '../shared/shopping-entry.js';
 import type {ManualShoppingItem} from '../shared/types.js';
 
 interface Row {
