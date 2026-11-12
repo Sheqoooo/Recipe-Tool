@@ -83,7 +83,7 @@ test('Vorschlag antippen speichert sofort und Rezeptzutaten teilen denselben Ein
  await page.goto(demo);await page.getByRole('button',{name:/Meine Rezepte/}).click();
  await page.locator('.recipe-card').filter({hasText:'Zitronenpasta mit Parmesan'}).locator('[data-add]').click();
  await page.getByRole('button',{name:/Einkaufsliste/}).click();
- await page.locator('#shopping-name').fill('Zucch');await page.getByRole('option',{name:/Zucchini/}).click();
+ await page.locator('#shopping-name').fill('Zucch');await page.getByRole('option',{name:'Zucchini',exact:true}).click();
  await expect(page.locator('[data-department="produce"]')).toContainText('Zucchini');
  await expect(page.locator('#shopping-name')).toHaveValue('');
  await expect(page.locator('[data-department="produce"]')).toContainText('Zitrone');
