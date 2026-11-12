@@ -105,3 +105,6 @@ Vorschläge werden beim Antippen oder mit Pfeiltaste + Enter direkt gespeichert.
 
 ### Importierter Produktkatalog
 Die lokale Suche enthält 5.160 unterschiedliche Lebensmittelbegriffe aus BLS 4.0 und der deutschen Open-Food-Facts-Zutatentaxonomie, ergänzt um Haushaltsartikel. Die Auswahl ist bereinigt und versioniert; keine Live-Abfrage oder KI beim Tippen. Rohlabels, IDs, Quellversionen, Hashes und Lizenzen liegen unter [data/catalog](data/catalog/README.md). Quellcode bleibt MIT; importierte Daten haben eigene CC-BY-/ODbL-Bedingungen. Nicht das komplette Markenartikelsortiment.
+
+### Mobile Einkaufseingabe und Symbol
+Auf Smartphones bleibt die Einkaufseingabe am unteren Bildschirmrand über der Navigation; Vorschläge öffnen nach oben. Die sichtbare Bildschirmfläche bei geöffneter Tastatur wird berücksichtigt. Desktop behält das Eingabefeld im Seitenfluss. Das Einkaufssymbol ist jetzt eine gefüllte Tüte mit Lebensmitteln. Die Zitrone bleibt unverändert. Für iOS bei Bedarf das alte Home-Symbol entfernen und neu hinzufügen; unter `/shopping/dark/` ist eine ausdrücklich dunkle Icon-Variante verfügbar. Beide Einstiege nutzen dieselbe App-ID und Datenbank.

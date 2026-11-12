@@ -21,3 +21,5 @@ Alle aktiven Mitglieder dürfen die gemeinsame manuelle Liste verändern. Änder
 7. Smartphone mit 320 und 390 Pixel Breite prüfen: keine horizontale Überbreite, Vorschläge und Schaltflächen gut erreichbar.
 
 Im Rezept kann eine einzelne Zutat oder die gesamte Zutatenliste unabhängig von der Kochplanung als Snapshot übernommen werden. Es gelten die gespeicherten Rezeptmengen, nicht eine eventuell abweichende Portionsplanung. Fehlende Mengen sind gekennzeichnet. Gleicher Name wird wieder geöffnet und seine manuelle Menge ersetzt; keine doppelte Addition bei wiederholtem Klicken. Wird dieselbe Zutat gleichzeitig über eine geplante Mahlzeit berechnet, bleiben Snapshot und berechnete Position getrennt. Kapazitätsfehler beim Gesamtimport speichern keinen Teil der Auswahl.
+
+Auf Mobilgeräten lebt das Eingabefeld unten über der Navigation. Vorschläge öffnen darüber; bei der Bildschirmtastatur wird die Navigation ausgeblendet, damit Eingabe und Vorschläge Platz haben. Mengen erscheinen beim Bearbeiten oder Fokussieren des Formulars. Desktop behält die bisherige Position. Die Änderung benötigt keine Datenänderungen.
