@@ -94,7 +94,7 @@ test('eigene Einkaufseinträge bleiben nach Neuladen gespeichert',async({page},i
  await expect(page.locator('#manual-shopping-list')).toContainText(name);await page.reload();await expect(page.locator('#manual-shopping-list')).toContainText(name);
  await page.locator('#manual-shopping-list .grocery-tile').filter({hasText:name}).getByRole('checkbox').click();
  await page.reload();await expect(page.getByRole('button',{name:name+' erneut hinzufügen',exact:true})).toBeVisible();
- await page.getByRole('button',{name:name+' erneut hinzufügen',exact:true}).click();await page.getByRole('button',{name:name+' entfernen',exact:true}).click();
+ await page.getByRole('button',{name:name+' erneut hinzufügen',exact:true}).click();await page.locator('#manual-shopping-list').getByLabel('Aktionen für '+name,{exact:true}).click();await page.getByRole('button',{name:name+' entfernen',exact:true}).click();
  await expect(page.locator('#manual-shopping-list')).not.toContainText(name);
 });
 
