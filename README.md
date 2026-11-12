@@ -108,3 +108,7 @@ Die lokale Suche enthält 5.160 unterschiedliche Lebensmittelbegriffe aus BLS 4.
 
 ### Mobile Einkaufseingabe und Symbol
 Auf Smartphones bleibt die Einkaufseingabe am unteren Bildschirmrand über der Navigation; Vorschläge öffnen nach oben. Die sichtbare Bildschirmfläche bei geöffneter Tastatur wird berücksichtigt. Desktop behält das Eingabefeld im Seitenfluss. Das Einkaufssymbol ist jetzt eine gefüllte Tüte mit Lebensmitteln. Die Zitrone bleibt unverändert. Für iOS bei Bedarf das alte Home-Symbol entfernen und neu hinzufügen; unter `/shopping/dark/` ist eine ausdrücklich dunkle Icon-Variante verfügbar. Beide Einstiege nutzen dieselbe App-ID und Datenbank.
+
+Die Einkaufsliste beginnt mit einer kompakten Überschrift und direkt den Produktkategorien. Der frühere Untertitel wurde entfernt. Artikelzahl, Kopieren, Quellen-/Lizenzhinweise und Sortiererklärung stehen am Ende der Liste und bleiben beim Scrollen erreichbar; die mobile Eingabe bleibt unten fixiert.
+
+Neue Importe verwenden GPT-6.1 Sol mit geringem Denkaufwand und Mengen in Klammern im Anweisungssatz. Die zusätzliche Zutatenklammer am Schrittende entfällt auch bei bestehenden Rezepten. Alte Rezepttexte werden nicht kostenpflichtig neu generiert. Details und Kostenbeispiel: [OpenAI-Integration](docs/OPENAI-VIDEO.md).

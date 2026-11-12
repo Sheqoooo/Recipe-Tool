@@ -1,14 +1,17 @@
 import type {RecipeData} from './types.js';
-const fold=(text:string)=>text.normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
-export function stepQuantityNotes(recipe:RecipeData,index:number):string[]{
-  const step=recipe.steps[index];if(!step)return [];
-  const text=fold(step.text);
-  return [...new Set(step.ingredient_indices)].flatMap(ref=>{
-    const ingredient=recipe.ingredients[ref];if(!ingredient)return [];
-    const quantity=ingredient.amount===null?'Menge unbekannt':[ingredient.amount.toLocaleString('de-DE',{maximumFractionDigits:2}),ingredient.unit].filter(Boolean).join(' ');
-    const uses=recipe.steps.filter(s=>s.ingredient_indices.includes(ref)).length;
-    if(uses>1)return [`${ingredient.name}: Teilmenge siehe Anleitung; Rezeptgesamtmenge ${quantity}`];
-    if(ingredient.amount!==null&&text.includes(fold(ingredient.name))&&text.includes(fold(quantity)))return [];
-    return [`${ingredient.name}: ${quantity}`];
-  });
+
+const escapeRegex=(text:string)=>text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
+/** Display-only cleanup of explicit quantities. Never infer a step's share from recipe totals. */
+export function stepInstruction(recipe:RecipeData,index:number):string{
+  const step=recipe.steps[index];if(!step)return '';
+  let text=step.text;
+  const names=[...new Set(step.ingredient_indices)].map(i=>recipe.ingredients[i]?.name).filter((n):n is string=>Boolean(n)).sort((a,b)=>b.length-a.length);
+  for(const name of names){
+    // Only move a quantity already immediately attached to an exact ingredient name.
+    // Inflections, vague shares and existing parentheses remain untouched.
+    const pattern=new RegExp('(^|[^\\p{L}\\p{N}(])((?:\\d+[.,]\\d+|\\d+(?:\\s+\\d+/\\d+|/\\d+)?|[¼½¾])(?:\\s*(?:–|-|bis)\\s*\\d+(?:[.,]\\d+)?)?\\s+(?:kg|g|mg|ml|l|EL|TL|Stück|Zehen?|Zweige?|Prisen?|Dosen?))\\s+('+escapeRegex(name)+')(?=$|[^\\p{L}\\p{N}])','giu');
+    text=text.replace(pattern,(_match,prefix:string,amount:string,ingredient:string)=>`${prefix}${ingredient} (${amount})`);
+  }
+  return text;
 }

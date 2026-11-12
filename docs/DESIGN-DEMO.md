@@ -19,9 +19,9 @@ Der Schalter ist eine **Build-Konstante**, kein URL-Parameter oder öffentlicher
 
 ## Mengen direkt an der Zubereitung
 
-Der bestehende KI-Auftrag verlangt Mengen bereits im Schritttext. Die Oberfläche ergänzt zusätzlich bekannte Mengen referenzierter Zutaten im selben Anweisungstext, falls sie dort nicht erkennbar sind, z. B. `Paprikapulver hinzufügen. (Paprikapulver: 1 TL)`. Bereits vorhandene Angaben wie `Paprikapulver hinzufügen (1 TL)` werden nicht erneut angefügt, sofern Zutatenname und Menge im Text erkennbar sind. Dies ist eine einfache Anzeigeprüfung, keine sprachliche oder sachliche Validierung der KI-Aussage.
+Neue Importe erhalten flüssige deutsche Anweisungen mit Mengen in Klammern direkt bei der Zutat: etwa `Paprikapulver (1 TL) hinzufügen. Danach den Reis dazugeben (200 g).` Die Oberfläche hängt keine Zutaten-Sammelklammer und keine hervorgehobene Mengenliste mehr an.
 
-Wird dieselbe Zutat in mehreren Schritten referenziert, lässt sich deren Teilmenge nicht aus der Gesamtmenge ableiten. Dann bleibt der originale Schritttext maßgeblich und ein Zusatz kennzeichnet ausdrücklich die Rezeptgesamtmenge. Unbekannte Mengen bleiben unbekannt. Es findet keine automatische Verteilung oder Erfindung von Teilmengen statt. Die Rezeptansicht zeigt Originalportionen; abweichende Einkaufsportionen werden wie bisher in der Koch-/Einkaufsliste berechnet.
+Bei bestehenden Rezepten wird eine bereits unmittelbar vor einem exakt passenden Zutatennamen stehende Mengenangabe nur für die Anzeige in Klammern dahinter verschoben. Andere Formulierungen, Flexionen und unklare Teilmengen bleiben unverändert; diese konservative Anzeigehilfe ist keine vollständige sprachliche Überarbeitung. Gespeicherte Rezepte werden nicht neu generiert oder verändert. Eine vollständige Neuformulierung älterer Rezepte erfordert eine spätere ausdrückliche Überarbeitung. Unbekannte Mengen bleiben unbekannt; Gesamtmengen werden niemals automatisch auf mehrere Schritte verteilt. Die Rezeptansicht zeigt Originalportionen.
 
 ## Prüfung und Ausführungsgrenzen
 
