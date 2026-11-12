@@ -1,7 +1,9 @@
+import importedRows from '../../data/catalog/search.json';
+import type {DepartmentId} from './shopping-order.js';
 import {z} from 'zod';
 import {AppError} from './errors.js';
 export type ProductTone='mint'|'lemon'|'peach'|'lilac'|'blue'|'rose';
-export interface Product {name:string;emoji:string;tone:ProductTone;aliases?:string[]}
+export interface Product {name:string;emoji:string;tone:ProductTone;aliases?:string[];department?:DepartmentId}
 // Maintained locally: suggestions never send shopping entries to an AI provider.
 const groups:[ProductTone,string][]=[
  ['mint','🥑 Avocado|🍆 Aubergine|🥦 Brokkoli|🥬 Salat,Kopfsalat,Eisbergsalat|🥬 Spinat|🥬 Rosenkohl|🥬 Grünkohl|🥬 Artischocken|🥒 Gurke|🥒 Zucchini|🫑 Paprika|🫛 Erbsen|🫛 Bohnen|🌿 Basilikum|🌿 Petersilie|🌿 Koriander|🌿 Schnittlauch|🌿 Minze|🫒 Oliven'],
@@ -11,15 +13,29 @@ const groups:[ProductTone,string][]=[
  ['lilac','🍞 Brot|🥖 Baguette|🥐 Croissants|🥯 Brötchen|🍝 Nudeln,Pasta,Spaghetti|🍚 Reis|🌾 Mehl|🌾 Haferflocken|🌾 Couscous|🌾 Bulgur|🌾 Quinoa|🍬 Zucker|🍫 Schokolade|🍪 Kekse|🧁 Backpulver|🧁 Vanillezucker|🧁 Hefe|🥜 Erdnussbutter|🫙 Marmelade|🧂 Gemüsebrühe|🫙 Sojasauce|🫙 Tomatenmark'],
  ['blue','🥛 Milch,Vollmilch|🥛 Hafermilch,Haferdrink|🥛 Sojamilch,Sojadrink|🥛 Mandelmilch|🥛 Joghurt|🥛 Sahne|🥛 Quark|🥥 Kokosmilch|💧 Wasser,Mineralwasser|🧃 Saft,Orangensaft,Apfelsaft|☕ Kaffee|🍵 Tee|🍷 Weißwein,Weisswein|🍷 Rotwein|🍺 Bier|🧊 Tiefkühlerbsen|🧊 Eis|🧼 Spülmittel,Spuelmittel|🧼 Spülmaschinentabs,Geschirrspültabs|🧽 Schwämme,Schwamm|🧴 Waschmittel|🧴 Weichspüler|🧴 Allzweckreiniger|🧴 Glasreiniger|🧻 Toilettenpapier,Klopapier|🧻 Küchenrolle,Küchenpapier|🗑️ Müllbeutel,Müllsäcke|🧴 Shampoo|🧴 Duschgel|🪥 Zahnpasta|🪥 Zahnbürste|🧼 Seife|🧻 Taschentücher|👶 Windeln|🐈 Katzenfutter|🐕 Hundefutter|💧 Luftentfeuchterbeutel'],
 ];
-export const products:Product[]=groups.flatMap(([tone,items])=>items.split('|').map(item=>{const [emoji,...rest]=item.trim().split(' ');const [name,...aliases]=rest.join(' ').split(',');return {name,emoji,tone,aliases};}));
+const curatedProducts:Product[]=groups.flatMap(([tone,items])=>items.split('|').map(item=>{const [emoji,...rest]=item.trim().split(' ');const [name,...aliases]=rest.join(' ').split(',');return {name,emoji,tone,aliases};}));
+const departmentPresentation:Record<DepartmentId,[string,ProductTone]>={produce:['🥬','mint'],bakery:['🥖','peach'],pantry:['🫙','lemon'],drinks:['🧃','blue'],household:['🧼','lilac'],other:['🛒','mint'],chilled:['🥛','blue'],meat:['🐟','rose'],frozen:['🧊','blue']};
+const curatedIndex=curatedProducts.map(p=>({p,keys:[p.name,...p.aliases||[]].map(productKey)}));
+const importedProducts:Product[]=importedRows.map(row=>{
+ const [name,aliases,category]=row as [string,string[],DepartmentId];
+ const key=productKey(name),match=curatedIndex.find(({keys})=>keys.some(word=>word===key||word.length>=3&&(' '+key+' ').includes(' '+word+' ')));
+ const emoji=match?.p.emoji||departmentPresentation[category][0],tone=departmentPresentation[category][1];
+ return {name,aliases,department:category,emoji,tone};
+});
+export const products:Product[]=[...curatedProducts,...importedProducts];
 export function productKey(value:string):string{return value.normalize('NFKC').toLocaleLowerCase('de').replace(/ß/g,'ss').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ae/g,'a').replace(/oe/g,'o').replace(/ue/g,'u').replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
-const names=(p:Product)=>[p.name,...p.aliases||[]].map(productKey);
+const keyCache=new WeakMap<Product,string[]>();
+const names=(p:Product)=>{let cached=keyCache.get(p);if(!cached){cached=[p.name,...p.aliases||[]].map(productKey);keyCache.set(p,cached);}return cached;};
 const catalogIndex=products.map(p=>({p,keys:names(p)}));
-const catalogExact=new Map(catalogIndex.flatMap(({p,keys})=>keys.map(key=>[key,p] as const)));
+const catalogExact=new Map([...catalogIndex].reverse().flatMap(({p,keys})=>keys.map(key=>[key,p] as const)));
 export function productFor(value:string):Product{
  const key=productKey(value),exact=catalogExact.get(key);if(exact)return exact;
- const match=catalogIndex.flatMap(({p,keys})=>keys.filter(n=>n.length>=3&&(' '+key+' ').includes(' '+n+' ')).map(n=>({p,length:n.length}))).sort((a,b)=>b.length-a.length)[0];
- return match?{...match.p,name:value}:{name:value,emoji:'🛒',tone:'mint'};
+ const words=key.split(' ');
+ for(let size=Math.min(6,words.length);size>=1;size--)for(let at=0;at+size<=words.length;at++){
+  const candidate=catalogExact.get(words.slice(at,at+size).join(' '));
+  if(candidate)return {...candidate,name:value};
+ }
+ return {name:value,emoji:'🛒',tone:'mint'};
 }
 export function productSuggestions(value:string,personal:string[]=[]):Product[]{
  const key=productKey(value);if(!key)return [];

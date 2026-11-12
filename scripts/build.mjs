@@ -24,3 +24,5 @@ if(!demo){
  }
  await writeFile(output+'/index.html',appHtml(html,appDefinitions[0]));
 }
+
+if(!demo){await mkdir(output+'/catalog',{recursive:true});for(const file of ['bls.json','open-food-facts.json','search.json','SOURCES.json','LICENSE.md','README.md'])await copyFile('data/catalog/'+file,output+'/catalog/'+file);}

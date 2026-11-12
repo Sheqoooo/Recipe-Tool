@@ -25,3 +25,12 @@ backups/
 private-backup.sql
 *.backup.sql
 .DS_Store
+
+# Only attributed, public catalog snapshots belong in Git.
+!data/catalog/
+!data/catalog/bls.json
+!data/catalog/open-food-facts.json
+!data/catalog/search.json
+!data/catalog/SOURCES.json
+!data/catalog/LICENSE.md
+!data/catalog/README.md

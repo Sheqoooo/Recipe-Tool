@@ -19,3 +19,10 @@ it('erlaubt Freitextmengen und unbekannte internationale Artikelnamen',()=>{
  expect(validateShoppingEntry({name:'Reismilch',quantity:'2 Packungen'})).toEqual({name:'Reismilch',quantity:'2 Packungen'});
  expect(validateShoppingEntry({name:'味噌'}).name).toBe('味噌');
 });
+
+it('durchsucht importierte Lebensmittel und Synonyme ohne Veränderung der Haushaltsvorschläge',()=>{
+ expect(productSuggestions('Pastinak').some(p=>/Pastinak/i.test(p.name))).toBe(true);
+ expect(productSuggestions('Karamellsirup').some(p=>/Karamell|Caramel/i.test(p.name))).toBe(true);
+ expect(productSuggestions('Spül')[0].name).toBe('Spülmittel');
+ expect(productFor('Frische Pastinake').department).toBe('produce');
+});

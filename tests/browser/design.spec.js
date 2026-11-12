@@ -107,3 +107,12 @@ test('einzelne oder alle Zutaten per Klick auf die unabhängige Einkaufsliste',a
  await expect(page.locator('[data-department="produce"]')).toContainText('Zitrone');await expect(page.locator('[data-department="chilled"]')).toContainText('Parmesan');
  await expect(page.locator('[data-portions]')).toHaveCount(0);
 });
+
+test('importierte Lebensmittelvorschläge funktionieren lokal und zeigen Herkunft',async({page})=>{
+ const network=[];page.on('request',r=>{if(/^https?:/.test(r.url()))network.push(r.url());});
+ await page.goto(demo);await page.getByRole('button',{name:/Meine Einkaufsliste/}).click();
+ await page.locator('#shopping-name').fill('Pastinak');await expect(page.getByRole('option').first()).toContainText(/Pastinak/i);
+ await page.getByRole('option').first().click();await expect(page.locator('#manual-shopping-list')).toContainText(/Pastinak/i);
+ await expect(page.locator('.catalog-attribution')).toContainText('BLS 4.0');await expect(page.locator('.catalog-attribution')).toContainText('Open Food Facts');
+ expect(network).toEqual([]);
+});

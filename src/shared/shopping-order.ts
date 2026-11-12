@@ -28,6 +28,7 @@ export function departmentFor(name:string):DepartmentId{
  if(/(^| )(tk|tiefkuhl\w*|tiefgekuhl\w*|gefrore\w*|frozen)( |$)/.test(key))return 'frozen';
  if(/(^| )(dose\w*|konserv\w*|glas|getrocknet\w*|passiert\w*|pulver|uht|h milch)( |$)/.test(key))return 'pantry';
  const product=productFor(name);
+ if(product.department)return product.department;
  const exact=byName.get(productKey(product.name));if(exact)return exact;
  // Product matching preserves descriptive names; match known words, longest first.
  const match=[...byName].filter(([word])=>word.length>=3&&(' '+key+' ').includes(' '+word+' ')).sort((a,b)=>b[0].length-a[0].length)[0];
