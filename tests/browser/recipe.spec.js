@@ -92,7 +92,7 @@ test('eigene Einkaufseinträge bleiben nach Neuladen gespeichert',async({page},i
  const name='Spülmittel '+info.project.name;
  await page.goto('/#shopping');await page.locator('#shopping-name').fill(name);await page.locator('#shopping-quantity').fill('2 Flaschen');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
  await expect(page.locator('#manual-shopping-list')).toContainText(name);await page.reload();await expect(page.locator('#manual-shopping-list')).toContainText(name);
- await page.locator('#manual-shopping-list .grocery-tile').filter({hasText:name}).getByRole('checkbox').check();
+ await page.locator('#manual-shopping-list .grocery-tile').filter({hasText:name}).getByRole('checkbox').click();
  await page.reload();await expect(page.getByRole('button',{name:name+' erneut hinzufügen',exact:true})).toBeVisible();
  await page.getByRole('button',{name:name+' erneut hinzufügen',exact:true}).click();await page.getByRole('button',{name:name+' entfernen',exact:true}).click();
  await expect(page.locator('#manual-shopping-list')).not.toContainText(name);

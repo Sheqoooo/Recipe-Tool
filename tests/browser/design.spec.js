@@ -64,7 +64,7 @@ test('Einkaufskacheln: Vorschläge, Mengen, Emoji, Bearbeiten und Wiederverwende
  await page.locator('#shopping-quantity').fill('2 Flaschen');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
  const tile=page.locator('#manual-shopping-list .grocery-tile').filter({hasText:'Spülmittel'});
  await expect(tile).toContainText('2 Flaschen');await expect(tile.locator('.grocery-emoji')).toHaveText('🧼');
- await tile.getByRole('checkbox').check();await expect(page.getByRole('button',{name:'Spülmittel erneut hinzufügen',exact:true})).toBeVisible();
+ await tile.getByRole('checkbox').click();await expect(page.getByRole('button',{name:'Spülmittel erneut hinzufügen',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Spülmittel erneut hinzufügen',exact:true}).click();
  await page.getByRole('button',{name:'Spülmittel bearbeiten',exact:true}).click();await name.fill('Spülmittel sensitiv');await page.locator('#shopping-quantity').fill('1 Flasche');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
  await expect(page.locator('#manual-shopping-list')).toContainText('Spülmittel sensitiv');

@@ -9,6 +9,7 @@ let draft:Recipe|null=null;
 let shoppingEditId:string|undefined;
 let suggestionNames:string[]=[];
 let suggestionIndex=-1;
+let personalProducts:string[]=[];
 function $<T extends HTMLElement=HTMLElement>(selector:string):T{const element=document.querySelector<T>(selector);if(!element)throw new Error('Oberflächenelement fehlt');return element;}
 const input=(s:string)=>$<HTMLInputElement>(s);
 const dialog=()=>$<HTMLDialogElement>('#recipe-dialog');
@@ -70,8 +71,7 @@ function hideSuggestions(){input('#shopping-name').setAttribute('aria-expanded',
 function renderSuggestions(){
   const name=input('#shopping-name').value;
   $('#shopping-emoji').textContent=productFor(name).emoji;
-  const personal=[...(state.manual_items||[]).map(i=>i.name),...state.recipes.flatMap(r=>r.ingredients.map(i=>i.name))];
-  const suggestions=productSuggestions(name,personal);suggestionNames=suggestions.map(p=>p.name);suggestionIndex=-1;
+  const suggestions=productSuggestions(name,personalProducts);suggestionNames=suggestions.map(p=>p.name);suggestionIndex=-1;
   $('#shopping-suggestions').innerHTML=suggestions.map((p,n)=>'<button type="button" role="option" aria-selected="false" id="product-option-'+n+'" data-product-index="'+n+'"><span aria-hidden="true">'+p.emoji+'</span><span>'+esc(p.name)+'</span><span class="suggestion-arrow" aria-hidden="true">↖</span></button>').join('');
   $('#shopping-suggestions').hidden=!suggestions.length;input('#shopping-name').setAttribute('aria-expanded',String(Boolean(suggestions.length)));input('#shopping-name').removeAttribute('aria-activedescendant');
 }
@@ -94,6 +94,9 @@ function renderShopping(){
   input('#copy-list').disabled=!state.shopping.some(i=>!state.checked.includes(i.key))&&!(state.manual_items||[]).some(i=>!i.checked);
 }
 function render(){
+  const personal=new Set((state.manual_items||[]).map(i=>i.name));
+  outer:for(const recipe of state.recipes)for(const ingredient of recipe.ingredients){if(personal.size>=1000)break outer;personal.add(ingredient.name);}
+  personalProducts=[...personal];
   $('#recipe-count').textContent=String(state.recipes.length);$('#plan-count').textContent=String(state.shopping.filter(i=>!state.checked.includes(i.key)).length+(state.manual_items||[]).filter(i=>!i.checked).length);$('#key-hint').hidden=state.has_key||state.read_only;
   $('#key-status').textContent=__REZEPTWERK_DEMO__?'Demo mit Beispieldaten. Importe werden simuliert und verursachen keine KI-Kosten.':state.read_only?'Geschützte, schreibgeschützte Vorschau ohne produktive Daten oder KI.':state.has_key?'OpenAI-Secret auf dem Worker vorhanden.':'OPENAI_API_KEY ist noch nicht als Worker Secret eingerichtet.';
   $('#identity').textContent=state.user.email?`${state.user.email} · ${state.user.role==='admin'?'Administrator':'Mitglied'}`:'';

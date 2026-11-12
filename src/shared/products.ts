@@ -14,9 +14,11 @@ const groups:[ProductTone,string][]=[
 export const products:Product[]=groups.flatMap(([tone,items])=>items.split('|').map(item=>{const [emoji,...rest]=item.trim().split(' ');const [name,...aliases]=rest.join(' ').split(',');return {name,emoji,tone,aliases};}));
 export function productKey(value:string):string{return value.normalize('NFKC').toLocaleLowerCase('de').replace(/ß/g,'ss').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ae/g,'a').replace(/oe/g,'o').replace(/ue/g,'u').replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
 const names=(p:Product)=>[p.name,...p.aliases||[]].map(productKey);
+const catalogIndex=products.map(p=>({p,keys:names(p)}));
+const catalogExact=new Map(catalogIndex.flatMap(({p,keys})=>keys.map(key=>[key,p] as const)));
 export function productFor(value:string):Product{
- const key=productKey(value),exact=products.find(p=>names(p).includes(key));if(exact)return exact;
- const match=products.flatMap(p=>names(p).filter(n=>n.length>=3&&(' '+key+' ').includes(' '+n+' ')).map(n=>({p,length:n.length}))).sort((a,b)=>b.length-a.length)[0];
+ const key=productKey(value),exact=catalogExact.get(key);if(exact)return exact;
+ const match=catalogIndex.flatMap(({p,keys})=>keys.filter(n=>n.length>=3&&(' '+key+' ').includes(' '+n+' ')).map(n=>({p,length:n.length}))).sort((a,b)=>b.length-a.length)[0];
  return match?{...match.p,name:value}:{name:value,emoji:'🛒',tone:'mint'};
 }
 export function productSuggestions(value:string,personal:string[]=[]):Product[]{
@@ -26,5 +28,5 @@ export function productSuggestions(value:string,personal:string[]=[]):Product[]{
 }
 const field=(max:number)=>z.string().trim().min(1).max(max).refine(v=>!/[\u0000-\u001f\u007f]/.test(v),'Steuerzeichen sind nicht erlaubt.');
 const entry=z.object({id:z.uuid().optional(),name:field(100),quantity:z.string().trim().max(60).refine(v=>!/[\u0000-\u001f\u007f]/.test(v)).default('')}).strict();
-export function validateShoppingEntry(input:unknown){const result=entry.safeParse(input);if(!result.success)throw new AppError('INVALID_SHOPPING_ITEM','Bitte Artikelname (max. 100 Zeichen) und Menge (max. 60 Zeichen) prüfen.');const name=result.data.name.normalize('NFKC').replace(/\s+/g,' ');if(!productKey(name))throw new AppError('INVALID_SHOPPING_ITEM','Bitte einen Artikelnamen eingeben.');return {...result.data,name};}
+export function validateShoppingEntry(input:unknown){const result=entry.safeParse(input);if(!result.success)throw new AppError('INVALID_SHOPPING_ITEM','Bitte Artikelname (max. 100 Zeichen) und Menge (max. 60 Zeichen) prüfen.');const name=result.data.name.normalize('NFKC').replace(/\s+/g,' ');if(name.length>100||!productKey(name))throw new AppError('INVALID_SHOPPING_ITEM','Bitte einen Artikelnamen eingeben.');return {...result.data,name};}
 export function shoppingItemId(input:unknown):string{const result=z.uuid().safeParse(input);if(!result.success)throw new AppError('INVALID_SHOPPING_ITEM','Ungültiger Einkaufsartikel.');return result.data;}
