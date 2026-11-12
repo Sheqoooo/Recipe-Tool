@@ -3,7 +3,7 @@ import type { Member, Recipe, RecipeData, Source, SourceKind, Usage, ImportRecor
 import { AppError } from '../shared/errors.js';
 import { normalizeSourceUrl,publicSourceUrl } from '../shared/source-url.js';
 import { positiveServings } from '../shared/recipe.js';
-import {productKey,validateShoppingEntry,shoppingItemId} from '../shared/products.js';
+import {productKey,validateShoppingEntry,shoppingItemId,shoppingEntriesFromIngredients} from '../shared/products.js';
 import type {ManualShoppingItem} from '../shared/types.js';
 
 interface Row {
@@ -23,6 +23,25 @@ export class Repository {
   async shoppingItems():Promise<ManualShoppingItem[]>{
     const rows=await this.db.prepare('SELECT id,name,quantity,checked,updated_at FROM shopping_items ORDER BY checked,updated_at DESC,id LIMIT 500').all<Omit<ManualShoppingItem,'checked'>&{checked:number}>();
     return rows.results.map(row=>({...row,checked:row.checked===1}));
+  }
+  async recipeToShopping(recipeId:number,indices:unknown,actor:Member):Promise<void>{
+    if(!Number.isSafeInteger(recipeId)||recipeId<=0)throw new AppError('INVALID_ID','Ungültiges Rezept.');
+    if(indices!==undefined&&(!Array.isArray(indices)||!indices.length||indices.length>200||indices.some(i=>typeof i!=='number'||!Number.isInteger(i)||i<0||i>=200)))throw new AppError('INVALID_INGREDIENT','Ungültige Zutatenauswahl.');
+    if(!await this.byId(recipeId))throw new AppError('NOT_FOUND','Rezept nicht gefunden.',404);
+    const rows=(await this.db.prepare('SELECT position,name,amount,unit FROM ingredients WHERE recipe_id=? ORDER BY position').bind(recipeId).all<{position:number;name:string;amount:number|null;unit:string}>()).results;
+    const selected=indices===undefined?rows:rows.filter(row=>(indices as number[]).includes(row.position));
+    if(!selected.length||(indices!==undefined&&new Set(indices as number[]).size!==selected.length))throw new AppError('INVALID_INGREDIENT','Die Zutatenauswahl ist nicht mehr gültig. Bitte neu laden.');
+    const items=shoppingEntriesFromIngredients(selected);
+    try{
+      const statements:D1PreparedStatement[]=[];
+      for(let offset=0;offset<items.length;offset+=18){
+        const chunk=items.slice(offset,offset+18);
+        statements.push(this.db.prepare('INSERT INTO shopping_items(id,name,name_key,quantity,created_by) VALUES '+chunk.map(()=>'(?,?,?,?,?)').join(',')+
+          ' ON CONFLICT(name_key) DO UPDATE SET checked=0,quantity=excluded.quantity,updated_at=CURRENT_TIMESTAMP')
+          .bind(...chunk.flatMap(item=>[crypto.randomUUID(),item.name,productKey(item.name),item.quantity,actor.id])));
+      }
+      await this.db.batch(statements);
+    }catch{throw new AppError('SHOPPING_LIMIT','Die Zutaten konnten nicht vollständig hinzugefügt werden. Bitte Platz auf der Einkaufsliste schaffen und erneut versuchen.',409);}
   }
   async saveShoppingItem(input:unknown,actor:Member):Promise<void>{
     const item=validateShoppingEntry(input),key=productKey(item.name);

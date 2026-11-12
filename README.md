@@ -97,3 +97,8 @@ Die Oberfläche heißt Futterluke, mit dem Untertitel „Umwandlung von Rezepten
 
 ### Einkaufsliste mit Kacheln
 Eigene Lebensmittel und Haushaltsartikel lassen sich unabhängig von Rezepten hinzufügen, mit Freitextmenge bearbeiten, abhaken, entfernen und erneut verwenden. Vorschläge aus einem eingebauten deutschen Katalog, eigenen Einträgen und Rezeptzutaten erscheinen direkt beim Tippen. Emojis werden lokal zugeordnet; unbekannte Produkte erhalten 🛒. Dafür werden keine OpenAI-Anfragen benötigt. Die Liste ist für aktive Mitglieder gemeinsam; Aktualisierungen anderer Geräte erscheinen nach Neuladen. Details: [Einkaufsliste](docs/SHOPPING.md).
+
+### Zwei verbundene Bereiche und iOS
+Startseite mit direkten Schaltflächen für Kochbuch und Einkaufsliste. Produktiv sind beide zusätzlich unter `/recipes/` und `/shopping/` erreichbar, mit eigenen App-Manifesten und weißen Home-Bildschirm-Symbolen (Zitrone bzw. Einkaufswagen). In Safari den jeweiligen Bereich öffnen → Teilen → Zum Home-Bildschirm. Access bleibt für alle Dateien erforderlich. Noch kein Offline-Betrieb der privaten App. Details: [iOS](docs/IOS.md).
+
+Vorschläge werden beim Antippen oder mit Pfeiltaste + Enter direkt gespeichert. Offene eigene Artikel und Rezeptzutaten erscheinen gemeinsam nach Einkaufsbereichen, alphabetisch innerhalb eines Bereichs. Jeder Zutat im Rezept lässt sich einzeln oder über „Alle Zutaten hinzufügen“ als Mengenkopie übernehmen. Die unabhängige Einkaufsliste benötigt weder Rezeptplanung noch OpenAI-Key. Recherche zur Sortierung und zu Lebensmitteldaten: [Datenquellen](docs/PRODUCT-DATA.md).

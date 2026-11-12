@@ -59,7 +59,7 @@ it('gesperrte/nicht eingeladene Identitäten werden abgewiesen',async()=>{
 it('Assets und API werden vor Auslieferung authentifiziert',async()=>{
   const app=appFixture();app.config.APP_ENV='production';app.config.AUTH_MODE='access';app.config.APP_ORIGIN='https://app.example';app.config.ACCESS_ISSUER='https://recipe-test.cloudflareaccess.com';app.config.ACCESS_AUD='test';
   const asset=vi.fn(async()=>new Response('private'));app.config.ASSETS={fetch:asset} as Fetcher;
-  for(const path of ['/','/app.js','/style.css','/api/state','/api/import','/api/recipes/1/image'])expect((await app.app.fetch(new Request('https://app.example'+path),app.config)).status).toBe(401);
+  for(const path of ['/','/app.js','/style.css','/api/state','/api/import','/api/recipes/1/image','/recipes/','/shopping/','/shopping.webmanifest','/icons/shopping-180.png'])expect((await app.app.fetch(new Request('https://app.example'+path),app.config)).status).toBe(401);
   expect(asset).not.toHaveBeenCalled();expect(app.generate).not.toHaveBeenCalled();
 });
 it('abgelaufene Import-Lease kann keine späte Speicherung verursachen',async()=>{
@@ -199,4 +199,33 @@ it('500 Artikel sind die atomare Grenze, vorhandene Namen lassen sich weiterverw
  await expect(repo.saveShoppingItem({name:'Weiterer Artikel'},owner)).rejects.toMatchObject({code:'SHOPPING_LIMIT'});
  await repo.saveShoppingItem({name:'Artikel 1'},owner);expect(await env.DB.prepare('SELECT COUNT(*) FROM shopping_items').first()).not.toBeNull();
  expect(await repo.shoppingItems()).toHaveLength(500);
+});
+
+it('Einkaufsliste funktioniert ohne OpenAI-Key und ohne gespeicherte Rezepte',async()=>{
+ const f=appFixture();f.config.OPENAI_API_KEY=undefined;
+ expect((await f.post('/api/shopping/items/save',{name:'Spülmittel',quantity:'1 Flasche'})).status).toBe(200);
+ const state=await(await f.get()).json() as AppState;
+ expect(state.has_key).toBe(false);expect(state.recipes).toHaveLength(0);expect(state.manual_items![0].name).toBe('Spülmittel');expect(f.generate).not.toHaveBeenCalled();expect(f.read).not.toHaveBeenCalled();
+});
+
+it('einzelne und alle Rezeptzutaten werden ohne Kochplanung oder weitere KI-Aufrufe übernommen',async()=>{
+ const f=appFixture();f.generate.mockResolvedValue({...structuredClone(generated),recipe:{...structuredClone(recipe),ingredients:[...recipe.ingredients,{name:'Reis',amount:100,unit:'g',note:''}],steps:[{text:'Zutaten zubereiten.',ingredient_indices:[0,1]}]}});
+ const {id}=await(await f.post('/api/import',{value:'https://recipes.example/ingredient-copy'})).json() as {id:number};
+ f.config.OPENAI_API_KEY=undefined;
+ expect((await f.post('/api/shopping/from-recipe',{recipe_id:id,ingredient_indices:[1]})).status).toBe(200);
+ let state=await(await f.get()).json() as AppState;expect(state.plan).toHaveLength(0);expect(state.manual_items).toHaveLength(1);expect(state.manual_items![0]).toMatchObject({name:'Reis',quantity:'100 g'});
+ expect((await f.post('/api/shopping/from-recipe',{recipe_id:id})).status).toBe(200);
+ await f.post('/api/shopping/from-recipe',{recipe_id:id});
+ state=await(await f.get()).json() as AppState;expect(state.manual_items).toHaveLength(2);expect(state.manual_items!.find(i=>i.name==='Tomaten')!.quantity).toBe('200 g');expect(f.generate).toHaveBeenCalledTimes(1);
+ expect((await f.post('/api/shopping/from-recipe',{recipe_id:id,ingredient_indices:[199]})).status).toBe(400);
+ expect((await f.post('/api/shopping/from-recipe',{recipe_id:id},'https://evil.example')).status).toBe(403);
+});
+it('Zutaten-Batch ist bei Kapazitätsüberschreitung atomar',async()=>{
+ const f=appFixture();f.generate.mockResolvedValue({...structuredClone(generated),recipe:{...structuredClone(recipe),ingredients:[...recipe.ingredients,{name:'Reis',amount:100,unit:'g',note:''}],steps:[{text:'Zutaten zubereiten.',ingredient_indices:[0,1]}]}});
+ const {id}=await(await f.post('/api/import',{value:'https://recipes.example/ingredient-cap'})).json() as {id:number};
+ const owner=(await(await f.get()).json() as AppState).user.id;
+ await env.DB.prepare("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<499) INSERT INTO shopping_items(id,name,name_key,created_by) SELECT printf('old-%d',i),printf('Artikel %d',i),printf('artikel %d',i),? FROM n").bind(owner).run();
+ expect((await f.post('/api/shopping/from-recipe',{recipe_id:id})).status).toBe(409);
+ expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM shopping_items').first('n')).toBe(499);
+ expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM shopping_items WHERE name IN ('Reis','Tomaten')").first('n')).toBe(0);
 });

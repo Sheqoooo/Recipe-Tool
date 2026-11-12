@@ -12,7 +12,7 @@
 <div id="demo-banner" class="demo-banner" hidden>Design-Demo · Beispieldaten · keine KI-Aufrufe</div>
 <header id="app-header" class="app-header" hidden>
 <button class="brand-button" data-view="import" aria-label="Zur Startseite"><span aria-hidden="true">🍋</span> Futterluke</button>
-<button class="icon-button settings-button" data-view="settings" aria-label="Einstellungen">⚙</button>
+<span id="area-label" class="area-label"></span><button class="icon-button settings-button" data-view="settings" aria-label="Einstellungen">⚙</button>
 </header>
 <main>
 <div id="notice" class="notice" role="status" hidden></div>
@@ -32,7 +32,7 @@
 <label class="authorization"><input id="transcript-authorized" type="checkbox"> Ich darf dieses Transkript verwenden.</label>
 </div>
 </form>
-<button class="saved-button" data-view="collection"><span aria-hidden="true">📚</span> Meine Rezepte <span id="recipe-count" class="count">0</span></button>
+<div class="start-shortcuts"><button class="saved-button" data-view="collection"><span aria-hidden="true">📚</span> Meine Rezepte <span id="recipe-count" class="count">0</span></button><button class="saved-button" data-view="shopping"><span aria-hidden="true">🛒</span> Meine Einkaufsliste <span id="home-shopping-count" class="count">0</span></button></div>
 </div>
 </section>
 <section id="view-collection" class="view content-view" hidden>
@@ -49,9 +49,9 @@
 <div class="grocery-quantity-row"><label class="sr-only" for="shopping-quantity">Menge (optional)</label><input id="shopping-quantity" placeholder="Menge, z. B. 2 Flaschen (optional)" maxlength="60"><button id="cancel-shopping-edit" type="button" class="text-button" hidden>Abbrechen</button></div>
 <p id="shopping-edit-hint" class="field-help" hidden>Artikel bearbeiten – Änderungen mit + speichern.</p>
 </form>
-<section class="manual-shopping-section"><div class="section-tools"><h2>Auf deiner Liste <span id="manual-count" class="count">0</span></h2><button id="copy-list" class="text-button">Liste kopieren ↗</button></div><div id="manual-shopping-list" class="grocery-grid"></div></section>
+<section class="manual-shopping-section"><div class="section-tools"><h2>Auf deiner Liste <span id="manual-count" class="count">0</span></h2><button id="copy-list" class="text-button">Liste kopieren ↗</button></div><p class="shopping-route-help">Nach Einkaufsbereichen sortiert · Kühl- und Tiefkühlware am Ende</p><div id="shopping-list"><div id="manual-shopping-list"></div></div></section>
 <section id="recent-shopping-section" class="recent-shopping-section" hidden><h2>Zuletzt verwendet</h2><p class="field-help">Antippen, um einen Artikel erneut einzukaufen.</p><div id="recent-shopping-list" class="grocery-grid"></div></section>
-<div id="recipe-shopping" class="shopping-layout"><div><h2 class="section-title">Geplante Gerichte</h2><div id="plan-list"></div></div><div class="panel shopping-panel"><div class="section-tools"><h2>Zutaten aus Rezepten</h2></div><div id="shopping-list"></div></div></div>
+<div id="recipe-shopping" class="shopping-layout"><div><h2 class="section-title">Geplante Gerichte</h2><div id="plan-list"></div></div></div>
 </section>
 <section id="view-settings" class="view content-view" hidden>
 <div class="page-heading"><div><span class="page-emoji" aria-hidden="true">⚙️</span><h1>Einstellungen</h1><p id="identity" class="intro"></p></div></div>

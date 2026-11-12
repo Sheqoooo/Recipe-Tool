@@ -61,3 +61,8 @@ Bilder sind nicht vertrauenswürdig. HTTPS, Secret-Query-Prüfung, öffentliche 
 
 ### Manuelle Einkaufseinträge
 Die neuen POST-Routen `/api/shopping/items/save`, `/api/shopping/items/check` und `/api/shopping/items/delete` durchlaufen dieselbe JWT-, Mitglieds- und Origin-Prüfung wie alle Schreibzugriffe. Alle aktiven Mitglieder dürfen die gemeinsame manuelle Einkaufsliste verändern. Namen maximal 100, Mengen maximal 60 Zeichen; UUIDs und Status werden serverseitig geprüft, SQL parametrisiert, UI-Texte escaped. Emoji-Zuordnungen kommen aus dem eigenen Katalog. Keine neuen externen Dienste und keine Übertragung von Suchbegriffen oder Einkaufsdaten an OpenAI. Maximal 500 gespeicherte Einträge einschließlich erledigter Artikel. Neue Ressourcen oder öffentliche Vorschlags-Endpunkte sind nicht erforderlich.
+
+### Installierbare Einstiege und Zutatenübernahme
+Auch `/recipes/`, `/shopping/`, Manifeste und Icons durchlaufen JWT- und Mitgliedsprüfung vor der Asset-Auslieferung. Keine öffentliche Ausnahme für Installationsmetadaten. iOS darf eine eigene Anmeldung für gespeicherte Web-Apps verlangen; das Access-Verhalten muss auf echten Geräten geprüft werden. Kein Service Worker speichert Kochbuch- oder Einkaufsdaten offline.
+
+Zutatenübernahme benötigt aktive Mitgliedschaft und dieselben Origin-Schutzheader wie andere Änderungen. Namen und Mengen stammen aus dem gespeicherten Rezept, nicht aus vom Browser eingereichten Zutatenobjekten. Indizes werden validiert, Mengen serverseitig formatiert, alle Einträge vor dem Schreiben geprüft. Trigger und D1-Batch verhindern Teilimporte bei erschöpfter Kapazität. Es entsteht kein weiterer KI-Aufruf.

@@ -63,6 +63,7 @@ export function createApp(deps:Dependencies={}){
       }
       if(request.method!=='POST')throw new AppError('METHOD','Methode nicht erlaubt.',405);
       assertWrite(request);const data=await body(request);
+      if(path==='/api/shopping/from-recipe'){await repo.recipeToShopping(id(data.recipe_id),data.ingredient_indices,actor);return json({ok:true});}
       if(path==='/api/shopping/items/save'){await repo.saveShoppingItem(data,actor);return json({ok:true});}
       if(path==='/api/shopping/items/check'){await repo.checkShoppingItem(data.id,data.checked);return json({ok:true});}
       if(path==='/api/shopping/items/delete'){await repo.deleteShoppingItem(data.id);return json({ok:true});}

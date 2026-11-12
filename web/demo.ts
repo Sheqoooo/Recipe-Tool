@@ -1,7 +1,7 @@
 // Included only by the separate --demo build. No fetch, database, keys or remote persistence.
 import type { AppState,Recipe,RecipeData } from '../src/shared/types.js';
 import { shoppingList,validateRecipe } from '../src/shared/recipe.js';
-import {validateShoppingEntry,shoppingItemId,productKey} from '../src/shared/products.js';
+import {validateShoppingEntry,shoppingItemId,productKey,shoppingEntriesFromIngredients} from '../src/shared/products.js';
 import { normalizeSourceUrl } from '../src/shared/source-url.js';
 const owner='demo-member';
 const make=(id:number,title:string,description:string,cook:number,items:[string,number,string][],texts:string[]):Recipe=>({
@@ -35,7 +35,18 @@ export async function demoApi<T>(path:string,data?:unknown):Promise<T>{
   const body=(data||{}) as Record<string,unknown>;
   let result:unknown={ok:true};
   if(path==='/api/state'){recalculate();result=state;}
-  else if(path==='/api/shopping/items/save'){
+  else if(path==='/api/shopping/from-recipe'){
+    const recipe=state.recipes.find(r=>r.id===Number(body.recipe_id));if(!recipe)throw new Error('Rezept nicht gefunden.');
+    const indices=body.ingredient_indices as number[]|undefined;
+    const selected=recipe.ingredients.filter((_,i)=>!indices||indices.includes(i));
+    const items=shoppingEntriesFromIngredients(selected);
+    if(state.manual_items!.length+items.filter(item=>!state.manual_items!.some(row=>productKey(row.name)===productKey(item.name))).length>500)throw new Error('Maximal 500 Artikel. Es wurde nichts hinzugefügt.');
+    for(const item of items){
+      const existing=state.manual_items!.find(row=>productKey(row.name)===productKey(item.name));
+      if(existing){existing.quantity=item.quantity;existing.checked=false;existing.updated_at=new Date().toISOString();}
+      else state.manual_items!.unshift({id:crypto.randomUUID(),name:item.name,quantity:item.quantity,checked:false,updated_at:new Date().toISOString()});
+    }
+  }else if(path==='/api/shopping/items/save'){
     const item=validateShoppingEntry(body),items=state.manual_items!;
     const existing=item.id?items.find(i=>i.id===item.id):items.find(i=>productKey(i.name)===productKey(item.name));
     if(item.id&&!existing)throw new Error('Artikel nicht gefunden.');

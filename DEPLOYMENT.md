@@ -167,3 +167,8 @@ Migration `migrations/0003_recipe_images.sql` ist erforderlich. Sie legt ausschl
 
 ### Vor Veröffentlichung der Einkaufskacheln
 Zusätzlich zu Migration 0003 benötigt dieser Stand `migrations/0004_shopping_items.sql`. Vorher Backup prüfen und Remote-Migration ausdrücklich freigeben; sie läuft niemals automatisch im Build oder Deployment. Die neue Tabelle wird in der bestehenden D1 angelegt. Lokal: `npm run db:migrate:local`. Weitere Secrets, API-Kosten oder Dienste sind für Autovervollständigung und Emojis nicht erforderlich. Ohne Migration 0004 kann der neue `/api/state` nicht vollständig geladen werden. Datenbankbackup enthält Einkaufseinträge; der bestehende Rezept-JSON-Export bleibt auf Rezepte beschränkt.
+
+### Weitere Voraussetzung: Zutatenübernahme und iOS
+Vor Veröffentlichung auch `0005_shopping_batch_limit.sql` nach Backup und ausdrücklicher Freigabe anwenden. Kein automatischer Build-/Deploy-Migrationsschritt. Der Trigger ergänzt das vorhandene Limit für atomare Zutaten-Batches; keine weitere Datenbank.
+
+Build generiert die beiden Installationsseiten, Manifeste und PNG-Symbole automatisch. Keine zusätzlichen Secrets und kein Icon-Dienst. Alle Pfade bleiben hinter Access. Nach Freigabe auf einem echten iPhone mit Safari sowohl `/recipes/` als auch `/shopping/` öffnen und getrennt zum Home-Bildschirm hinzufügen. Namen, Icons, Direktstart, erneute Access-Anmeldung und Rückwechsel testen. Diese Geräteprüfung kann nicht durch Chromium-Tests ersetzt werden. Aktuelle Live-Version bleibt bis zur Freigabe unverändert.
