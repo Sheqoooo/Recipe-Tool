@@ -26,3 +26,25 @@ it('durchsucht importierte Lebensmittel und Synonyme ohne Veränderung der Haush
  expect(productSuggestions('Spül')[0].name).toBe('Spülmittel');
  expect(productFor('Frische Pastinake').department).toBe('produce');
 });
+
+it.each(['Chiliflocken','Chilli-Flocken','Gehackte rote Chiliflocken','Chilipulver','Chili-Öl'])('erkennt Zubereitungsformen ohne Zutatenart zu verlieren: %s',name=>{
+ expect(productFor(name).emoji).toBe('🌶️');
+ expect(productFor(name).department).toBe('pantry');
+});
+it('bietet Chili-Varianten getrennt an und übernimmt die passende konkrete Bezeichnung',()=>{
+ const suggestions=productSuggestions('Chiliflo');
+ expect(suggestions[0]).toMatchObject({name:'Chiliflocken',emoji:'🌶️',department:'pantry'});
+ expect(productSuggestions('Knoblauchgr')[0]).toMatchObject({name:'Knoblauchgranulat',emoji:'🧄'});
+});
+it('erkennt Marken ohne generische Lebensmittel in Marken umzubenennen',()=>{
+ expect(productSuggestions('Nute')[0]).toMatchObject({name:'Nutella',emoji:'🍫',department:'pantry'});
+ expect(productFor('Nutella 750 g')).toMatchObject({name:'Nutella 750 g',emoji:'🍫',department:'pantry'});
+ expect(productFor('Nuss-Nougat-Creme').name).toBe('Nuss-Nougat-Creme');
+ expect(productFor('Haselnusscreme').name).not.toBe('Nutella');
+ expect(productSuggestions('Coca')[0].name).toBe('Coca-Cola');
+});
+it('erkennt nur vollständige bekannte Wörter und verwechselt zufällige Teilzeichen nicht',()=>{
+ expect(productFor('ChiliflockenXYZ').emoji).toBe('🛒');
+ expect(productFor('Nutellamaschine').emoji).toBe('🛒');
+ expect(productFor('Reis').emoji).not.toBe('🧊');
+});
