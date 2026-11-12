@@ -16,13 +16,14 @@ Rechne US-Pfund/Unzen in g, US fl oz in ml und Fahrenheit in Celsius um. Cups nu
 umrechnen, Näherung im note/warnings nennen; bei unbekannter Dichte stattdessen Volumen in ml behalten. Keine Ofenart erfinden.
 Einheiten g, ml, Stück, EL, TL bevorzugen. Alternativen, Mengenbereiche und nach Geschmack als note erhalten; keine falsche exakte Menge.
 prep_minutes/cook_minutes nur aus expliziten Zeitangaben. Schritte als Objekte: text und nullbasierte ingredient_indices zur Zutatenliste.
-In jedem Schritt die benötigten bekannten Mengen der benutzten Zutaten direkt im Text nennen. Mengen nur auf Schritte verteilen,
-wenn die Quelle dies hergibt; bei unklarer Aufteilung kennzeichnen. Keine Zahlen aus fremden Anweisungen übernehmen.
+Schreibe flüssige, gut lesbare deutsche Arbeitsanweisungen als normale Sätze. Bekannte Mengen stehen in Klammern direkt bei der jeweiligen Zutat im Satz, z. B. Paprikapulver (1 TL) hinzufügen. Danach den Reis dazugeben (200 g) und leicht anrösten lassen.
+Keine angehängte Zutatenliste, keine Sammelklammer am Schrittende und keine Wiederholung aller Zutatenmengen.
+Mengen nur auf Schritte verteilen, wenn die Quelle dies hergibt. Bei unklarer Teilmenge den natürlichen Hinweis im Schritt erhalten und die Unsicherheit unter warnings nennen; niemals die Rezeptgesamtmenge als Teilmenge einsetzen. Keine Zahlen aus fremden Anweisungen übernehmen.
 Keine Markdown-/HTML-Ausgabe, ausschließlich das vereinbarte JSON-Schema. Visuelle Inhalte wurden nicht analysiert, wenn nur Text vorliegt.`;
 export function prices(env:Env):{input:number;output:number}{
-  const model=env.OPENAI_MODEL||'gpt-5.4-mini';
-  if(model!=='gpt-5.4-mini'&&(!env.MODEL_INPUT_USD_PER_MILLION||!env.MODEL_OUTPUT_USD_PER_MILLION))throw new AppError('MODEL_PRICING','Für ein anderes Modell müssen die Tokenpreise konfiguriert werden.',503);
-  const input=Number(env.MODEL_INPUT_USD_PER_MILLION||'0.75'),output=Number(env.MODEL_OUTPUT_USD_PER_MILLION||'4.50');
+  const model=env.OPENAI_MODEL||'gpt-6.1-sol';
+  if(model!=='gpt-5.4-mini'&&model!=='gpt-6.1-sol'&&(!env.MODEL_INPUT_USD_PER_MILLION||!env.MODEL_OUTPUT_USD_PER_MILLION))throw new AppError('MODEL_PRICING','Für ein anderes Modell müssen die Tokenpreise konfiguriert werden.',503);
+  const input=Number(env.MODEL_INPUT_USD_PER_MILLION||(model==='gpt-6.1-sol'?'2.00':'0.75')),output=Number(env.MODEL_OUTPUT_USD_PER_MILLION||(model==='gpt-6.1-sol'?'10.00':'4.50'));
   if(!Number.isFinite(input)||!Number.isFinite(output)||input<=0||output<=0||input>100||output>1000)throw new AppError('MODEL_PRICING','Die Modellpreise sind ungültig.',503);
   return {input,output};
 }
@@ -37,8 +38,8 @@ export async function generateRecipe(source:Source,env:Env,importId:string,fetch
   const schema=z.toJSONSchema(outputSchema);delete schema.$schema;
   let response;
   try{
-    response=await client.responses.create({model:env.OPENAI_MODEL||'gpt-5.4-mini',store:false,
-      max_output_tokens:6000,input:[{role:'developer',content:instructions},{role:'user',content:source.text}],
+    response=await client.responses.create({model:env.OPENAI_MODEL||'gpt-6.1-sol',store:false,
+      max_output_tokens:6000,...((env.OPENAI_MODEL||'gpt-6.1-sol')==='gpt-6.1-sol'?{reasoning:{effort:'low' as const}}:{}),input:[{role:'developer',content:instructions},{role:'user',content:source.text}],
       text:{format:{type:'json_schema',name:'recipe',schema,strict:true}}},
       {headers:{'Idempotency-Key':importId}});
   }catch(error){

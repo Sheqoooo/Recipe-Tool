@@ -24,6 +24,7 @@ test('Sammlung, Rezeptlayout und Mengen funktionieren mit Beispieldaten',async({
   await page.getByRole('button',{name:'Cremiges Gemüse-Curry ansehen'}).click();
   await expect(page.locator('#recipe-dialog')).toBeVisible();
   await expect(page.locator('.method-list')).toContainText('Paprikapulver hinzufügen (1 TL)');
+  await expect(page.locator('.step-quantity')).toHaveCount(0);
   await expect(page.locator('.recipe-facts')).toContainText('20 Min.');
   await page.screenshot({path:info.outputPath('design-recipe.png')});
   await page.locator('.method-list').scrollIntoViewIfNeeded();
