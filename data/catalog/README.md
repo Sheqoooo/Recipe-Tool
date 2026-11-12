@@ -3,8 +3,8 @@
 This directory contains public source-derived food names only. No user records, API keys or raw source archives.
 
 - BLS 4.0: 3,425 selected entries, with original names and source identifiers.
-- Open Food Facts: 1,889 German ingredient-taxonomy entries and aliases.
-- Search projection: 5,138 unique names, plus the app's separately maintained household/common-product list.
+- Open Food Facts: 1,911 German ingredient-taxonomy entries and aliases.
+- Search projection: 5,160 unique names, plus the app's separately maintained household/common-product list.
 
 These are generic ingredient names, not a download of all branded supermarket products. BLS cooked preparations, recipe groups and many excessively long records are excluded. OFF entries require a recognized food ancestor and a usable German name; technical additives and extract/protein/aroma names are conservatively filtered. Results are not exhaustive. Storage form can affect department assignment; classifications are approximate. Emoji matching is deterministic and may use a category emoji.
 

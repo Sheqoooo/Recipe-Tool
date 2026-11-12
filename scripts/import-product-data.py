@@ -5,7 +5,7 @@ No network, AI calls, application data or production database access.
 import argparse,hashlib,io,json,re,unicodedata,zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
-VERSION=1
+VERSION=2
 def key(value):
     value=unicodedata.normalize('NFKD',value).casefold().replace('ß','ss')
     return ' '.join(re.sub(r'[^\w ]',' ',''.join(c for c in value if not unicodedata.combining(c))).split())
@@ -56,7 +56,7 @@ def import_bls(path):
     return sorted(entries,key=lambda e:(key(e['name']),e['id']))
 ROOTS=[
  ('produce',r'^(fruits?|vegetables?|fresh vegetables?|herbs?|mushrooms?|berries|citrus fruits?)$'),
- ('pantry',r'^(cereals?|grains?|nuts?|seeds?|legumes?|vegetable oils?|oils?|spices?|sugars?|sweeteners?|flours?|salts?|starches?|dried fruits?|pasta|vinegars?|sauces?)$'),
+ ('pantry',r'^(cereals?|grains?|nuts?|seeds?|legumes?|vegetable oils?|oils?|spices?|sugars?|sweeteners?|syrups?|caramel syrup|flours?|salts?|starches?|dried fruits?|pasta|vinegars?|sauces?)$'),
  ('chilled',r'^(milks?|dairy|dairy products?|cheeses?|yogurts?|eggs?|tofu|tempeh|butters?)$'),
  ('meat',r'^(meats?|fish|fishes|seafoods?|poultry|shellfish)$'),
  ('drinks',r'^(beverages?|drinks?|teas?|coffees?|fruit juices?|waters?)$'),
@@ -75,7 +75,8 @@ def import_off(path):
     def department(identity):
         queue=[identity];seen=set()
         while queue and len(seen)<100:
-            current=aliases.get(queue.pop(0),identity)
+            parent=queue.pop(0)
+            current=aliases.get(parent,parent)
             if current in seen:continue
             seen.add(current)
             for category,pattern in ROOTS:
