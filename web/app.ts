@@ -93,7 +93,7 @@ async function saveShoppingEntry(name:string){
  submit.disabled=true;input('#shopping-name').disabled=true;input('#shopping-quantity').disabled=true;
  try{
   await api('/api/shopping/items/save',{...(shoppingEditId?{id:shoppingEditId}:{}),name,quantity:input('#shopping-quantity').value});
-  resetShoppingForm();if($('#shopping-form').contains(document.activeElement)&&document.activeElement instanceof HTMLElement)document.activeElement.blur();refreshDock();await refresh();notify('Auf deiner Einkaufsliste.');
+  resetShoppingForm();await refresh();if($('#shopping-form').contains(document.activeElement)&&document.activeElement instanceof HTMLElement)document.activeElement.blur();refreshDock();notify('Auf deiner Einkaufsliste.');
  }finally{shoppingSaving=false;submit.disabled=state.read_only;input('#shopping-name').disabled=state.read_only;input('#shopping-quantity').disabled=state.read_only;}
 }
 async function selectProduct(index:number){
