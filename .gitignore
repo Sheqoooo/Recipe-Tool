@@ -28,6 +28,7 @@ private-backup.sql
 
 # Only attributed, public catalog snapshots belong in Git.
 !data/catalog/
+data/catalog/*
 !data/catalog/bls.json
 !data/catalog/open-food-facts.json
 !data/catalog/search.json
