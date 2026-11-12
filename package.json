@@ -18,7 +18,9 @@
     "deploy:production": "node scripts/release.mjs production",
     "deploy:preview": "node scripts/release.mjs preview",
     "db:migrate:production": "node scripts/release.mjs migrate",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "build:demo": "node scripts/build.mjs --demo",
+    "demo": "npm run build:demo && node scripts/serve-demo.mjs"
   },
   "dependencies": {
     "openai": "7.54.0",

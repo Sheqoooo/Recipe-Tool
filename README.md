@@ -1,4 +1,4 @@
-# Rezeptwerk / Recipe-Tool
+# Futterluke / Recipe-Tool
 
 Private gemeinsame Rezeptsammlung: **Link einfügen → auf Deutsch aufbereiten → direkt speichern**. Zutaten, metrische Mengen, bekannte Zeiten und Schritte mit Zutatenmengen werden strukturiert dargestellt. Gemeinsam ausgewählte Gerichte ergeben eine skalierbare Einkaufsliste.
 
@@ -87,3 +87,21 @@ Bestehende private SQLite-Dateien werden nicht automatisch in D1 übertragen. Vo
 ## Manuelle Prüfung nach Veröffentlichung
 
 Die konkrete [Smoke-Test-Checkliste](docs/SMOKE-TEST.md) umfasst Access einschließlich Assets/API/Preview, bestehende D1 und beide Migrationen, Quellen-/URL-Sicherheit, echte OpenAI-Imports nach gesonderter Kostenfreigabe sowie Koch- und Einkaufsliste. Sie ist vorbereitet, aber noch nicht live abgearbeitet.
+
+## Design ohne API-Kosten testen
+
+`npm run demo` startet eine separate lokale Design-Demo mit Beispielrezepten und simuliertem Import. Ohne D1, Cloudflare-Konto oder OpenAI-Key. Alternativ die portable `rezeptwerk-demo.html` aus dem CI-Artefakt `design-demo` im Browser öffnen. Produktionsbuild und Daten bleiben getrennt. [Bedienung, Mengenanzeige und Grenzen](docs/DESIGN-DEMO.md).
+
+### Futterluke: Rezeptbilder
+Die Oberfläche heißt Futterluke, mit dem Untertitel „Umwandlung von Rezepten“. Neue Webseitenimporte übernehmen nach Möglichkeit ein Bild aus Recipe-/Open-Graph-/Twitter-Metadaten. Bilder erscheinen in Sammlung und Rezept, mit Link zur Quellseite und vorhandenem Bildnachweis. Ohne geeignetes Bild bleibt das Emoji. Keine zusätzlichen KI-Aufrufe. Details: [Rezeptbilder](docs/RECIPE-IMAGES.md).
+
+### Einkaufsliste mit Kacheln
+Eigene Lebensmittel und Haushaltsartikel lassen sich unabhängig von Rezepten hinzufügen, mit Freitextmenge bearbeiten, abhaken, entfernen und erneut verwenden. Vorschläge aus einem eingebauten deutschen Katalog, eigenen Einträgen und Rezeptzutaten erscheinen direkt beim Tippen. Emojis werden lokal zugeordnet; unbekannte Produkte erhalten 🛒. Dafür werden keine OpenAI-Anfragen benötigt. Die Liste ist für aktive Mitglieder gemeinsam; Aktualisierungen anderer Geräte erscheinen nach Neuladen. Details: [Einkaufsliste](docs/SHOPPING.md).
+
+### Zwei verbundene Bereiche und iOS
+Startseite mit direkten Schaltflächen für Kochbuch und Einkaufsliste. Produktiv sind beide zusätzlich unter `/recipes/` und `/shopping/` erreichbar, mit eigenen App-Manifesten und weißen Home-Bildschirm-Symbolen (Zitrone bzw. Einkaufswagen). In Safari den jeweiligen Bereich öffnen → Teilen → Zum Home-Bildschirm. Access bleibt für alle Dateien erforderlich. Noch kein Offline-Betrieb der privaten App. Details: [iOS](docs/IOS.md).
+
+Vorschläge werden beim Antippen oder mit Pfeiltaste + Enter direkt gespeichert. Offene eigene Artikel und Rezeptzutaten erscheinen gemeinsam nach Einkaufsbereichen, alphabetisch innerhalb eines Bereichs. Jeder Zutat im Rezept lässt sich einzeln oder über „Alle Zutaten hinzufügen“ als Mengenkopie übernehmen. Die unabhängige Einkaufsliste benötigt weder Rezeptplanung noch OpenAI-Key. Recherche zur Sortierung und zu Lebensmitteldaten: [Datenquellen](docs/PRODUCT-DATA.md).
+
+### Importierter Produktkatalog
+Die lokale Suche enthält 5.160 unterschiedliche Lebensmittelbegriffe aus BLS 4.0 und der deutschen Open-Food-Facts-Zutatentaxonomie, ergänzt um Haushaltsartikel. Die Auswahl ist bereinigt und versioniert; keine Live-Abfrage oder KI beim Tippen. Rohlabels, IDs, Quellversionen, Hashes und Lizenzen liegen unter [data/catalog](data/catalog/README.md). Quellcode bleibt MIT; importierte Daten haben eigene CC-BY-/ODbL-Bedingungen. Nicht das komplette Markenartikelsortiment.

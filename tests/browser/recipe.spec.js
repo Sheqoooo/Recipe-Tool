@@ -71,7 +71,7 @@ test('Link eingeben, automatisch speichern, einkaufen und erst danach korrigiere
   await portion.fill('4');
   await portion.press('Tab');
   await expect(page.locator('#shopping-list')).toContainText('400 g');
-  await page.locator('#shopping-list input[type="checkbox"]').first().check();
+  await page.locator('#shopping-list input[data-check]').first().click();
   await expect(page.locator('.shopping-row.checked')).toHaveCount(1);
   await page.reload();
   await expect(page.locator('.shopping-row.checked')).toHaveCount(1);
@@ -86,4 +86,25 @@ test('Link eingeben, automatisch speichern, einkaufen und erst danach korrigiere
   await expect(page.locator('#recipe-grid')).toContainText('Korrigierte Tomatenpasta');
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('eigene Einkaufseinträge bleiben nach Neuladen gespeichert',async({page},info)=>{
+ const name='Spülmittel '+info.project.name;
+ await page.goto('/#shopping');await page.locator('#shopping-name').fill(name);await page.locator('#shopping-quantity').fill('2 Flaschen');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
+ await expect(page.locator('#manual-shopping-list')).toContainText(name);await page.reload();await expect(page.locator('#manual-shopping-list')).toContainText(name);
+ await page.locator('#manual-shopping-list .grocery-tile').filter({hasText:name}).getByRole('checkbox').click();
+ await page.reload();await expect(page.getByRole('button',{name:name+' erneut hinzufügen',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:name+' erneut hinzufügen',exact:true}).click();await page.getByRole('button',{name:name+' entfernen',exact:true}).click();
+ await expect(page.locator('#manual-shopping-list')).not.toContainText(name);
+});
+
+test('Rezepte und Einkaufsliste sind direkt erreichbar und getrennt auf iOS installierbar',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:/Meine Einkaufsliste/}).click();
+ await expect(page).toHaveURL(/\/shopping\//);await expect(page.locator('#view-shopping')).toBeVisible();
+ for(const key of ['recipes','shopping']){
+  const response=await page.request.get('/'+key+'/');const html=await response.text();expect(html).toContain('/'+key+'.webmanifest');expect(html).toContain('/icons/'+key+'-180.png');
+  const manifest=await(await page.request.get('/'+key+'.webmanifest')).json();expect(manifest.id).toBe('/'+key+'/');expect(manifest.start_url).toBe('/'+key+'/');expect(manifest.display).toBe('standalone');
+  const icon=await page.request.get('/icons/'+key+'-180.png');expect(icon.status()).toBe(200);expect([...((await icon.body()).subarray(0,8))]).toEqual([137,80,78,71,13,10,26,10]);
+ }
+ await page.getByRole('button',{name:/Meine Rezepte/}).click();await expect(page).toHaveURL(/\/recipes\/#collection/);
 });

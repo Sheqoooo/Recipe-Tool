@@ -110,6 +110,8 @@ Exportdateien gehören außerhalb des Repositories; `private-backup.sql` vor Ver
 - **403 NOT_INVITED:** Access ist erfolgreich, aber D1-Mitgliedschaft fehlt oder ist gesperrt. Admin und Access-Richtlinie müssen beide Zugriff erlauben.
 - **503:** Access-/D1-Konfiguration, ausstehende lokale/produktive Migration oder `OPENAI_API_KEY` prüfen. Keine Rohfehler/Secrets öffentlich posten.
 - **SOURCE_NOT_ALLOWED / SOURCE_PRIVATE:** Eine optional gesetzte Hostbeschränkung bzw. DNS-/Redirect-Ziele prüfen. Bei leerer Hostliste sind öffentliche Anbieter zugelassen. Interne Ziele nicht freischalten.
+- **AI_CREDITS_EMPTY / AI_QUOTA / AI_SPEND_LIMIT / AI_USAGE_LIMIT:** OpenAI meldet fehlendes Guthaben, ein Kontingent- oder Ausgabenlimit. Das verwendete API-Projekt bzw. die Organisation in der OpenAI-API-Abrechnung prüfen. ChatGPT Plus ist getrennt. Nicht blind wiederholt importieren oder ohne Prüfung Limits erhöhen; kein neuer API-Key erforderlich, solange dieser gültig ist.
+- **AI_RATE_LIMIT:** Kurzfristiges OpenAI-Anfragelimit; später erneut versuchen und bei Wiederholung API-Anfragelimits prüfen. **AI_LIMIT:** Nicht genauer klassifiziertes Anbieterlimit; Abrechnung und Anfragelimits prüfen. Die rohe Anbieterantwort wird nicht ausgegeben.
 - **IMPORT_LIMIT:** Paralleler Import, Anfragekontingent oder reserviertes Tages-/Monatsbudget erreicht. Keine unkontrollierten Wiederholungen starten.
 - **TRANSCRIPT_REQUIRED:** YouTube-Link allein ist nicht ausreichend. Rechtmäßig bereitgestelltes Transkript verwenden.
 - **GitHub Pages:** Öffentliche statische Vorschau, keine private D1-/OpenAI-Verbindung. Für die echte App die Access-geschützte Worker-Domain verwenden.
@@ -157,3 +159,19 @@ Im Deploy-Befehl stellt `CONFIRM_PRODUCTION_DEPLOY=1 npm run deploy:production` 
 ### Manuell beobachteter Stand am 9. November 2026
 
 Nach Angaben und Screenshots des Betreibers: Access-All-traffic mit E-Mail-Allow-Regel und One-time PIN funktioniert am Hello-World-Platzhalter; Production-Secrets und D1-Binding sind angelegt; sieben Anwendungstabellen, der ergänzte Listenindex und beide Migrationseinträge wurden eingerichtet bzw. vom Betreiber als erfolgreich bestätigt. GitHub ist mit main verbunden und der Deploy-Befehl wurde inklusive Freigabewert hinterlegt. Auf der gezeigten Deployment-Seite war weiterhin nur der Platzhalter aktiv. **Die eigentliche App und die vollständige Smoke-Test-Checkliste sind noch nicht live verifiziert.** Keine echten KI-Anfragen wurden durch Codex ausgeführt.
+
+OpenAI kann sowohl vorübergehende Anfragelimits als auch Guthaben-/Ausgaben-/Kontingentprobleme mit HTTP 429 melden. Die App unterscheidet bekannte Anbieter-Codes, statt pauschal zum späteren Wiederholen aufzufordern. Eine reine Bildschirmmeldung der älteren Version beweist deshalb noch keinen konkreten Abrechnungsgrund. [Offizielle Fehlerzuordnung](https://help.openai.com/en/articles/5955604-troubleshooting-api-rate-limits-and-429-errors)
+
+### Vor Veröffentlichung der Bildfunktion
+Migration `migrations/0003_recipe_images.sql` ist erforderlich. Sie legt ausschließlich `recipe_images` in der vorhandenen Datenbank an. Vorher Backup und explizite Freigabe; nicht automatisch während Build/Deploy ausführen. Standardmäßig nur lokal mit `npm run db:migrate:local` prüfen. Ohne Migration kann die neue Sammlung nicht geladen werden. Bestehende Rezepte werden nicht automatisch neu abgerufen. JSON-Export enthält Bildmetadaten, keine Bildbytes; vollständige Sicherung erfolgt mit D1 einschließlich BLOBs.
+
+### Vor Veröffentlichung der Einkaufskacheln
+Zusätzlich zu Migration 0003 benötigt dieser Stand `migrations/0004_shopping_items.sql`. Vorher Backup prüfen und Remote-Migration ausdrücklich freigeben; sie läuft niemals automatisch im Build oder Deployment. Die neue Tabelle wird in der bestehenden D1 angelegt. Lokal: `npm run db:migrate:local`. Weitere Secrets, API-Kosten oder Dienste sind für Autovervollständigung und Emojis nicht erforderlich. Ohne Migration 0004 kann der neue `/api/state` nicht vollständig geladen werden. Datenbankbackup enthält Einkaufseinträge; der bestehende Rezept-JSON-Export bleibt auf Rezepte beschränkt.
+
+### Weitere Voraussetzung: Zutatenübernahme und iOS
+Vor Veröffentlichung auch `0005_shopping_batch_limit.sql` nach Backup und ausdrücklicher Freigabe anwenden. Kein automatischer Build-/Deploy-Migrationsschritt. Der Trigger ergänzt das vorhandene Limit für atomare Zutaten-Batches; keine weitere Datenbank.
+
+Build generiert die beiden Installationsseiten, Manifeste und PNG-Symbole automatisch. Keine zusätzlichen Secrets und kein Icon-Dienst. Alle Pfade bleiben hinter Access. Nach Freigabe auf einem echten iPhone mit Safari sowohl `/recipes/` als auch `/shopping/` öffnen und getrennt zum Home-Bildschirm hinzufügen. Namen, Icons, Direktstart, erneute Access-Anmeldung und Rückwechsel testen. Diese Geräteprüfung kann nicht durch Chromium-Tests ersetzt werden. Aktuelle Live-Version bleibt bis zur Freigabe unverändert.
+
+### Freigabestand für Veröffentlichung
+Der Nutzer hat Import und Veröffentlichung beauftragt. Der Produktkatalog wird mit dem Build ausgeliefert und benötigt keinen D1-Import. Vor dem Zusammenführen/Deploy müssen die produktiven Schemastände 0003–0005 nach Backup geprüft und gegebenenfalls angewendet werden. Diese Schritte bleiben separat; der Deploymentbefehl führt sie nicht aus. Codex besitzt in dieser Umgebung keinen nutzbaren Cloudflare-Accountzugriff. Solange die Migrationen nicht bestätigt sind, nicht in einen fehlerhaften Produktivstand deployen. Die vorbereiteten Migrationen enthalten keine DROP-/DELETE-Anweisungen gegen bestehende Rezepte.

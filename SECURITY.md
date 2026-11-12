@@ -55,3 +55,17 @@ Eine URL kann Geheimnisse auch unter unbekannten Parameternamen oder im Pfad tra
 Die API-Redaktion schützt vor Ausgabe bestehender unsicherer source_url-Werte; sie ist keine rückwirkende Datenbereinigung. Bei tatsächlichem Altbestand ist nach gesonderter Freigabe eine private Prüfung/Bereinigung und gegebenenfalls Rotation betroffener Zugangsdaten nötig. Tests verwenden ausschließlich erfundene Marker.
 
 Die noch ausstehende [Live-Smoke-Test-Checkliste](docs/SMOKE-TEST.md) trennt lesende Access-/D1-Prüfungen, freizugebende Datenänderungen und gesondert freizugebende kostenpflichtige OpenAI-Aufrufe.
+
+### Bilder fremder Rezeptseiten
+Bilder sind nicht vertrauenswürdig. HTTPS, Secret-Query-Prüfung, öffentliche DNS-/Egress-Prüfung pro Redirect, maximal zwei Redirects, fünf Sekunden Abruf-Timeout je Hop, maximal 1 MiB und 16 Megapixel; nur JPEG/PNG/WebP mit passenden Signaturen. SVG/HTML werden abgewiesen. Diese Prüfung ist keine vollständige Bilddecoder-Validierung; beschädigte Bilder können vom Browser verworfen werden. Ausgabe ausschließlich über authentifizierte Same-Origin-Route mit nosniff und private/no-store. Keine Drittanbieter-Requests beim Öffnen; keine Original-Bild-URLs in API-Antworten. Quellen-/Urhebertexte werden escaped. Ein Quellenlink ersetzt keine Bildnutzungsrechte; Betreiber müssen die Nutzung für ihr privates Kochbuch prüfen.
+
+### Manuelle Einkaufseinträge
+Die neuen POST-Routen `/api/shopping/items/save`, `/api/shopping/items/check` und `/api/shopping/items/delete` durchlaufen dieselbe JWT-, Mitglieds- und Origin-Prüfung wie alle Schreibzugriffe. Alle aktiven Mitglieder dürfen die gemeinsame manuelle Einkaufsliste verändern. Namen maximal 100, Mengen maximal 60 Zeichen; UUIDs und Status werden serverseitig geprüft, SQL parametrisiert, UI-Texte escaped. Emoji-Zuordnungen kommen aus dem eigenen Katalog. Keine neuen externen Dienste und keine Übertragung von Suchbegriffen oder Einkaufsdaten an OpenAI. Maximal 500 gespeicherte Einträge einschließlich erledigter Artikel. Neue Ressourcen oder öffentliche Vorschlags-Endpunkte sind nicht erforderlich.
+
+### Installierbare Einstiege und Zutatenübernahme
+Auch `/recipes/`, `/shopping/`, Manifeste und Icons durchlaufen JWT- und Mitgliedsprüfung vor der Asset-Auslieferung. Keine öffentliche Ausnahme für Installationsmetadaten. iOS darf eine eigene Anmeldung für gespeicherte Web-Apps verlangen; das Access-Verhalten muss auf echten Geräten geprüft werden. Kein Service Worker speichert Kochbuch- oder Einkaufsdaten offline.
+
+Zutatenübernahme benötigt aktive Mitgliedschaft und dieselben Origin-Schutzheader wie andere Änderungen. Namen und Mengen stammen aus dem gespeicherten Rezept, nicht aus vom Browser eingereichten Zutatenobjekten. Indizes werden validiert, Mengen serverseitig formatiert, alle Einträge vor dem Schreiben geprüft. Trigger und D1-Batch verhindern Teilimporte bei erschöpfter Kapazität. Es entsteht kein weiterer KI-Aufruf.
+
+### Importierte öffentliche Katalogdaten
+Nur ausdrücklich freigegebene Dateien unter `data/catalog/` sind vom bisherigen `data/*`-Ignore ausgenommen. Keine Roharchive und keine privaten Nutzer-/Datenbankkopien werden eingecheckt. Quellen wurden an Version/Hash gebunden; Namen und Aliasgrößen werden geprüft. Suchdaten werden wie andere Strings escaped. Ein Katalog ist keine medizinische, ernährungsbezogene oder Verfügbarkeitsgarantie. Keine API-Abfrage von Tipptexten. Lizenz-/Herkunftshinweise werden sichtbar angezeigt; `/catalog/` ist ebenfalls hinter Access.

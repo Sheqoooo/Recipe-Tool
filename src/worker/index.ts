@@ -1,11 +1,12 @@
 import type { Env } from "./env.js";
-import type { Source,Generated,Member,AppState } from '../shared/types.js';
+import type { Source,Generated,Member,AppState,RecipeImageData } from '../shared/types.js';
 import { AppError } from '../shared/errors.js';
 import { recipeSchema,validateRecipe,shoppingList } from '../shared/recipe.js';
 import { Repository } from './db.js';
 import { authenticate,verifyIdentity } from './auth.js';
 import { normalizeUrl,isYouTube,youtubeUrl,readWeb,transcriptSource } from './source.js';
 import { generateRecipe,reservationCost } from './openai.js';
+import { fetchRecipeImage } from './image.js';
 
 const security={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
   'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
@@ -28,6 +29,7 @@ function assertWrite(request:Request):void{
 }
 function admin(actor:Member):void{if(actor.role!=='admin')throw new AppError('FORBIDDEN','Nur Administratoren dürfen diese Aktion ausführen.',403);}
 export interface Dependencies {
+  image?:typeof fetchRecipeImage;
   generate?:(source:Source,env:Env,id:string)=>Promise<Generated>;
   read?:(url:string,env:Env)=>Promise<Source>;
 }
@@ -49,9 +51,11 @@ export function createApp(deps:Dependencies={}){
       if(!env.DB)throw new AppError('DB_CONFIGURATION','Die Datenbank ist noch nicht eingerichtet.',503);
       const repo=new Repository(env.DB),actor=await authenticate(request,env,repo);
       if(request.method==='GET'){
+        const imageMatch=path.match(/^\/api\/recipes\/([1-9][0-9]*)\/image$/);
+        if(imageMatch){const image=await repo.image(id(Number(imageMatch[1])));if(!image)throw new AppError('NOT_FOUND','Kein Rezeptbild vorhanden.',404);return protect(new Response(new Uint8Array(image.content),{headers:{'Content-Type':image.mime_type}}));}
         if(path==='/api/state'){
           const recipes=await repo.recipes(actor),plan=await repo.plan(recipes);
-          return json({recipes,plan,shopping:shoppingList(plan),checked:await repo.checked(),user:actor,
+          return json({recipes,plan,shopping:shoppingList(plan),manual_items:await repo.shoppingItems(),checked:await repo.checked(),user:actor,
             members:actor.role==='admin'?await repo.members():[],imports:await repo.history(actor),has_key:Boolean(env.OPENAI_API_KEY),read_only:false} satisfies AppState);
         }
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
@@ -59,6 +63,10 @@ export function createApp(deps:Dependencies={}){
       }
       if(request.method!=='POST')throw new AppError('METHOD','Methode nicht erlaubt.',405);
       assertWrite(request);const data=await body(request);
+      if(path==='/api/shopping/from-recipe'){await repo.recipeToShopping(id(data.recipe_id),data.ingredient_indices,actor);return json({ok:true});}
+      if(path==='/api/shopping/items/save'){await repo.saveShoppingItem(data,actor);return json({ok:true});}
+      if(path==='/api/shopping/items/check'){await repo.checkShoppingItem(data.id,data.checked);return json({ok:true});}
+      if(path==='/api/shopping/items/delete'){await repo.deleteShoppingItem(data.id);return json({ok:true});}
       if(path==='/api/import'){
         const url=normalizeUrl(data.value);
         let source:Source|undefined;
@@ -75,7 +83,9 @@ export function createApp(deps:Dependencies={}){
           source.url=normalizeUrl(source.url).href;
           const generated=await(deps.generate||generateRecipe)(source,env,importId);
           const recipe=validateRecipe(generated.recipe);
-          const recipeId=await repo.save(recipe,actor,source,importId,generated.usage);
+          let image:RecipeImageData|undefined;
+          if(source.kind==='web'&&source.image){try{image=await(deps.image||fetchRecipeImage)(source.image,env);}catch{/* An optional image must not discard a valid recipe. */}}
+          const recipeId=await repo.save(recipe,actor,source,importId,generated.usage,image);
           return json({id:recipeId,existing:false},201);
         }catch(error){await repo.fail(importId,error instanceof AppError?error.code:'IMPORT_FAILED',error instanceof AppError?error.usage:undefined);throw error;}
       }
