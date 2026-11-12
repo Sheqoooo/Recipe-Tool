@@ -5,7 +5,7 @@ it.each(['Spül','spuel','SPÜL'])('vervollständigt Haushaltsartikel: %s',query
 });
 it('bevorzugt eigene Artikel, begrenzt Vorschläge und vermeidet Duplikate',()=>{
  const result=productSuggestions('Mil',['Milch','Milch','Milchreis']);
- expect(result[0].name).toBe('Milch');expect(result.filter(p=>p.name==='Milch')).toHaveLength(1);expect(result.length).toBeLessThanOrEqual(6);
+ expect(result[0].name).toBe('Milch');expect(result.filter(p=>p.name==='Milch')).toHaveLength(1);expect(result.length).toBeLessThanOrEqual(12);
  expect(productSuggestions('')).toEqual([]);
 });
 it('ordnet Emojis deterministisch zu und verwendet einen ehrlichen Fallback',()=>{

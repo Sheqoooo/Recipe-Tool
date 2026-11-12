@@ -5,7 +5,9 @@ export function installShoppingDock(){
  let scheduled=false;
  function update(){
   scheduled=false;
-  if(!mobile.matches||document.body.dataset.view!=='shopping'){delete document.body.dataset.groceryKeyboard;return;}
+  if(!mobile.matches||document.body.dataset.view!=='shopping'){delete document.body.dataset.groceryKeyboard;delete document.body.dataset.grocerySearch;document.querySelector<HTMLElement>('#shopping-search-backdrop')!.hidden=true;return;}
+  const searching=form.contains(document.activeElement);
+  document.body.dataset.grocerySearch=String(searching);document.querySelector<HTMLElement>('#shopping-search-backdrop')!.hidden=!searching;
   const viewport=window.visualViewport,navHeight=nav.getBoundingClientRect().height,composerHeight=form.getBoundingClientRect().height;
   const geometry=dockGeometry({layoutHeight:innerHeight,viewportHeight:viewport?.height||innerHeight,viewportTop:viewport?.offsetTop||0,navHeight,composerHeight,focused:form.contains(document.activeElement)});
   const style=document.body.style;
