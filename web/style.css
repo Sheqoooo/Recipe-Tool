@@ -55,3 +55,6 @@ dialog{max-width:none;width:100%;height:100dvh;max-height:100dvh;margin:0;border
 
 .grocery-check input,.shopping-row.grocery-tile>input{z-index:1}
 .grocery-tile-tools{z-index:2}
+
+#shopping-list>.field-help{grid-column:1/-1}
+.grocery-tile strong{hyphens:auto}

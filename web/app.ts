@@ -89,6 +89,7 @@ function renderManualShopping(){
 }
 function renderShopping(){
   renderManualShopping();
+  $('#recipe-shopping').hidden=!state.plan.length;
   $('#plan-list').innerHTML=state.plan.length?state.plan.map(p=>`<article class="plan-card"><h3>${esc(p.recipe.title)}</h3><div class="portion-control"><label class="sr-only" for="portion-${p.recipe_id}">Portionen für ${esc(p.recipe.title)}</label><input id="portion-${p.recipe_id}" type="number" min="0.01" max="1000" step="any" value="${p.servings}" data-portions="${p.recipe_id}"><span>Portionen</span><button class="text-button danger" data-remove="${p.recipe_id}">Entfernen</button></div></article>`).join(''):empty('Was möchtet ihr kochen?','Wählt Gerichte aus eurer Sammlung.');
   $('#shopping-list').innerHTML=state.shopping.length?state.shopping.map(i=>{const p=productFor(i.name);return `<label class="shopping-row grocery-tile tone-${p.tone} ${state.checked.includes(i.key)?'checked':''}"><input type="checkbox" data-check="${esc(i.key)}" ${state.checked.includes(i.key)?'checked':''}><span><span class="grocery-emoji" aria-hidden="true">${p.emoji}</span><strong>${esc(quantity(i))} ${esc(i.name)}</strong><small>${esc(i.note)}</small><small>${esc(i.recipes.join(' · '))}${i.amount===null?' · Menge bitte prüfen':''}</small></span></label>`;}).join(''):'<p class="field-help">Hier erscheinen die Zutaten eurer Gerichte.</p>';
   input('#copy-list').disabled=!state.shopping.some(i=>!state.checked.includes(i.key))&&!(state.manual_items||[]).some(i=>!i.checked);
