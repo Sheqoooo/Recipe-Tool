@@ -20,5 +20,5 @@ test('lemon artwork stays byte-identical and shopping has transparent/light/dark
  assert.deepEqual([...pixels(iconPng('shopping',180)).subarray(1,5)],[0,0,0,0]);
  assert.deepEqual([...pixels(iconPng('shopping',180,'light')).subarray(1,4)],[255,255,255]);
  assert.deepEqual([...pixels(iconPng('shopping',180,'dark')).subarray(1,4)],[30,32,29]);
- const dark={...appDefinitions[1],iconAppearance:'dark'};assert.equal(appManifest(dark).id,'/shopping/');assert.ok(appHtml('<head></head>',dark).includes('/shopping-dark.webmanifest'));
+ const dark={...appDefinitions[1],iconAppearance:'dark'};assert.equal(appManifest(dark).id,'/shopping/');assert.equal(appManifest(dark).start_url,'/shopping/dark/');assert.ok(appHtml('<head></head>',dark).includes('/shopping-dark.webmanifest'));
 });

@@ -112,6 +112,6 @@ test('Rezepte und Einkaufsliste sind direkt erreichbar und getrennt auf iOS inst
 test('shopping icon metadata uses the filled bag and offers an explicit dark installation entry',async({page})=>{
  const normal=await(await page.request.get('/shopping/')).text(),dark=await(await page.request.get('/shopping/dark/')).text();
  expect(normal).toContain('shopping-bag-auto-180-v2.png');expect(dark).toContain('shopping-bag-dark-180-v2.png');expect(dark).toContain('/shopping-dark.webmanifest');
- const manifest=await(await page.request.get('/shopping-dark.webmanifest')).json();expect(manifest.id).toBe('/shopping/');expect(manifest.start_url).toBe('/shopping/');
+ const manifest=await(await page.request.get('/shopping-dark.webmanifest')).json();expect(manifest.id).toBe('/shopping/');expect(manifest.start_url).toBe('/shopping/dark/');
  const icon=await(await page.request.get('/icons/shopping-bag-auto-180-v2.png')).body();expect(icon[25]).toBe(6);
 });

@@ -21,3 +21,5 @@ Eine automatische Umschaltung bereits installierter Home-Symbole wird nicht beha
 Nach dem Update das bisherige Einkaufslisten-Home-Symbol entfernen und aus Safari neu hinzufügen, damit nicht der zwischengespeicherte Wagen verwendet wird. Die neue Icon-Datei hat einen neuen Dateinamen. Die Anwendung selbst bleibt im bisherigen hellen Design. Echter iOS-Test von automatischer Darstellung und Home-Symbolcache steht aus; der dunkle Installationsweg und PNG-Dateien werden automatisiert geprüft.
 
 Referenzen: [WebKit: Manifest- und Apple-Touch-Icons](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/), [Apple-Entwicklerforum: PWA-Dunkelmodus-Symbole](https://developer.apple.com/forums/thread/761615), [W3C: Manifest-Farbthemen betreffen Theme-/Hintergrundfarben](https://www.w3.org/TR/appmanifest/#color_scheme_dark-member).
+
+Der ausdrücklich dunkle Installationsweg startet dauerhaft unter /shopping/dark/, damit beim erneuten Öffnen dieselben dunklen Installationsmetadaten geladen werden. Die App-ID bleibt /shopping/.
