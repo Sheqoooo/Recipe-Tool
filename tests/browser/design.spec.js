@@ -154,3 +154,15 @@ test('mobile Artikelsuche zeigt Kachelraster, Leeren und Abbrechen ohne versteck
  await name.fill('Tom');await page.getByRole('button',{name:'Abbrechen',exact:true}).click();
  await expect(name).toHaveValue('');await expect(nav).toBeVisible();await expect(page.locator('#shopping-search-backdrop')).toBeHidden();
 });
+
+test('Chiliflocken und Nutella erhalten passende Vorschläge, Emojis und Einkaufsbereiche ohne KI',async({page})=>{
+ const external=[];page.on('request',r=>{if(/^https?:/.test(r.url()))external.push(r.url());});
+ await page.goto(demo);await page.getByRole('button',{name:/Meine Einkaufsliste/}).click();
+ await page.locator('#shopping-name').fill('Chiliflo');await page.getByRole('option',{name:'Chiliflocken',exact:true}).click();
+ const chili=page.locator('#manual-shopping-list .grocery-tile').filter({hasText:'Chiliflocken'});
+ await expect(chili.locator('.grocery-emoji')).toHaveText('🌶️');await expect(page.locator('[data-department="pantry"]')).toContainText('Chiliflocken');
+ await page.locator('#shopping-name').fill('Nute');await page.getByRole('option',{name:'Nutella',exact:true}).click();
+ const brand=page.locator('#manual-shopping-list .grocery-tile').filter({hasText:'Nutella'});
+ await expect(brand.locator('.grocery-emoji')).toHaveText('🍫');await expect(page.locator('[data-department="pantry"]')).toContainText('Nutella');
+ expect(external).toEqual([]);
+});

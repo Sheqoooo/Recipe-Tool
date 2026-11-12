@@ -18,3 +18,5 @@ it('sortiert gemischte Artikel nach Einkaufsweg und innerhalb alphabetisch, ohne
  expect(result[0].items.map(i=>i.name)).toEqual(['Äpfel','Zitrone']);expect(result[0].items.map(i=>i.origin)).toEqual(['manual','recipe']);expect(input).toEqual(before);
  expect(groupShopping([])).toEqual([]);
 });
+
+it.each([['Gehackte rote Chiliflocken','pantry'],['Chilipulver','pantry'],['Chilischoten','produce'],['Knoblauchgranulat','pantry'],['Nutella 750 g','pantry'],['Philadelphia','chilled'],['Coca-Cola','drinks']])('ordnet zusätzliche Varianten und Marken passend ein: %s',(name,id)=>expect(departmentFor(name)).toBe(id));

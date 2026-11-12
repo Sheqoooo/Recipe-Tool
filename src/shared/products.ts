@@ -1,3 +1,4 @@
+import {additionalProducts} from './product-vocabulary.js';
 import importedRows from '../../data/catalog/search.json';
 import type {DepartmentId} from './shopping-order.js';
 import {productKey} from './shopping-entry.js';
@@ -8,12 +9,12 @@ export interface Product {name:string;emoji:string;tone:ProductTone;aliases?:str
 const groups:[ProductTone,string][]=[
  ['mint','🥑 Avocado|🍆 Aubergine|🥦 Brokkoli|🥬 Salat,Kopfsalat,Eisbergsalat|🥬 Spinat|🥬 Rosenkohl|🥬 Grünkohl|🥬 Artischocken|🥒 Gurke|🥒 Zucchini|🫑 Paprika|🫛 Erbsen|🫛 Bohnen|🌿 Basilikum|🌿 Petersilie|🌿 Koriander|🌿 Schnittlauch|🌿 Minze|🫒 Oliven'],
  ['peach','🥕 Karotten,Möhren,Karotte,Möhre|🥔 Kartoffeln,Kartoffel|🍠 Süßkartoffeln|🧅 Zwiebeln,Zwiebel|🧄 Knoblauch|🍄 Pilze,Champignons|🫚 Ingwer|🎃 Kürbis|🌽 Mais|🥜 Kichererbsen|🥜 Linsen|🥜 Nüsse|🥜 Mandeln|🥜 Erdnüsse|🥜 Walnüsse|🧈 Tofu|🧈 Tempeh'],
- ['rose','🍎 Äpfel,Apfel|🍐 Birnen|🍓 Erdbeeren|🫐 Heidelbeeren,Blaubeeren|🍇 Trauben|🍒 Kirschen|🍉 Wassermelone|🍑 Pfirsiche|🍅 Tomaten,Tomate|🥩 Rindfleisch|🥩 Hackfleisch|🍗 Hähnchen,Hühnchen,Hähnchenbrust|🥓 Speck|🌭 Würstchen|🐟 Fisch|🐟 Lachs|🍤 Garnelen|🌶️ Chili|🌶️ Paprikapulver'],
+ ['rose','🍎 Äpfel,Apfel|🍐 Birnen|🍓 Erdbeeren|🫐 Heidelbeeren,Blaubeeren|🍇 Trauben|🍒 Kirschen|🍉 Wassermelone|🍑 Pfirsiche|🍅 Tomaten,Tomate|🥩 Rindfleisch|🥩 Hackfleisch|🍗 Hähnchen,Hühnchen,Hähnchenbrust|🥓 Speck|🌭 Würstchen|🐟 Fisch|🐟 Lachs|🍤 Garnelen|🌶️ Chili,Chilli,Chilis|🌶️ Paprikapulver'],
  ['lemon','🍌 Bananen,Banane|🍋 Zitronen,Zitrone|🍋 Limetten|🍊 Orangen|🍍 Ananas|🥭 Mango|🧀 Käse|🧀 Parmesan|🧀 Feta|🧀 Mozzarella|🧈 Butter|🥚 Eier,Ei|🍯 Honig|🫙 Olivenöl|🫙 Sonnenblumenöl|🫙 Rapsöl|🫙 Essig|🧂 Salz,Meersalz,Urmeersalz|🧂 Pfeffer|🧂 Zimt|🧂 Curry|🫙 Senf|🫙 Ketchup|🫙 Mayonnaise'],
  ['lilac','🍞 Brot|🥖 Baguette|🥐 Croissants|🥯 Brötchen|🍝 Nudeln,Pasta,Spaghetti|🍚 Reis|🌾 Mehl|🌾 Haferflocken|🌾 Couscous|🌾 Bulgur|🌾 Quinoa|🍬 Zucker|🍫 Schokolade|🍪 Kekse|🧁 Backpulver|🧁 Vanillezucker|🧁 Hefe|🥜 Erdnussbutter|🫙 Marmelade|🧂 Gemüsebrühe|🫙 Sojasauce|🫙 Tomatenmark'],
  ['blue','🥛 Milch,Vollmilch|🥛 Hafermilch,Haferdrink|🥛 Sojamilch,Sojadrink|🥛 Mandelmilch|🥛 Joghurt|🥛 Sahne|🥛 Quark|🥥 Kokosmilch|💧 Wasser,Mineralwasser|🧃 Saft,Orangensaft,Apfelsaft|☕ Kaffee|🍵 Tee|🍷 Weißwein,Weisswein|🍷 Rotwein|🍺 Bier|🧊 Tiefkühlerbsen|🧊 Eis|🧼 Spülmittel,Spuelmittel|🧼 Spülmaschinentabs,Geschirrspültabs|🧽 Schwämme,Schwamm|🧴 Waschmittel|🧴 Weichspüler|🧴 Allzweckreiniger|🧴 Glasreiniger|🧻 Toilettenpapier,Klopapier|🧻 Küchenrolle,Küchenpapier|🗑️ Müllbeutel,Müllsäcke|🧴 Shampoo|🧴 Duschgel|🪥 Zahnpasta|🪥 Zahnbürste|🧼 Seife|🧻 Taschentücher|👶 Windeln|🐈 Katzenfutter|🐕 Hundefutter|💧 Luftentfeuchterbeutel'],
 ];
-const curatedProducts:Product[]=groups.flatMap(([tone,items])=>items.split('|').map(item=>{const [emoji,...rest]=item.trim().split(' ');const [name,...aliases]=rest.join(' ').split(',');return {name,emoji,tone,aliases};}));
+const curatedProducts:Product[]=[...groups.flatMap(([tone,items])=>items.split('|').map(item=>{const [emoji,...rest]=item.trim().split(' ');const [name,...aliases]=rest.join(' ').split(',');return {name,emoji,tone,aliases};})),...additionalProducts];
 const departmentPresentation:Record<DepartmentId,[string,ProductTone]>={produce:['🥬','mint'],bakery:['🥖','peach'],pantry:['🫙','lemon'],drinks:['🧃','blue'],household:['🧼','lilac'],other:['🛒','mint'],chilled:['🥛','blue'],meat:['🐟','rose'],frozen:['🧊','blue']};
 const curatedIndex=curatedProducts.map(p=>({p,keys:[p.name,...p.aliases||[]].map(productKey)}));
 const importedProducts:Product[]=importedRows.map(row=>{
