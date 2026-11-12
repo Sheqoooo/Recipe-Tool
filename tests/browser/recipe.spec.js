@@ -71,7 +71,7 @@ test('Link eingeben, automatisch speichern, einkaufen und erst danach korrigiere
   await portion.fill('4');
   await portion.press('Tab');
   await expect(page.locator('#shopping-list')).toContainText('400 g');
-  await page.locator('#shopping-list input[data-check]').first().check();
+  await page.locator('#shopping-list input[data-check]').first().click();
   await expect(page.locator('.shopping-row.checked')).toHaveCount(1);
   await page.reload();
   await expect(page.locator('.shopping-row.checked')).toHaveCount(1);

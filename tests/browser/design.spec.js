@@ -33,7 +33,7 @@ test('Sammlung, Rezeptlayout und Mengen funktionieren mit Beispieldaten',async({
   await page.locator('[data-add]').first().click();await page.getByRole('button',{name:/Einkaufsliste/}).click();
   const portion=page.locator('[data-portions]').first();await portion.fill('4');await portion.press('Tab');
   await expect(page.locator('#shopping-list')).toContainText('800 ml');
-  await page.locator('#shopping-list input[data-check]').first().check();await expect(page.locator('.shopping-row.checked')).toHaveCount(1);
+  await page.locator('#shopping-list input[data-check]').first().click();await expect(page.locator('.shopping-row.checked')).toHaveCount(1);
   await page.screenshot({path:info.outputPath('design-shopping.png'),fullPage:true});
   if(info.project.name==='mobile'){await page.setViewportSize({width:320,height:740});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
   expect(errors).toEqual([]);
