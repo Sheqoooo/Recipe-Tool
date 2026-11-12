@@ -13,7 +13,7 @@
     "APP_ORIGIN": "https://recipe-tool.sahin-erengil92.workers.dev",
     "ACCESS_ISSUER": "https://round-lab-d812.cloudflareaccess.com", "ACCESS_AUD": "a5d9fe68a636276a09809bfacb4045255cfecc5df5795bce43d1820c253b69fa",
     "RECIPE_ALLOWED_HOSTS": "",
-    "OPENAI_MODEL": "gpt-6.1-sol", "MODEL_INPUT_USD_PER_MILLION": "2.00", "MODEL_OUTPUT_USD_PER_MILLION": "10.00",
+    "MEDIA_UPLOAD_ENABLED": "false", "OPENAI_VIDEO_MODEL": "gpt-6.1-terra", "OPENAI_AUDIO_MODEL": "gpt-4o-mini-transcribe", "OPENAI_MODEL": "gpt-6.1-sol", "MODEL_INPUT_USD_PER_MILLION": "2.00", "MODEL_OUTPUT_USD_PER_MILLION": "10.00",
     "MAX_PARALLEL_IMPORTS": "2", "USER_IMPORTS_PER_MINUTE": "5", "USER_IMPORTS_PER_DAY": "30",
     "DAILY_BUDGET_MICROUSD": "2000000", "MONTHLY_BUDGET_MICROUSD": "10000000"
   },

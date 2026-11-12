@@ -11,7 +11,7 @@ Private gemeinsame Rezeptsammlung: **Link einfügen → auf Deutsch aufbereiten 
 - Offizielles OpenAI-SDK, Responses API, Structured Outputs und serverseitige Zod-Validierung.
 - Persistente Anfrage-, Parallelitäts- und Kostenlimits; Importhistorie mit Verbrauchsschätzungen.
 - Suche, Korrektur, Portionsskalierung, gemeinsame Häkchen und Rezept-JSON-Export.
-- YouTube-Transkriptimport nach Nutzungsbestätigung; **kein automatischer Abruf beliebiger Videos oder fremder Untertitel**.
+- Bereitgestellte Videobeschreibungen/Transkripte nach Nutzungsbestätigung; **kein automatischer Abruf beliebiger Videos oder fremder Untertitel**.
 
 ## Lokal entwickeln
 
@@ -44,7 +44,7 @@ Portionen, Zeiten und Mengen dürfen unbekannt sein. Die KI soll diese nicht erf
 
 Öffentlich erreichbare HTTPS-Rezeptseiten können ohne vorherige Domainfreigabe importiert werden. Eine leere `RECIPE_ALLOWED_HOSTS`-Variable ist der Standard; eine nicht leere Liste kann den Import optional auf exakte Hostnamen beschränken. schema.org-Rezeptdaten werden auf Titel, Zutaten, Schritte, Portionen und Zeiten reduziert; große Bewertungen, Bilder und andere Metadaten werden ausgelassen. Ohne strukturierte Daten werden Rezeptkarten und erkennbare Zutaten-/Zubereitungsabschnitte gegenüber Seitentext bevorzugt. Maximal 2 MB HTML und 20 KB extrahierter Text; der eigentliche Rezeptkern wird nicht still gekürzt. Interne Adressen, ungültige Redirects und zu große Quellen werden abgewiesen. Dynamisch gerenderte oder blockierte Seiten können nicht immer importiert werden.
 
-**Eingeschränkter Zwischenstand:** Automatischer YouTube-Videoimport bleibt das langfristige Produktziel und ist noch nicht implementiert. YouTube-Links werden erkannt und benötigen derzeit ein rechtmäßig bereitgestelltes Transkript (max. 20 KB, angegebene Videolänge bis 20 Minuten). Es findet keine Bild-/Audioanalyse statt. Die modulare `Source`-Übergabe erlaubt spätere sichere Audio-/Frameadapter; diese sind noch nicht implementiert. [Mediengrenzen und Kosten](docs/OPENAI-VIDEO.md).
+Kurzvideo-Links werden zunächst auf öffentliche Rezeptbeschreibungen oder verlinkte Rezeptseiten geprüft. Falls der Zugriff nicht reicht, können Nutzer Text bereitstellen. Ein Audio-/Einzelbild-Dateipfad ist implementiert und lokal mit Mocks testbar, bleibt produktiv bis zur Freigabe von Hosting und Audio-Berechtigung deaktiviert (`MEDIA_UPLOAD_ENABLED=false`). Kein automatischer Download beliebiger Videos oder fremder Untertitel. [Mediengrenzen und Kosten](docs/OPENAI-VIDEO.md).
 
 ## Tests
 
@@ -112,3 +112,7 @@ Auf Smartphones bleibt die Einkaufseingabe am unteren Bildschirmrand über der N
 Die Einkaufsliste beginnt mit einer kompakten Überschrift und direkt den Produktkategorien. Der frühere Untertitel wurde entfernt. Artikelzahl, Kopieren, Quellen-/Lizenzhinweise und Sortiererklärung stehen am Ende der Liste und bleiben beim Scrollen erreichbar; die mobile Eingabe bleibt unten fixiert.
 
 Neue Importe verwenden GPT-6.1 Sol mit geringem Denkaufwand und Mengen in Klammern im Anweisungssatz. Die zusätzliche Zutatenklammer am Schrittende entfällt auch bei bestehenden Rezepten. Alte Rezepttexte werden nicht kostenpflichtig neu generiert. Details und Kostenbeispiel: [OpenAI-Integration](docs/OPENAI-VIDEO.md).
+
+Kurzvideos: YouTube-Shorts, Instagram-Reel-/Post- und TikTok-Links werden zuerst auf eine öffentliche Rezeptbeschreibung oder verlinkte Rezeptseite geprüft. Falls diese nicht ausreicht, können ein autorisierter Text oder ein kurzes Video mit Ton bereitgestellt werden. Der Browser bereitet bis zu drei Minuten / 20 MB auf; OpenAI wertet Ton und sechs Einzelbilder aus. Kein automatischer Plattform-Download, kein garantierter Zugriff auf jeden Link und keine vollständige Frame-für-Frame-Analyse. Einrichtung, Modelle, Kostenlimits und Codec-/iPhone-Grenzen: [Videoimport](docs/OPENAI-VIDEO.md).
+
+Der Dateiimport ist produktiv vorerst gesperrt. Öffentliche Beschreibungs-/Textimporte benötigen keinen neuen Cloudflare-Tarif; für Mediendaten muss die Worker-Laufzeit separat freigegeben und geprüft werden. Details siehe Deployment.

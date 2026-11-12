@@ -166,3 +166,39 @@ test('Chiliflocken und Nutella erhalten passende Vorschläge, Emojis und Einkauf
  await expect(brand.locator('.grocery-emoji')).toHaveText('🍫');await expect(page.locator('[data-department="pantry"]')).toContainText('Nutella');
  expect(external).toEqual([]);
 });
+
+test('Videolink versucht erst automatisch den Import und bietet danach Text als Alternative',async({page})=>{
+ await page.goto(demo);await page.locator('#source').fill('https://www.instagram.com/reel/demo/');
+ await expect(page.locator('#transcript-panel')).toBeHidden();
+ await page.locator('#import-submit').click();await expect(page.locator('#transcript-panel')).toBeVisible();
+ await page.locator('#transcript').fill('Zutaten: 200 g Tomaten und 100 g Reis. Reis kochen und Tomaten würfeln. Alles zusammen servieren.');
+ await page.locator('#transcript-authorized').check();await page.locator('#import-submit').click();
+ await expect(page.locator('#recipe-grid')).toContainText('Dein importiertes Beispielrezept');
+});
+
+test('bereitgestelltes synthetisches Video wird im Browser in Ton und Bilder zerlegt, ohne Netz oder KI',async({page})=>{
+ await page.goto(demo);await page.locator('#source').fill('https://www.instagram.com/reel/local-video/');
+ await page.locator('#provide-video').click();
+ const encoded=await page.evaluate(async()=>{
+  const canvas=document.createElement('canvas');canvas.width=160;canvas.height=160;const ctx=canvas.getContext('2d');
+  const audio=new AudioContext();await audio.resume();const dest=audio.createMediaStreamDestination(),osc=audio.createOscillator();osc.connect(dest);osc.start();
+  const stream=canvas.captureStream(10);stream.addTrack(dest.stream.getAudioTracks()[0]);
+  const recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8,opus'}),chunks=[];
+  const stopped=new Promise(resolve=>{recorder.ondataavailable=e=>chunks.push(e.data);recorder.onstop=resolve;});
+  let n=0;const draw=setInterval(()=>{ctx.fillStyle=n++%2?'#b9ccac':'#ead6a4';ctx.fillRect(0,0,160,160);},50);
+  recorder.start();await new Promise(r=>setTimeout(r,1000));recorder.stop();await stopped;clearInterval(draw);osc.stop();stream.getTracks().forEach(t=>t.stop());await audio.close();
+  const original=new Uint8Array(await new Blob(chunks).arrayBuffer());
+  // MediaRecorder omits duration for streaming WebM. Add it to this synthetic test fixture.
+  let at=-1;for(let i=0;i<original.length-4;i++)if(original[i]===0x15&&original[i+1]===0x49&&original[i+2]===0xa9&&original[i+3]===0x66){at=i+4;break;}
+  if(at<0)throw Error('Fixture metadata missing');
+  let width=1,mask=128;while(!(original[at]&mask)){width++;mask>>=1;}
+  let size=original[at]&(mask-1);for(let i=1;i<width;i++)size=size*256+original[at+i];
+  const addition=new Uint8Array(11);addition.set([0x44,0x89,0x88]);new DataView(addition.buffer).setFloat64(3,1000);
+  const end=at+width+size,result=new Uint8Array(original.length+11);result.set(original.subarray(0,end));result.set(addition,end);result.set(original.subarray(end),end+11);
+  let length=size+11;for(let i=width-1;i>=0;i--){result[at+i]=length%256;length=Math.floor(length/256);}result[at]|=mask;
+  let binary='';for(let i=0;i<result.length;i+=8192)binary+=String.fromCharCode(...result.subarray(i,i+8192));return btoa(binary);
+ });
+ await page.locator('#video-file').setInputFiles({name:'synthetic.webm',mimeType:'video/webm',buffer:Buffer.from(encoded,'base64')});
+ await page.locator('#transcript-authorized').check();await page.locator('#import-submit').click();
+ await expect(page.locator('#recipe-grid')).toContainText('Dein importiertes Beispielrezept',{timeout:20000});
+});

@@ -56,9 +56,7 @@ Alle aktiven Mitglieder sehen dieselbe Sammlung und Planung. Alle dürfen import
 
 ## Video-/Transkriptpfad
 
-YouTube-Links werden erkannt. Ohne bereitgestelltes Transkript wird `TRANSCRIPT_REQUIRED` ausgegeben; es findet kein Videoabruf statt. Der implementierte Adapter akzeptiert nach ausdrücklicher Nutzungsbestätigung ein Transkript bis 20 KB und eine angegebene Videolänge bis 20 Minuten. Die Länge ist Nutzermetadatum, keine unabhängig verifizierte Videoanalyse. Der harte Kosten-/Eingabegrenzwert bleibt die Textgröße.
-
-`Source` trennt Quellengewinnung von Generierung und Speicherung. Ein späterer Audio-/Bildadapter kann dieselbe Pipeline nutzen, benötigt aber eigene Medienvalidierung und Kostenreservierung. Audio- und Frame-Uploads, FFmpeg und automatische YouTube-Untertitel sind in dieser Version **nicht implementiert**. Details und offizielle API-Grenzen: [docs/OPENAI-VIDEO.md](docs/OPENAI-VIDEO.md).
+Kurzvideo-Links werden zunächst auf öffentliche Beschreibungen und höchstens eine verlinkte Rezeptseite geprüft. Alternativ ist ausdrücklich bereitgestellter Text zulässig. Der browserseitige Audio-/Frameadapter und die OpenAI-Medienpipeline sind implementiert, aber produktiv durch `MEDIA_UPLOAD_ENABLED=false` gesperrt; siehe Kurzvideo-Adapter unten. Keine Plattform-Downloader oder allgemeiner Fremd-Untertitelzugriff.
 
 ## Begrenzungen
 
@@ -68,7 +66,7 @@ Die Sammlung liefert derzeit maximal 500 Rezepte je Zustandsantwort. Rezeptauswa
 
 Gemeinsame URL-Validierung in `src/shared/source-url.ts`: bekannte Zugangsschlüssel-Namen, case-/trennzeichen-/kodierungsvarianten und verschachtelte URL-Parameter werden abgewiesen. Sie greift vor dem Abruf, bei Redirects, nach Quellenadaptern sowie direkt im Repository vor Reservierung/Speicherung. API-Sammlung und Importhistorie blenden unzulässige historische Quell-URLs aus, ohne DB-Werte eigenständig zu ändern. Nicht sensible Rezeptparameter bleiben erhalten. Grenzen der heuristischen Erkennung stehen in SECURITY.md.
 
-Live-Nachweis: [manuelle Checkliste](docs/SMOKE-TEST.md), noch nicht ausgeführt. Der automatische YouTube-Videoimport bleibt ein langfristiges Produktziel; Transkriptverarbeitung ist nur ein Zwischenstand.
+Live-Nachweis: [manuelle Checkliste](docs/SMOKE-TEST.md), noch nicht ausgeführt. Beliebige Plattformlinks lassen sich weiterhin nicht garantiert automatisch analysieren; der Dateipfad erfordert eine gesonderte Betriebsfreigabe.
 
 ### Optionale Rezeptbilder
 `source-image.ts` extrahiert Bildmetadaten getrennt vom KI-Text. `image.ts` lädt höchstens einen Kandidaten über die vorhandenen URL-/DNS-/Redirect-Schutzregeln. Nach erfolgreicher Rezeptvalidierung wird das Bild im selben D1-Batch wie das Rezept in `recipe_images` gespeichert. Die Sammlung lädt nur Bildmetadaten, keine BLOBs. Ein authentifizierter GET `/api/recipes/:id/image` liefert die Bytes. Migration `0003_recipe_images.sql` erweitert die bestehende D1; keine weitere Ressource.
@@ -92,3 +90,9 @@ Katalogdaten und Suchindizes laufen nur im Frontend. Gemeinsame Schreibvalidieru
 shopping-dock.ts misst Formular, Navigation und VisualViewport. Gemeinsame reine Geometrie in dock-geometry.ts begrenzt Vorschlagshöhe und berechnet die Position oberhalb der Tastatur. ResizeObserver und Viewport-/Fokusereignisse aktualisieren CSS-Variablen über requestAnimationFrame. Bei sichtbarer Tastatur wird die Navigation ausgeblendet; beim Schließen kehrt sie zurück. Ausreichender Seitenabstand verhindert verdeckte letzte Artikel. Desktop bleibt im normalen Layout.
 
 Der Build erzeugt für die Einkaufstüte transparente sowie hell/dunkel hinterlegte PNGs und einen zusätzlichen Installations-Einstieg `/shopping/dark/` mit derselben Manifest-ID. Kein neuer Worker, keine Datenbankmigration, keine API-/Berechtigungsänderung.
+
+## Kurzvideo-Adapter
+
+`src/shared/video-platform.ts` erkennt explizite Plattformhosts und kanonisiert Video-URLs. `source.ts` und `social-description.ts` lesen nur öffentliche Beschreibungen bzw. höchstens eine verlinkte Rezeptseite mit denselben SSRF-/DNS-/Redirect-Grenzen wie Webseiten. Fehlender Zugriff öffnet eine optionale Bereitstellung von Text oder Videodatei. Der Erstimport bleibt eine einzelne Linkmaske.
+
+`web/video-upload.ts` bereitet Dateien mit nativen Browser-Medienfunktionen auf. Der gemeinsame TypeScript-Vertrag `MediaPayload` enthält ausschließlich base64-WAV und begrenzte JPEG-Frames. `media.ts` validiert diese unabhängig serverseitig, reserviert vor OpenAI die bestehende persistente Importkapazität und führt Audio-Transkription plus Responses/Vision aus. Originaldateien werden weder hochgeladen noch gespeichert. Zwischenprodukte bleiben temporär. D1 speichert den bestehenden Quelltyp `web` (oder historischen YouTube-Texttyp) und Kennzeichnungen der tatsächlich verwendeten Eingabe; dafür ist keine Migration nötig. Modelle/Preise, Limits und bekannte Grenzen: [OPENAI-VIDEO.md](docs/OPENAI-VIDEO.md).

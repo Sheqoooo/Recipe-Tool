@@ -1,41 +1,58 @@
-# OpenAI-Auswahl, Mediengrenzen und Kosten
+# Kurzvideo-Import, Modelle und Grenzen
 
-Dokumentationsprüfung: 9. November 2026. Es wurden keine echten API-Aufrufe durchgeführt.
+Stand: 13. November 2026. Entwicklungstests verwenden synthetische Dateien und gemockte OpenAI-Antworten. Es wurden keine kostenpflichtigen API-Aufrufe durchgeführt.
 
-## Aktiver Pfad
+## Tatsächlicher Ablauf
 
-Die Generierung verwendet das offizielle `openai`-SDK und die **Responses API** mit Structured Outputs. Modell: **`gpt-6.1-sol`**, konfigurierbar über `OPENAI_MODEL`. Dieses Modell unterstützt Responses, strukturiertes JSON sowie Text-/Bildeingabe; seine Modellseite weist Audio und Video als nicht unterstützt aus. Auf ausdrücklichen Nutzerwunsch gewählt; verwendet `reasoning.effort: low` für die begrenzte Rezeptextraktion. Die Ausgabe bleibt auf 6.000 Tokens begrenzt, einschließlich Denktokens. Modell und Tokenpreise bleiben konfigurierbar. [Offizielle Modellseite](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
+1. YouTube (einschließlich Shorts), Instagram-Reel-/Post-Links und TikTok-Links werden erkannt. YouTube-IDs werden kanonisiert, Trackingparameter bei Instagram/TikTok nach der Prüfung auf Zugangsdaten entfernt.
+2. Der Server versucht ausschließlich öffentlich erreichbares HTML auszulesen. Er prüft DNS, Zieladressen, jeden Redirect, Antwortgröße und Zeitlimit. Es wird kein Login automatisiert, kein Cookie hinterlegt und kein Video von der Plattform heruntergeladen.
+3. Ausreichende öffentliche Beschreibungen werden verarbeitet. Enthält eine unzureichende Beschreibung eine externe Rezeptadresse, wird höchstens eine solche Seite über dieselben Sicherheitsprüfungen gelesen. Plattform-Login-Seiten oder nicht verfügbare Inhalte führen zur Alternative „Video oder Beschreibung bereitstellen“.
+4. Nutzer können ausdrücklich autorisierten Text (30 Zeichen bis 20 KB, angegebene Länge maximal 20 Minuten) oder eine Videodatei mit Ton bereitstellen. Die Textlänge ist serverseitig begrenzt; eine manuell angegebene ursprüngliche Videodauer ist kein verifizierter Beleg.
+5. Für Dateien prüft der Browser Typ, Größe, Metadaten und Dekodierbarkeit, extrahiert sechs zeitlich verteilte JPEG-Einzelbilder und eine Mono-WAV-Tonspur mit 16 kHz / 16 Bit. Die Originaldatei wird nicht zum Worker übertragen. Es gibt kein FFmpeg, keinen VPS, keinen zusätzlichen Speicherdienst und keine lokale KI.
+6. Der Worker prüft das JSON-Limit (10 MB), Autorisierungserklärung, WAV-Struktur und tatsächliche PCM-Dauer, Frameanzahl, JPEG-Header/-Abmessungen und Dateigrößen vor der persistenten KI-Budgetreservierung. Anschließend: Audio-Transkription, dann strukturierte Rezeptgenerierung aus Transkript und Bildern. Ergebnisse werden unabhängig vom JSON Schema erneut serverseitig validiert.
 
-Das gemeinsame Zod-Schema erzeugt das JSON Schema. Die Antwort wird unabhängig davon erneut serverseitig geprüft. `store:false`, keine Conversations/Files/Tools und keine automatischen SDK-Retries. Maximal 20 KB Quelltext und 6.000 Ausgabetokens. Fehlende Mengen, Zeiten oder Portionen bleiben `null`; Modellangaben sind trotz formaler Validierung nicht automatisch sachlich bewiesen. [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
+Die bisherigen Access-, Mitglieds-, Rollen-, Origin-, Rate-, Parallelitäts- und Budgetprüfungen gelten auch für diese Importe. Es gibt keinen öffentlichen kostenverursachenden Medien-Endpunkt.
 
-## Aktuelle Medienmöglichkeiten
+## Modelle und Auswahl
 
-| Eingabe | Offizieller Weg / tatsächlicher Projektstand |
-| --- | --- |
-| Rezepttext | Responses API; implementiert für Webseiten und bereitgestellte Transkripte |
-| Bilder / einzelne Videoframes | Vision-fähige Modelle mit Bildeingaben; technisch geeigneter späterer Adapter, in dieser Version kein Upload/Frame-Extractor |
-| Bereitgestelltes Audio | Audio Transcriptions API kann Audiodateien transkribieren; eigener sicherer Upload-/Dauerprüfpfad noch nicht implementiert |
-| Beliebiger YouTube-Link | Kein allgemeiner Video-Download oder automatischer Untertitelimport implementiert |
-| Videodatei | Kein Upload/Decoding/FFmpeg; keine native Videoanalysefähigkeit behauptet |
+- **Normale Webseiten/Beschreibungen/Transkripte:** weiterhin `OPENAI_MODEL=gpt-6.1-sol`.
+- **Tonspur:** `OPENAI_AUDIO_MODEL=gpt-4o-mini-transcribe`. Unterstützte Alternative: `gpt-4o-transcribe`.
+- **Transkript plus Einzelbilder:** `OPENAI_VIDEO_MODEL=gpt-6.1-terra`, Responses API, Structured Outputs, Denkaufwand low und maximal 6.000 Ausgabetokens einschließlich Denktokens.
+- Terra ist die begründete Startwahl für visuelle Auswertung; ein realer Qualitätsvergleich mit Kochvideos wurde noch nicht durchgeführt. Luna ist preiswerter, aber nicht aufgrund eines ungetesteten Qualitätsversprechens vorausgewählt.
+- Für Terra sind regulär 1/5 USD, für Sol 2/10 USD je Million Eingabe-/Ausgabetokens hinterlegt. Andere Videomodelle benötigen eigene `VIDEO_MODEL_INPUT_USD_PER_MILLION` und `VIDEO_MODEL_OUTPUT_USD_PER_MILLION`.
+- Die Audio-Schätzung beträgt 0,003 USD je Minute für Mini bzw. 0,006 USD je Minute für Transcribe. Verfügbare Audio-Tokenzahlen werden zusätzlich zu Vision-Tokens erfasst; die kombinierte Kostenschätzung ist keine Anbieterrechnung.
 
-Die [Vision-Dokumentation](https://developers.openai.com/api/docs/guides/images-vision) beschreibt Bildeingaben, die [Audio-Dokumentation](https://developers.openai.com/api/docs/guides/speech-to-text) den gesonderten Transkriptionsweg. Aus der grundsätzlichen Multimodalität eines Modells folgt nicht, dass ein beliebiger YouTube-Link eine unterstützte API-Eingabe wäre.
+Offizielle Quellen: [Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra), [Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol), [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), [Preise](https://developers.openai.com/api/docs/pricing), [Transkription](https://developers.openai.com/api/docs/guides/speech-to-text), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
 
-## YouTube-Alternative
+## Kosten und Limits
 
-Die offizielle YouTube-Captions-Downloadmethode verlangt Berechtigung zur Bearbeitung des Videos. Ein API-Key allein erlaubt keinen allgemeinen Abruf fremder Untertitel. Daher wird weder ein ungeprüfter Downloader noch eine Umgehung von Plattformbeschränkungen eingebaut. [YouTube Captions: download](https://developers.google.com/youtube/data/reference/rest/v3/captions/download)
+Beispiel für den Videopfad: 5.000 von der API gemeldete Eingabetokens inklusive Bildeingaben und 2.000 Ausgabetokens kosten mit Terra 0,015 USD. Eine Minute Mini-Transkription addiert geschätzt 0,003 USD: insgesamt 0,018 USD. Das Beispiel ist keine Prognose; Bilddetail, Auflösung, Transkriptlänge und Denktokens verändern den Verbrauch.
 
-Implementiert: YouTube-Link erkennen, ein vom Nutzer rechtmäßig bereitgestelltes Transkript nach ausdrücklicher Bestätigung übernehmen und daraus ein Rezept erzeugen. Obergrenzen: 20 KB Text und angegebene Länge bis 20 Minuten. Die Laufzeit des eigentlichen Videos wird dabei nicht verifiziert. Der gespeicherte Hinweis sagt ausdrücklich, dass keine Bildanalyse stattgefunden hat. Für einen späteren Audio-/Frame-Adapter müssen MIME-/Dateiprüfung, tatsächliche Dauer, Uploadgröße, maximale Framezahl und eine passende Kostenreservierung ergänzt werden.
+Die Vorabreservierung ist bewusst viel höher: standardmäßig 0,544 USD je Medienimport (konservative Bild-/Text-/Ausgabeobergrenze plus Audio-Puffer). Das interne Tages-/Monatsbudget zählt Reservierungen, auch nach Abschluss/Fehlern, wie bisher. Mit unverändert 2 USD Tagesbudget sind daher höchstens drei reine Medienversuche pro Tag möglich; andere Importe reduzieren dies. **Die Reservierung ist keine tatsächliche API-Abbuchung.** Budgets werden nicht automatisch erhöht.
 
-## Kostenmodell
+- Originaldatei im Browser: MP4/MOV/WebM, maximal 20 MB und drei Minuten, Auflösung maximal 3840 × 2160 bzw. gedreht.
+- Server: maximal sechs JPEGs, je 200 KB und höchstens 1280 Pixel pro Seite; kanonisches Mono-PCM-WAV mit maximal 180 Sekunden und 5.760.044 Bytes.
+- Original-Containerdauer wird nur im Browser geprüft, da der Server die Originaldatei nicht erhält. Serverseitig erzwingen PCM-Dauer, Frameanzahl, Bytes und Budget die tatsächlichen Verarbeitungsgrenzen unabhängig von Clientangaben.
+- Quellenabruf hat einen gemeinsamen Zeitrahmen von 45 Sekunden (DNS kann einen begonnenen Abruf noch kurz verlängern), maximal drei Redirects pro Seite und insgesamt höchstens eine weitere Rezeptseite.
+- Audio und Responses haben jeweils 45 Sekunden Timeout, keine automatischen SDK-Retries. Abbrüche werden kontrolliert behandelt. Eine bereits erfolgte Audiostufe bleibt auch bei späterem Vision-Fehler in den Verbrauchsdaten berücksichtigt.
+- Audiodateien ohne Videobilder haben noch keinen eigenen Uploadpfad.
 
-Laut Modellseite kostet GPT-6.1 Sol regulär **2,00 USD je Million Eingabetokens** und **10,00 USD je Million Ausgabetokens**. Beispiel: 2.000 Eingabetokens und 1.500 Ausgabetokens ergeben **0,019 USD je Import**, also etwa **1,90 USD je 100 Importe**, vor Steuern/Währungsumrechnung. Tatsächliche Länge, Ausgabe und zusätzliche Denktokens beeinflussen den Verbrauch. Das Beispiel ist keine garantierte Obergrenze; die bestehende konservative Reservierung und Tages-/Monatsbudgets bleiben aktiv. Kein echter API-Aufruf wurde für diesen Modellwechsel ausgeführt; Projektzugang und reale Ausgabequalität müssen beim nächsten freigegebenen Import bestätigt werden. Transkripttext nutzt denselben Texttarif; Audio-/Bildkosten entstehen im implementierten Pfad nicht. [Preise](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
+## Erforderliche Einrichtung
 
-Die Anwendung speichert Input-/Output-Tokens und eine Schätzung in Mikro-US-Dollar. Die Budgetreservierung ist absichtlich größer als ein typischer Import und wird nach Fehlern nicht erstattet. Bei Modellwechsel müssen `MODEL_INPUT_USD_PER_MILLION` und `MODEL_OUTPUT_USD_PER_MILLION` gesetzt werden. Die Schätzung behandelt Cache-Rabatte konservativ wie reguläre Eingabe. Kein Ersatz für die Rechnung des API-Anbieters.
+Der bestehende serverseitige Worker-Secret `OPENAI_API_KEY` bleibt der einzige Schlüssel. Ein auf Responses eingeschränkter Key benötigt zusätzlich Schreibzugriff auf **Audio / Transcriptions**. Rechte selbst im OpenAI-Dashboard ändern; keine Keys in Chat, Repository oder Browser hinterlegen. Bei fehlenden Rechten liefert die App eine kontrollierte Einrichtungsmeldung.
 
-## Aufbewahrung
+Keine D1-Migration und keine zusätzliche Datenbank erforderlich. Automatische Beschreibung und bereitgestellte Medien verwenden den bestehenden generischen Quelltyp `web`; der historische YouTube-Textpfad behält `youtube_transcript`. Aussagekräftige Hinweise am Rezept beschreiben die tatsächlich verwendete Grundlage. Diese Kompatibilität vermeidet eine produktive Schemaänderung und ist kein Beleg für native Plattform-Videoanalyse.
 
-Quelldaten werden nach der Rezeptverarbeitung nicht in D1 abgelegt. `store:false` verhindert reguläre Speicherung als abrufbares Response-Objekt; es garantiert ohne entsprechende Anbietervereinbarung keine vollständige Nullaufbewahrung in Missbrauchsprotokollen. Der Betreiber muss die geltenden OpenAI-Datenkontrollen prüfen. [OpenAI-Datenkontrollen](https://developers.openai.com/api/docs/guides/your-data)
+## Ehrliche Grenzen und Datenschutz
 
-## Produktziel und aktueller Zwischenstand
+- Ein beliebiger Plattform-Link ist kein unterstütztes Video-Eingabeformat für Terra oder Sol. Die Modelle bekommen explizit Text und ausgewählte Bilder; Audio hat einen separaten Endpunkt.
+- Plattformseiten können blockieren, Beschreibungen kürzen oder nur nach Login anzeigen. Metadatenprüfung ist heuristisch, kein garantierter Zugriff. Kein Downloader, keine Plattform-API-/oEmbed-Zweckentfremdung und keine Umgehung von Zugriffsbeschränkungen.
+- YouTubes offizielle [Captions-Downloadmethode](https://developers.google.com/youtube/data/reference/rest/v3/captions/download) setzt Bearbeitungsrechte am Video voraus. Sie wird hier nicht als allgemeiner Untertitelabruf verwendet.
+- Sechs Bilder können kurze Einblendungen verpassen. Fehlende Mengen werden nicht ergänzt; unklare Angaben werden im Rezept gekennzeichnet.
+- Manche Video-/Audio-Codecs, stille Videos oder Dateien ohne lesbare Dauer werden abgewiesen. Browser-/iPhone-Unterstützung muss mit realen freigegebenen Beispielen geprüft werden. Synthetischer Chromium-Test ist keine iOS-Geräteprüfung.
+- Es werden nur Rezept, Quelle, Hinweise und Verbrauchsmetadaten in D1 gespeichert. Originalvideo, WAV, Frames und vollständiges Transkript werden dort nicht abgelegt; es werden keine Dateien über die OpenAI Files API gespeichert.
+- Responses nutzt `store:false`. Das ist keine pauschale Zusicherung von Nullaufbewahrung für sämtliche Anbieterprotokolle oder Audioverarbeitung. Maßgeblich sind die [OpenAI-Datenkontrollen](https://developers.openai.com/api/docs/guides/your-data).
 
-Der automatische YouTube-Videoimport ist weiterhin das langfristige Produktziel. Der bereitgestellte Transkripttext ist ausdrücklich eine eingeschränkte Zwischenlösung: Ohne Text kein Rezeptimport aus dem Link, keine automatische Beschaffung, keine visuelle/akustische Prüfung. Diese Einschränkung wird auch in der aktiven Oberfläche angezeigt. Der spätere automatische Weg muss zunächst einen technisch zuverlässigen und rechtmäßigen Zugriff auf Medien/Transkripte sowie eigene Dauer-, Größen- und Kostenlimits erhalten. [Manuelle Prüfungen](SMOKE-TEST.md) kennzeichnen den Transkripttest getrennt vom noch fehlenden Videoimport.
+## Produktionsfreigabe
+
+Der Dateipfad bleibt produktiv mit `MEDIA_UPLOAD_ENABLED=false` gesperrt, während öffentliche Beschreibungen und bereitgestellte Texte nutzbar sind. Lokal und in der Offline-Demo ist Medienaufbereitung mit synthetischen Dateien testbar. Die größeren Mediendaten passen nicht garantiert in 10 ms CPU des Workers-Free-Tarifs. Vor Aktivierung sind Hosting-Laufzeit/Kosten und Audio-Berechtigung ausdrücklich zu klären; keine automatische Tarifbuchung. Siehe [Deployment](../DEPLOYMENT.md).

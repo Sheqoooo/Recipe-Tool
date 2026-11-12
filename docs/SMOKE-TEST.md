@@ -1,6 +1,6 @@
 # Manueller Smoke-Test nach Freigabe
 
-Status: **noch nicht durchgeführt**. Die erfolgreichen lokalen Emulator-/Mocktests ersetzen diese Prüfung im tatsächlichen Cloudflare-Konto nicht. Automatischer YouTube-Videoimport bleibt das langfristige Produktziel; der aktuelle Transkriptimport ist ein eingeschränkter Zwischenstand.
+Status: **noch nicht durchgeführt**. Die erfolgreichen lokalen Emulator-/Mocktests ersetzen diese Prüfung im tatsächlichen Cloudflare-Konto nicht. Automatischer YouTube-Videoimport bleibt das langfristige Produktziel; zugängliche Beschreibungen und bereitgestellte Texte sind nutzbar, der neue Dateipfad bleibt bis zur Betriebsfreigabe gesperrt.
 
 ## Freigaben und Protokoll
 
@@ -72,12 +72,19 @@ Erwartung bei Erfolg: `completed`, Tokenverbrauch und Kostenschätzung vorhanden
 - [ ] Rezept zur Kochliste hinzufügen, Portionen ändern, Einkaufsmengen prüfen, Position abhaken und neu laden. Nach Mengenänderung dürfen alte Häkchen nicht unpassend erhalten bleiben.
 - [ ] Als normales Mitglied eigenes Testrezept bearbeiten; fremdes Rezept und Löschen bleiben gesperrt. Als Admin darf das vereinbarte Testrezept verwaltet werden. Löschen nur nach Freigabe des konkreten Testdatensatzes.
 
+OpenAI-429 wird in den Mocktests getrennt für Guthaben, Kontingent, Ausgabenlimits, kurzfristige Anfragelimits und unbekannte Limits geprüft. Die Fehlermeldung darf weder rohe Anbieterinformationen enthalten noch bei Abrechnungsproblemen bloß zum Warten auffordern. Keine automatischen Retries.
+
 Timeouts, OpenAI-429/5xx und unvollständige Modellantworten sind mit Mocks automatisiert abgedeckt. Sie werden für diesen Smoke-Test nicht kostenpflichtig oder durch absichtliche Produktionsstörungen erzwungen.
 
-## 5. Eingeschränkter YouTube-Zwischenstand
+## 5. Kurzvideo-Zwischenstand und explizite Medienfreigabe
 
-- [ ] YouTube-Link ohne Transkript: `TRANSCRIPT_REQUIRED`; kein automatischer Abruf und kein Videorezept.
+- [ ] YouTube-Shorts-/Instagram-/TikTok-Link ohne bereitgestellten Text: öffentliche Beschreibung wird versucht; bei fehlendem Zugriff `VIDEO_SOURCE_REQUIRED` mit optionaler Bereitstellung. Keine Anmeldung oder Plattform-Downloads.
 - [ ] Optional und nur nach Kostenfreigabe: rechtmäßig bereitgestelltes Transkript bis 20 KB, Nutzungsbestätigung und angegebene Videodauer bis 20 Minuten importieren. Erwartung: Hinweis, dass ausschließlich Text und keine Bilder/Audio analysiert wurden. Die angegebene Dauer wird nicht am Video verifiziert.
-- [ ] Festhalten: **Automatische Analyse beliebiger YouTube-Links ist noch nicht implementiert.** Dieses Produktziel ist durch das Bestehen des Transkript-Tests nicht erreicht.
+- [ ] Festhalten: **Automatische vollständige Analyse beliebiger Plattformlinks ist weiterhin nicht garantiert.** Dieses Produktziel ist durch das Bestehen des Transkript-Tests nicht erreicht.
 
 Abschluss: Jeden Punkt als bestanden, fehlgeschlagen oder offen markieren. Ein fehlgeschlagener Schutztest blockiert die weitere Nutzung der privaten App bis zur Behebung. Keine offenen Live-Prüfungen als erfolgreich ausgeführt darstellen.
+
+- [ ] Vor Medienfreigabe: Dateiauswahl ist produktiv deaktiviert; API blockiert Mediendaten und behält 100-KB-Limit.
+- [ ] Nur nach separater Kosten-/Betriebsfreigabe: Worker-Plan/CPU prüfen, Audio-Transkriptionsrecht selbst aktivieren und `MEDIA_UPLOAD_ENABLED=true` per geprüftem PR setzen.
+- [ ] Rechtmäßig bereitgestellten Clip bis 3 Minuten / 20 MB importieren, gesprochene und eingeblendete Angaben gegen Rezept prüfen; fehlende Angaben dürfen nicht erfunden werden.
+- [ ] Browser-/iOS-Codecs, stillen Clip, Überlänge und kontrollierte Audio-Permission-Fehler prüfen. Diese Prüfung ist kostenpflichtig und kein automatischer Mocktest.

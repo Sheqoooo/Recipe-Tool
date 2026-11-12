@@ -229,3 +229,15 @@ it('Zutaten-Batch ist bei Kapazitätsüberschreitung atomar',async()=>{
  expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM shopping_items').first('n')).toBe(499);
  expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM shopping_items WHERE name IN ('Reis','Tomaten')").first('n')).toBe(0);
 });
+
+it('importiert autorisierten Videotext aller Plattformen ohne Seitenabruf und speichert keine Rohdaten',async()=>{
+ const f=appFixture();const response=await f.post('/api/import',{value:'https://www.instagram.com/reel/mock/',transcript:'Zutaten: 200 g Tomaten. Zehn Minuten kochen und servieren.',authorized:true,duration_seconds:60});
+ expect(response.status).toBe(201);expect(f.read).not.toHaveBeenCalled();expect(f.generate).toHaveBeenCalledTimes(1);
+ expect(f.generate.mock.calls[0][0]).toMatchObject({provenance:'provided_text',kind:'web'});
+ const state=await(await f.get()).json() as AppState;expect(JSON.stringify(state)).not.toContain('Zehn Minuten kochen und servieren.');expect(state.recipes[0].source_url).toBe('https://www.instagram.com/reel/mock/');
+});
+it('weist unautorisierte und übergroße Medien vor einer KI-Reservierung ab',async()=>{
+ const f=appFixture();expect((await f.post('/api/import',{value:'https://www.instagram.com/reel/mock/',media:{audio:'',frames:[]},authorized:false})).status).toBe(422);
+ expect(f.generate).not.toHaveBeenCalled();expect((await(await f.get()).json() as AppState).imports).toHaveLength(0);
+ expect((await f.post('/api/import',{value:'https://www.instagram.com/reel/mock/',media:{audio:'x'.repeat(10000001),frames:[]},authorized:true})).status).toBe(413);
+});
