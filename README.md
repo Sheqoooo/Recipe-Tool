@@ -1,4 +1,4 @@
-# Rezeptwerk / Recipe-Tool
+# Futterluke / Recipe-Tool
 
 Private gemeinsame Rezeptsammlung: **Link einfügen → auf Deutsch aufbereiten → direkt speichern**. Zutaten, metrische Mengen, bekannte Zeiten und Schritte mit Zutatenmengen werden strukturiert dargestellt. Gemeinsam ausgewählte Gerichte ergeben eine skalierbare Einkaufsliste.
 

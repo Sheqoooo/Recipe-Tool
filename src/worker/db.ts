@@ -43,7 +43,7 @@ export class Repository {
     if(!result.meta.changes)throw new AppError('NOT_FOUND','Mitglied nicht gefunden.',404);
   }
   async recipes(actor: Member): Promise<Recipe[]> {
-    // One D1 batch gives all three queries the same selected-recipe snapshot.
+    // One D1 batch gives all four queries the same selected-recipe snapshot.
     const selection='SELECT id FROM recipes ORDER BY created_at DESC,id DESC LIMIT 500';
     type IngredientRow={recipe_id:number;name:string;amount:number|null;unit:string;note:string};
     type StepRow={recipe_id:number;text:string;ingredient_indices_json:string};

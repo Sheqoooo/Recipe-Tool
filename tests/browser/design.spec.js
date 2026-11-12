@@ -48,7 +48,7 @@ test('Produktionsbundle enthält keine Demo-Daten und URL-Parameter schaltet Dem
 test('Futterluke zeigt Bild, Nachweis und Emoji-Fallback offline',async({page},info)=>{
   await page.goto(demo);await expect(page.locator('.wordmark')).toContainText('Futterluke');await expect(page.locator('.start-caption')).toHaveText('Umwandlung von Rezepten');
   await page.getByRole('button',{name:/Meine Rezepte/}).click();
-  const photo=page.locator('.recipe-photo').first();await expect(photo).toBeVisible();expect(await photo.evaluate(e=>e.complete&&e.naturalWidth>0)).toBe(true);
+  const photo=page.locator('.recipe-photo').first();await expect(photo).toBeVisible();await expect.poll(()=>photo.evaluate(e=>e.complete&&e.naturalWidth>0)).toBe(true);
   await page.getByRole('button',{name:'Zitronenpasta mit Parmesan ansehen'}).click();
   await expect(page.locator('.image-credit')).toContainText('Demo-Illustration · Futterluke');
   await page.screenshot({path:info.outputPath('design-photo.png')});
