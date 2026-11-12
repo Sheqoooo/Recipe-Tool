@@ -7,7 +7,7 @@ import { recipe,generated,localEnv } from './fixtures.js';
 import type { AppState,Member } from '../src/shared/types.js';
 import { generateKeyPair,exportJWK,SignJWT } from 'jose';
 
-beforeEach(async()=>{await env.DB.batch(['DELETE FROM imports','DELETE FROM checked_items','DELETE FROM plan','DELETE FROM steps','DELETE FROM ingredients','DELETE FROM recipes','DELETE FROM members'].map(s=>env.DB.prepare(s)));});
+beforeEach(async()=>{await env.DB.batch(['DELETE FROM shopping_items','DELETE FROM imports','DELETE FROM checked_items','DELETE FROM plan','DELETE FROM steps','DELETE FROM ingredients','DELETE FROM recipes','DELETE FROM members'].map(s=>env.DB.prepare(s)));});
 const actor=(id:string,role:'admin'|'member'='member'):Member=>({id,email:id+'@example.invalid',role,active:1});
 async function seed(member:Member){await env.DB.prepare('INSERT INTO members(id,email,role) VALUES(?,?,?)').bind(member.id,member.email,member.role).run();}
 function appFixture(){const config=localEnv(env.DB);const read=vi.fn(async(url:string)=>({kind:'web' as const,url,text:'Untrusted source'}));const generate=vi.fn(async()=>structuredClone(generated));const app=createApp({read,generate});
@@ -155,4 +155,48 @@ it('fehlerhafter Bildabruf verhindert keinen erfolgreichen Rezeptimport',async()
   const app=createApp({read:async(url)=>({kind:'web',url,text:'Recipe',image:{url:'https://images.example/food.png',credit:''}}),generate:async()=>structuredClone(generated),image});
   const response=await app.fetch(new Request('http://localhost/api/import',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify({value:'https://recipes.example/no-photo'})}),f.config);
   expect(response.status).toBe(201);expect(await response.text()).not.toContain('Private details');expect(image).toHaveBeenCalledTimes(1);
+});
+
+it('freie Einkaufsartikel werden gemeinsam gespeichert, dedupliziert, geändert und wiederverwendet',async()=>{
+ const f=appFixture();expect((await f.post('/api/shopping/items/save',{name:'Spülmittel',quantity:'2 Flaschen'})).status).toBe(200);
+ let state=await(await f.get()).json() as AppState;expect(state.manual_items).toHaveLength(1);const item=state.manual_items![0];
+ expect(item.name).toBe('Spülmittel');expect(item.checked).toBe(false);
+ expect((await f.post('/api/shopping/items/check',{id:item.id,checked:true})).status).toBe(200);
+ // Changing recipe plans must not clear completed manual products.
+ await f.post('/api/import',{value:'https://recipes.example/manual-independent'});
+ const recipeId=(await(await f.get()).json() as AppState).recipes[0].id;
+ await f.post('/api/plan',{recipe_id:recipeId,servings:4});
+ expect((await(await f.get()).json() as AppState).manual_items![0].checked).toBe(true);
+ await f.post('/api/shopping/items/save',{name:'spuelmittel',quantity:''});
+ state=await(await f.get()).json() as AppState;expect(state.manual_items).toHaveLength(1);expect(state.manual_items![0].checked).toBe(false);expect(state.manual_items![0].quantity).toBe('2 Flaschen');
+ await f.post('/api/shopping/items/save',{id:item.id,name:'Spülmittel sensitiv',quantity:'1 Flasche'});
+ expect((await(await f.get()).json() as AppState).manual_items![0].name).toBe('Spülmittel sensitiv');
+ await f.post('/api/shopping/items/delete',{id:item.id});
+ expect((await(await f.get()).json() as AppState).manual_items).toHaveLength(0);
+ expect(f.generate).toHaveBeenCalledTimes(1);
+});
+it('Einkaufsartikel sind für aktive Mitglieder gemeinsam zugänglich',async()=>{
+ const repo=new Repository(env.DB),one=actor('one'),two=actor('two');await seed(one);await seed(two);
+ await repo.saveShoppingItem({name:'Milch',quantity:'1 l'},one);
+ const item=(await repo.shoppingItems())[0];expect(item.name).toBe('Milch');
+ await repo.saveShoppingItem({id:item.id,name:'Hafermilch',quantity:'2 l'},two);
+ await repo.checkShoppingItem(item.id,true);expect((await repo.shoppingItems())[0].checked).toBe(true);
+ await repo.deleteShoppingItem(item.id);expect(await repo.shoppingItems()).toEqual([]);
+});
+it('Einkaufseingaben, Origin und Status werden geprüft und enthalten keine ausführbaren Daten',async()=>{
+ const f=appFixture();
+ expect((await f.post('/api/shopping/items/save',{name:'Milch'},'https://evil.example')).status).toBe(403);
+ for(const value of [{name:''},{name:'x'.repeat(101)},{name:'Milch',quantity:'x'.repeat(61)},{name:'Milch',emoji:'x'}])expect((await f.post('/api/shopping/items/save',value)).status).toBe(400);
+ await f.post('/api/shopping/items/save',{name:'<img src=x onerror=alert(1)>'});
+ const item=(await(await f.get()).json() as AppState).manual_items![0];
+ expect((await f.post('/api/shopping/items/check',{id:item.id,checked:'true'})).status).toBe(400);
+ expect((await f.post('/api/shopping/items/check',{id:'bad',checked:true})).status).toBe(400);
+ expect(f.generate).not.toHaveBeenCalled();
+});
+it('500 Artikel sind die atomare Grenze, vorhandene Namen lassen sich weiterverwenden',async()=>{
+ const repo=new Repository(env.DB),owner=actor('owner');await seed(owner);
+ await env.DB.prepare("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<500) INSERT INTO shopping_items(id,name,name_key,created_by) SELECT printf('item-%d',i),printf('Artikel %d',i),printf('artikel %d',i),? FROM n").bind(owner.id).run();
+ await expect(repo.saveShoppingItem({name:'Weiterer Artikel'},owner)).rejects.toMatchObject({code:'SHOPPING_LIMIT'});
+ await repo.saveShoppingItem({name:'Artikel 1'},owner);expect(await env.DB.prepare('SELECT COUNT(*) FROM shopping_items').first()).not.toBeNull();
+ expect(await repo.shoppingItems()).toHaveLength(500);
 });

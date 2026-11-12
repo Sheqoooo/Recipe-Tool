@@ -1,6 +1,7 @@
 // Included only by the separate --demo build. No fetch, database, keys or remote persistence.
 import type { AppState,Recipe,RecipeData } from '../src/shared/types.js';
 import { shoppingList,validateRecipe } from '../src/shared/recipe.js';
+import {validateShoppingEntry,shoppingItemId,productKey} from '../src/shared/products.js';
 import { normalizeSourceUrl } from '../src/shared/source-url.js';
 const owner='demo-member';
 const make=(id:number,title:string,description:string,cook:number,items:[string,number,string][],texts:string[]):Recipe=>({
@@ -19,14 +20,33 @@ const recipes:Recipe[]=[
   make(6,'Tomatenpasta mit Basilikum','Ein Klassiker, der immer geht.',15,[['Pasta',200,'g'],['Tomaten',300,'g'],['Basilikum',10,'g']],['Pasta kochen (200 g). Tomaten schneiden (300 g) und Basilikum hacken (10 g).','Alles miteinander vermengen.']),
 ];
 recipes[0].image={url:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720"><rect width="960" height="720" fill="#f5edda"/><ellipse cx="480" cy="390" rx="320" ry="230" fill="#ded3bd"/><ellipse cx="480" cy="360" rx="300" ry="225" fill="white"/><ellipse cx="480" cy="360" rx="210" ry="150" fill="#f6cf6c"/><g fill="none" stroke="#e4a944" stroke-width="13" stroke-linecap="round"><path d="M320 340 Q470 230 625 340 Q400 460 340 355 Q470 280 620 380"/><path d="M335 390 Q500 240 620 355 Q470 455 360 325"/><path d="M350 420 Q560 270 600 330 Q520 425 365 375"/></g><g fill="#5d8654"><ellipse cx="470" cy="310" rx="35" ry="13" transform="rotate(-30 470 310)"/><ellipse cx="510" cy="320" rx="28" ry="12" transform="rotate(25 510 320)"/></g><circle cx="730" cy="550" r="72" fill="#f8ce42"/><circle cx="730" cy="550" r="56" fill="#fff2a4"/><path d="M730 494 V606 M674 550 H786 M690 510 L770 590 M690 590 L770 510" stroke="#f8ce42" stroke-width="5"/></svg>'),source_url:'',credit:'Demo-Illustration · Futterluke'};
-const state:AppState={recipes,plan:[],shopping:[],checked:[],members:[],imports:[],has_key:true,read_only:false,user:{id:owner,email:'demo@example.invalid',role:'member',active:1}};
+const state:AppState={manual_items:[
+{id:'00000000-0000-4000-8000-000000000001',name:'Oliven',quantity:'1 Glas',checked:false,updated_at:'2026-11-12T10:00:00Z'},
+{id:'00000000-0000-4000-8000-000000000002',name:'Milch',quantity:'1 l',checked:false,updated_at:'2026-11-12T10:00:00Z'},
+{id:'00000000-0000-4000-8000-000000000003',name:'Tofu',quantity:'400 g',checked:false,updated_at:'2026-11-12T10:00:00Z'},
+{id:'00000000-0000-4000-8000-000000000004',name:'Spülmittel',quantity:'1 Flasche',checked:false,updated_at:'2026-11-12T10:00:00Z'},
+{id:'00000000-0000-4000-8000-000000000005',name:'Salz',quantity:'',checked:false,updated_at:'2026-11-12T10:00:00Z'},
+{id:'00000000-0000-4000-8000-000000000006',name:'Rosenkohl',quantity:'500 g',checked:true,updated_at:'2026-11-12T10:00:00Z'},
+{id:'00000000-0000-4000-8000-000000000007',name:'Weißwein',quantity:'1 Flasche',checked:true,updated_at:'2026-11-12T10:00:00Z'}
+],recipes,plan:[],shopping:[],checked:[],members:[],imports:[],has_key:true,read_only:false,user:{id:owner,email:'demo@example.invalid',role:'member',active:1}};
 let nextId=7;
-function recalculate(){state.shopping=shoppingList(state.plan);}
+function recalculate(){state.shopping=shoppingList(state.plan);state.manual_items!.sort((a,b)=>Number(a.checked)-Number(b.checked)||b.updated_at.localeCompare(a.updated_at)||a.id.localeCompare(b.id));}
 export async function demoApi<T>(path:string,data?:unknown):Promise<T>{
   const body=(data||{}) as Record<string,unknown>;
   let result:unknown={ok:true};
   if(path==='/api/state'){recalculate();result=state;}
-  else if(path==='/api/import'){
+  else if(path==='/api/shopping/items/save'){
+    const item=validateShoppingEntry(body),items=state.manual_items!;
+    const existing=item.id?items.find(i=>i.id===item.id):items.find(i=>productKey(i.name)===productKey(item.name));
+    if(item.id&&!existing)throw new Error('Artikel nicht gefunden.');
+    if(item.id&&items.some(i=>i.id!==item.id&&productKey(i.name)===productKey(item.name)))throw new Error('Artikel bereits vorhanden.');
+    if(existing){existing.name=item.name;existing.quantity=item.quantity||(!item.id?existing.quantity:'');if(!item.id)existing.checked=false;existing.updated_at=new Date().toISOString();}
+    else{if(items.length>=500)throw new Error('Maximal 500 Artikel.');items.unshift({id:crypto.randomUUID(),name:item.name,quantity:item.quantity,checked:false,updated_at:new Date().toISOString()});}
+  }else if(path==='/api/shopping/items/check'){
+    const item=state.manual_items!.find(i=>i.id===shoppingItemId(body.id));if(!item||typeof body.checked!=='boolean')throw new Error('Artikel oder Status ungültig.');item.checked=body.checked;item.updated_at=new Date().toISOString();
+  }else if(path==='/api/shopping/items/delete'){
+    const id=shoppingItemId(body.id);state.manual_items=state.manual_items!.filter(i=>i.id!==id);
+  }else if(path==='/api/import'){
     const url=normalizeSourceUrl(body.value);
     if(['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(url.hostname))throw new Error('Die Design-Demo simuliert nur Webseitenimporte.');
     const existing=state.recipes.find(r=>r.source_url===url.href);

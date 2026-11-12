@@ -3,6 +3,8 @@ import type { Member, Recipe, RecipeData, Source, SourceKind, Usage, ImportRecor
 import { AppError } from '../shared/errors.js';
 import { normalizeSourceUrl,publicSourceUrl } from '../shared/source-url.js';
 import { positiveServings } from '../shared/recipe.js';
+import {productKey,validateShoppingEntry,shoppingItemId} from '../shared/products.js';
+import type {ManualShoppingItem} from '../shared/types.js';
 
 interface Row {
   id: number; owner_id: string; title: string; description: string; servings: number | null;
@@ -18,6 +20,27 @@ export function intConfig(value: string | undefined, fallback: number, max = 100
 
 export class Repository {
   constructor(public db: D1Database) {}
+  async shoppingItems():Promise<ManualShoppingItem[]>{
+    const rows=await this.db.prepare('SELECT id,name,quantity,checked,updated_at FROM shopping_items ORDER BY checked,updated_at DESC,id LIMIT 500').all<Omit<ManualShoppingItem,'checked'>&{checked:number}>();
+    return rows.results.map(row=>({...row,checked:row.checked===1}));
+  }
+  async saveShoppingItem(input:unknown,actor:Member):Promise<void>{
+    const item=validateShoppingEntry(input),key=productKey(item.name);
+    try{
+      const result=item.id?await this.db.prepare('UPDATE shopping_items SET name=?,name_key=?,quantity=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(item.name,key,item.quantity,item.id).run():
+        await this.db.prepare(`INSERT INTO shopping_items(id,name,name_key,quantity,created_by)
+          SELECT ?,?,?,?,? WHERE (SELECT COUNT(*) FROM shopping_items)<500 OR EXISTS(SELECT 1 FROM shopping_items WHERE name_key=?)
+          ON CONFLICT(name_key) DO UPDATE SET checked=0,quantity=CASE WHEN excluded.quantity='' THEN shopping_items.quantity ELSE excluded.quantity END,updated_at=CURRENT_TIMESTAMP`)
+          .bind(crypto.randomUUID(),item.name,key,item.quantity,actor.id,key).run();
+      if(!result.meta.changes)throw new AppError(item.id?'NOT_FOUND':'SHOPPING_LIMIT',item.id?'Der Artikel wurde inzwischen entfernt.':'Die Einkaufsliste enthält bereits 500 Artikel. Bitte alte Einträge entfernen.',item.id?404:409);
+    }catch(error){if(error instanceof AppError)throw error;throw new AppError('SHOPPING_CONFLICT','Der Artikel konnte nicht gespeichert werden. Prüfe, ob der Name bereits vorhanden ist.',409);}
+  }
+  async checkShoppingItem(value:unknown,checked:unknown):Promise<void>{
+    const id=shoppingItemId(value);if(typeof checked!=='boolean')throw new AppError('INVALID_SHOPPING_ITEM','Ungültiger Einkaufsstatus.');
+    const result=await this.db.prepare('UPDATE shopping_items SET checked=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(checked?1:0,id).run();
+    if(!result.meta.changes)throw new AppError('NOT_FOUND','Der Artikel wurde inzwischen entfernt.',404);
+  }
+  async deleteShoppingItem(value:unknown):Promise<void>{await this.db.prepare('DELETE FROM shopping_items WHERE id=?').bind(shoppingItemId(value)).run();}
   async member(email: string): Promise<(Member & { access_sub: string | null }) | null> {
     return this.db.prepare('SELECT * FROM members WHERE email=? COLLATE NOCASE').bind(email).first();
   }

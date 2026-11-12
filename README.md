@@ -94,3 +94,6 @@ Die konkrete [Smoke-Test-Checkliste](docs/SMOKE-TEST.md) umfasst Access einschli
 
 ### Futterluke: Rezeptbilder
 Die Oberfläche heißt Futterluke, mit dem Untertitel „Umwandlung von Rezepten“. Neue Webseitenimporte übernehmen nach Möglichkeit ein Bild aus Recipe-/Open-Graph-/Twitter-Metadaten. Bilder erscheinen in Sammlung und Rezept, mit Link zur Quellseite und vorhandenem Bildnachweis. Ohne geeignetes Bild bleibt das Emoji. Keine zusätzlichen KI-Aufrufe. Details: [Rezeptbilder](docs/RECIPE-IMAGES.md).
+
+### Einkaufsliste mit Kacheln
+Eigene Lebensmittel und Haushaltsartikel lassen sich unabhängig von Rezepten hinzufügen, mit Freitextmenge bearbeiten, abhaken, entfernen und erneut verwenden. Vorschläge aus einem eingebauten deutschen Katalog, eigenen Einträgen und Rezeptzutaten erscheinen direkt beim Tippen. Emojis werden lokal zugeordnet; unbekannte Produkte erhalten 🛒. Dafür werden keine OpenAI-Anfragen benötigt. Die Liste ist für aktive Mitglieder gemeinsam; Aktualisierungen anderer Geräte erscheinen nach Neuladen. Details: [Einkaufsliste](docs/SHOPPING.md).

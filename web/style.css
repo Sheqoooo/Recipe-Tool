@@ -10,3 +10,48 @@ dialog{max-width:none;width:100%;height:100dvh;max-height:100dvh;margin:0;border
 .recipe-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}
 .image-credit{font-size:12px;color:#777;margin:10px 0 20px;line-height:1.5}
 .image-credit a{color:inherit;text-underline-offset:3px}
+
+/* Fast, shared grocery tiles. Suggestions and emoji matching are fully local. */
+.grocery-composer{position:relative;margin:0 0 30px;max-width:680px}
+.grocery-input-row{display:flex;align-items:center;gap:10px;border:1px solid #e1e4df;border-radius:15px;padding:7px 8px 7px 14px;box-shadow:0 3px 12px #26321d05}
+#shopping-emoji{font-size:25px;flex-shrink:0}
+.grocery-input-row input{border:0;padding:10px 0;border-radius:0;font-size:16px;background:none;outline:0}
+.grocery-input-row:focus-within{border-color:#aabfa0}
+.grocery-add{padding:0;width:44px;min-width:44px;height:44px;font-size:27px}
+.grocery-quantity-row{display:flex;align-items:center;gap:12px;margin:8px 4px 0}
+.grocery-quantity-row input{border:0;background:#f7f8f5;font-size:13px;padding:10px 12px;min-height:40px}
+.product-suggestions{position:absolute;top:65px;left:0;right:0;z-index:10;background:#fff;border:1px solid #e6e9e1;border-radius:13px;box-shadow:0 10px 30px #26321d18;overflow:hidden}
+.product-suggestions button{width:100%;display:flex;align-items:center;gap:12px;text-align:left;background:white;padding:12px 16px;min-height:48px;font-size:14px}
+.product-suggestions button>span:first-child{font-size:23px}
+.product-suggestions button:hover,.product-suggestions [aria-selected=true]{background:#f0f5eb}
+.suggestion-arrow{margin-left:auto;color:#9ba392}
+.manual-shopping-section,.recent-shopping-section{margin-bottom:32px}
+.manual-shopping-section h2,.recent-shopping-section h2{font-size:17px;letter-spacing:-.3px}
+.grocery-grid,#shopping-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.grocery-tile{position:relative;border:1px solid #00000005;border-radius:15px;min-width:0;overflow:hidden}
+.grocery-check,.recent-product{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;margin:0;padding:18px 12px 8px;width:100%;min-height:144px;cursor:pointer;text-align:left;background:none}
+.grocery-check input{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-height:0;cursor:pointer;margin:0}
+.grocery-check:focus-within{outline:3px solid #84b9e8;outline-offset:-3px}
+.grocery-emoji{display:block;font-size:35px;line-height:1.2;margin-bottom:9px}
+.grocery-tile strong{display:block;font-size:13px;line-height:1.4;font-weight:600;overflow-wrap:anywhere}
+.grocery-tile small{display:block;font-size:11px;color:#6d7565;margin-top:4px;line-height:1.45;overflow-wrap:anywhere}
+.grocery-tile-tools{display:flex;justify-content:flex-end;position:relative;z-index:1;padding:0 4px 3px}
+.grocery-tile-tools button{display:grid;place-items:center;min-width:44px;height:44px;background:transparent;border-radius:8px;font-size:20px;color:#7b856f}
+.grocery-tile-tools button:hover{background:#00000006}
+.grocery-empty{grid-column:1/-1;font-size:13px;color:#8a9182;padding:18px 0}
+.recent-tile{border:1px solid #e8ece3;background:#fafbf8}
+.recent-product{padding-bottom:18px;padding-right:22px}
+.recent-product:hover{background:#f0f5eb}
+.recent-plus{position:absolute;right:12px;top:12px;color:#87977c;font-size:18px}
+.shopping-row.grocery-tile{display:block;margin:0;border-bottom:0;padding:15px 10px;min-height:145px;cursor:pointer}
+.shopping-row.grocery-tile>input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.shopping-row.grocery-tile:focus-within{outline:3px solid #84b9e8;outline-offset:-3px}
+.shopping-row.grocery-tile.checked{opacity:.55;background:#f3f5ef}
+.shopping-row.grocery-tile.checked strong{text-decoration:line-through}
+.shopping-row.grocery-tile.checked:after{content:'✓';position:absolute;right:10px;top:8px;color:#52793e}
+.shopping-layout{margin-top:36px}
+@media(min-width:700px){.grocery-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.grocery-check,.recent-product{min-height:155px}.grocery-emoji{font-size:40px}.grocery-tile strong{font-size:14px}}
+@media(max-width:359px){.grocery-grid,#shopping-list{grid-template-columns:repeat(2,minmax(0,1fr))}.grocery-input-row{gap:6px;padding-left:10px}}
+
+.grocery-check input,.shopping-row.grocery-tile>input{z-index:1}
+.grocery-tile-tools{z-index:2}

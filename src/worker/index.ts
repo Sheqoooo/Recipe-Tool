@@ -55,7 +55,7 @@ export function createApp(deps:Dependencies={}){
         if(imageMatch){const image=await repo.image(id(Number(imageMatch[1])));if(!image)throw new AppError('NOT_FOUND','Kein Rezeptbild vorhanden.',404);return protect(new Response(new Uint8Array(image.content),{headers:{'Content-Type':image.mime_type}}));}
         if(path==='/api/state'){
           const recipes=await repo.recipes(actor),plan=await repo.plan(recipes);
-          return json({recipes,plan,shopping:shoppingList(plan),checked:await repo.checked(),user:actor,
+          return json({recipes,plan,shopping:shoppingList(plan),manual_items:await repo.shoppingItems(),checked:await repo.checked(),user:actor,
             members:actor.role==='admin'?await repo.members():[],imports:await repo.history(actor),has_key:Boolean(env.OPENAI_API_KEY),read_only:false} satisfies AppState);
         }
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
@@ -63,6 +63,9 @@ export function createApp(deps:Dependencies={}){
       }
       if(request.method!=='POST')throw new AppError('METHOD','Methode nicht erlaubt.',405);
       assertWrite(request);const data=await body(request);
+      if(path==='/api/shopping/items/save'){await repo.saveShoppingItem(data,actor);return json({ok:true});}
+      if(path==='/api/shopping/items/check'){await repo.checkShoppingItem(data.id,data.checked);return json({ok:true});}
+      if(path==='/api/shopping/items/delete'){await repo.deleteShoppingItem(data.id);return json({ok:true});}
       if(path==='/api/import'){
         const url=normalizeUrl(data.value);
         let source:Source|undefined;

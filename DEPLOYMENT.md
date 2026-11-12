@@ -164,3 +164,6 @@ OpenAI kann sowohl vorübergehende Anfragelimits als auch Guthaben-/Ausgaben-/Ko
 
 ### Vor Veröffentlichung der Bildfunktion
 Migration `migrations/0003_recipe_images.sql` ist erforderlich. Sie legt ausschließlich `recipe_images` in der vorhandenen Datenbank an. Vorher Backup und explizite Freigabe; nicht automatisch während Build/Deploy ausführen. Standardmäßig nur lokal mit `npm run db:migrate:local` prüfen. Ohne Migration kann die neue Sammlung nicht geladen werden. Bestehende Rezepte werden nicht automatisch neu abgerufen. JSON-Export enthält Bildmetadaten, keine Bildbytes; vollständige Sicherung erfolgt mit D1 einschließlich BLOBs.
+
+### Vor Veröffentlichung der Einkaufskacheln
+Zusätzlich zu Migration 0003 benötigt dieser Stand `migrations/0004_shopping_items.sql`. Vorher Backup prüfen und Remote-Migration ausdrücklich freigeben; sie läuft niemals automatisch im Build oder Deployment. Die neue Tabelle wird in der bestehenden D1 angelegt. Lokal: `npm run db:migrate:local`. Weitere Secrets, API-Kosten oder Dienste sind für Autovervollständigung und Emojis nicht erforderlich. Ohne Migration 0004 kann der neue `/api/state` nicht vollständig geladen werden. Datenbankbackup enthält Einkaufseinträge; der bestehende Rezept-JSON-Export bleibt auf Rezepte beschränkt.

@@ -55,3 +55,27 @@ test('Futterluke zeigt Bild, Nachweis und Emoji-Fallback offline',async({page},i
   await page.locator('#recipe-dialog .recipe-photo').evaluate(e=>e.dispatchEvent(new Event('error')));
   await expect(page.locator('#recipe-dialog .recipe-photo')).toHaveCount(0);await expect(page.locator('.detail-hero-art')).toContainText('🍋');
 });
+
+test('Einkaufskacheln: Vorschläge, Mengen, Emoji, Bearbeiten und Wiederverwenden ohne Netz',async({page},info)=>{
+ const requests=[];page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
+ await page.goto(demo);await page.getByRole('button',{name:/Meine Rezepte/}).click();await page.getByRole('button',{name:/Einkaufsliste/}).click();
+ const name=page.locator('#shopping-name');await name.fill('Spül');await expect(page.getByRole('option',{name:/Spülmittel/})).toBeVisible();
+ await name.press('ArrowDown');await name.press('Enter');await expect(name).toHaveValue('Spülmittel');await expect(page.locator('#shopping-suggestions')).toBeHidden();
+ await page.locator('#shopping-quantity').fill('2 Flaschen');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
+ const tile=page.locator('#manual-shopping-list .grocery-tile').filter({hasText:'Spülmittel'});
+ await expect(tile).toContainText('2 Flaschen');await expect(tile.locator('.grocery-emoji')).toHaveText('🧼');
+ await tile.getByRole('checkbox').check();await expect(page.getByRole('button',{name:'Spülmittel erneut hinzufügen',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Spülmittel erneut hinzufügen',exact:true}).click();
+ await page.getByRole('button',{name:'Spülmittel bearbeiten',exact:true}).click();await name.fill('Spülmittel sensitiv');await page.locator('#shopping-quantity').fill('1 Flasche');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
+ await expect(page.locator('#manual-shopping-list')).toContainText('Spülmittel sensitiv');
+ await name.fill('Mein Spezialprodukt');await page.locator('#shopping-quantity').fill('1 Packung');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
+ const custom=page.locator('#manual-shopping-list .grocery-tile').filter({hasText:'Mein Spezialprodukt'});await expect(custom.locator('.grocery-emoji')).toHaveText('🛒');
+ await page.screenshot({path:info.outputPath('shopping-tiles.png'),fullPage:true});
+ if(info.project.name==='mobile'){await page.setViewportSize({width:320,height:740});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
+ expect(requests).toEqual([]);
+});
+test('freie Artikel werden als Text ausgegeben und nicht als HTML ausgeführt',async({page})=>{
+ await page.goto(demo);await page.getByRole('button',{name:/Meine Rezepte/}).click();await page.getByRole('button',{name:/Einkaufsliste/}).click();
+ await page.locator('#shopping-name').fill('<img src=x onerror=alert(1)>');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
+ await expect(page.locator('#manual-shopping-list')).toContainText('<img src=x onerror=alert(1)>');await expect(page.locator('#manual-shopping-list img')).toHaveCount(0);
+});
