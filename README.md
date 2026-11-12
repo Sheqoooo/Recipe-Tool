@@ -87,3 +87,7 @@ Bestehende private SQLite-Dateien werden nicht automatisch in D1 übertragen. Vo
 ## Manuelle Prüfung nach Veröffentlichung
 
 Die konkrete [Smoke-Test-Checkliste](docs/SMOKE-TEST.md) umfasst Access einschließlich Assets/API/Preview, bestehende D1 und beide Migrationen, Quellen-/URL-Sicherheit, echte OpenAI-Imports nach gesonderter Kostenfreigabe sowie Koch- und Einkaufsliste. Sie ist vorbereitet, aber noch nicht live abgearbeitet.
+
+## Design ohne API-Kosten testen
+
+`npm run demo` startet eine separate lokale Design-Demo mit Beispielrezepten und simuliertem Import. Ohne D1, Cloudflare-Konto oder OpenAI-Key. Alternativ die portable `rezeptwerk-demo.html` aus dem CI-Artefakt `design-demo` im Browser öffnen. Produktionsbuild und Daten bleiben getrennt. [Bedienung, Mengenanzeige und Grenzen](docs/DESIGN-DEMO.md).

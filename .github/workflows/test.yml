@@ -19,6 +19,7 @@ jobs:
       - run: npm ci
       - run: node --test scripts/hosting-guard.test.mjs
       - run: npm run build
+      - run: npm run build:demo
       - run: npm run typecheck
       - run: npm test
       - run: npm run build:worker
@@ -32,4 +33,10 @@ jobs:
         with:
           name: worker-test-results
           path: test-results/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: design-demo
+          path: .runtime/demo/
           retention-days: 7

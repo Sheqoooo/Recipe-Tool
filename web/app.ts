@@ -1,4 +1,6 @@
+declare const __REZEPTWERK_DEMO__:boolean;
 import type { AppState,Recipe,RecipeData } from '../src/shared/types.js';
+import {stepQuantityNotes} from '../src/shared/step-quantities.js';
 type Ingredient=RecipeData['ingredients'][number];
 type Step=RecipeData['steps'][number];
 let state:AppState={recipes:[],plan:[],shopping:[],checked:[],members:[],imports:[],has_key:false,read_only:true,user:{id:'',email:'',role:'member',active:0}};
@@ -13,15 +15,41 @@ const preview=location.protocol==='file:'||new URLSearchParams(location.search).
 let timer:ReturnType<typeof setTimeout>|undefined;
 function notify(message:string,error=false){$('#notice').textContent=message;$('#notice').hidden=false;$('#notice').classList.toggle('error',error);clearTimeout(timer);timer=setTimeout(()=>{$('#notice').hidden=true;},error?15000:6000);}
 async function api<T>(path:string,data?:unknown):Promise<T>{
+  if(__REZEPTWERK_DEMO__){const {demoApi}=await import('./demo.js');return demoApi<T>(path,data);}
   if(preview)throw new Error('Diese statische Vorschau ist nicht mit der privaten App verbunden.');
   const response=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify(data)});
   if(!response.headers.get('Content-Type')?.includes('application/json'))throw new Error('Die Access-Anmeldung ist abgelaufen. Bitte neu laden.');
   const result=await response.json() as {error?:string};if(!response.ok)throw new Error(result.error||'Anfrage fehlgeschlagen.');return result as T;
 }
-function showView(view:string){if(!['import','collection','shopping','settings'].includes(view))view='import';document.querySelectorAll<HTMLElement>('.view').forEach(e=>{e.hidden=e.id!=='view-'+view;});document.querySelectorAll<HTMLElement>('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.view===view));history.replaceState(null,'','#'+view);}
+function showView(view:string){
+  if(!['import','collection','shopping','settings'].includes(view))view='import';
+  document.body.dataset.view=view;
+  document.querySelectorAll<HTMLElement>('.view').forEach(e=>{e.hidden=e.id!=='view-'+view;});
+  $('#app-header').hidden=view==='import';$('#app-navigation').hidden=view==='import';
+  document.querySelectorAll<HTMLElement>('.nav-item').forEach(e=>{const active=e.dataset.view===view;e.classList.toggle('active',active);if(active)e.setAttribute('aria-current','page');else e.removeAttribute('aria-current');});
+  history.replaceState(null,'','#'+view);window.scrollTo(0,0);
+}
+function presentation(r:Recipe):[string,string]{
+  const title=r.title.toLowerCase();
+  if(/zitrone/.test(title))return ['🍋','lemon'];
+  if(/salat|bowl/.test(title))return ['🥗','mint'];
+  if(/curry/.test(title))return ['🍛','peach'];
+  if(/pfannkuchen|pancake/.test(title))return ['🥞','lilac'];
+  if(/suppe/.test(title))return ['🍲','blue'];
+  if(/pasta|nudel|spaghetti/.test(title))return ['🍝','rose'];
+  return ['🍽️','mint'];
+}
+function cookingTime(r:Recipe):string{
+  if(r.prep_minutes!==null&&r.cook_minutes!==null)return fmt(r.prep_minutes+r.cook_minutes)+' Min.';
+  if(r.cook_minutes!==null)return fmt(r.cook_minutes)+' Min. Kochzeit';
+  if(r.prep_minutes!==null)return fmt(r.prep_minutes)+' Min. Vorbereitung';
+  return 'Zeit offen';
+}
 const empty=(title:string,text:string)=>`<div class="empty"><h2>${esc(title)}</h2><p>${esc(text)}</p></div>`;
-function renderRecipes(){const search=input('#search').value.toLowerCase();const recipes=state.recipes.filter(r=>(r.title+' '+r.ingredients.map(i=>i.name).join(' ')).toLowerCase().includes(search));
-  $('#recipe-grid').innerHTML=recipes.length?recipes.map((r,i)=>`<article class="recipe-card"><span class="recipe-number">${String(i+1).padStart(2,'0')} /</span>${r.warnings.length?'<div class="warning-label">Hinweise zur Prüfung vorhanden</div>':''}<h2>${esc(r.title)}</h2><p>${r.servings===null?'Portionen unbekannt':fmt(r.servings)+' Portionen'} · ${r.ingredients.length} Zutaten</p><footer><button class="text-button" data-open="${r.id}">Rezept ansehen ↗</button><button class="secondary" data-add="${r.id}" ${state.read_only||r.servings===null?'disabled':''}>${state.plan.some(p=>p.recipe_id===r.id)?'✓ Auf der Kochliste':'+ Kochliste'}</button></footer></article>`).join(''):empty(search?'Kein Treffer.':'Hier beginnt euer Kochbuch.',search?'Versuche einen anderen Namen oder eine Zutat.':'Füge einen Rezeptlink ein. Das Rezept wird automatisch gespeichert.');
+function renderRecipes(){
+  const search=input('#search').value.toLowerCase();
+  const recipes=state.recipes.filter(r=>(r.title+' '+r.ingredients.map(i=>i.name).join(' ')).toLowerCase().includes(search));
+  $('#recipe-grid').innerHTML=recipes.length?recipes.map(r=>{const [emoji,tone]=presentation(r);return `<article class="recipe-card"><button class="recipe-cover tone-${tone}" data-open="${r.id}" aria-label="${esc(r.title)} ansehen"><span aria-hidden="true">${emoji}</span></button><div class="recipe-content">${r.warnings.length?'<div class="warning-label">Hinweise zur Prüfung</div>':''}<h2>${esc(r.title)}</h2><p class="recipe-meta"><span>◷ ${esc(cookingTime(r))}</span><span>${r.servings===null?'Portionen offen':fmt(r.servings)+' Portionen'}</span></p></div><footer><button class="secondary" data-add="${r.id}" ${state.read_only||r.servings===null?'disabled':''}>${state.plan.some(p=>p.recipe_id===r.id)?'✓ Auf der Kochliste':'+ Zur Kochliste'}</button></footer></article>`;}).join(''):empty(search?'Kein Treffer.':'Dein Kochbuch wartet auf dich.',search?'Versuche einen anderen Namen oder eine Zutat.':'Füge deinen ersten Rezeptlink ein.');
 }
 function renderShopping(){
   $('#plan-list').innerHTML=state.plan.length?state.plan.map(p=>`<article class="plan-card"><h3>${esc(p.recipe.title)}</h3><div class="portion-control"><label class="sr-only" for="portion-${p.recipe_id}">Portionen für ${esc(p.recipe.title)}</label><input id="portion-${p.recipe_id}" type="number" min="0.01" max="1000" step="any" value="${p.servings}" data-portions="${p.recipe_id}"><span>Portionen</span><button class="text-button danger" data-remove="${p.recipe_id}">Entfernen</button></div></article>`).join(''):empty('Was möchtet ihr kochen?','Wählt Gerichte aus eurer Sammlung.');
@@ -30,9 +58,9 @@ function renderShopping(){
 }
 function render(){
   $('#recipe-count').textContent=String(state.recipes.length);$('#plan-count').textContent=String(state.plan.length);$('#key-hint').hidden=state.has_key||state.read_only;
-  $('#key-status').textContent=state.read_only?'Geschützte, schreibgeschützte Vorschau ohne produktive Daten oder KI.':state.has_key?'OpenAI-Secret auf dem Worker vorhanden.':'OPENAI_API_KEY ist noch nicht als Worker Secret eingerichtet.';
+  $('#key-status').textContent=__REZEPTWERK_DEMO__?'Demo mit Beispieldaten. Importe werden simuliert und verursachen keine KI-Kosten.':state.read_only?'Geschützte, schreibgeschützte Vorschau ohne produktive Daten oder KI.':state.has_key?'OpenAI-Secret auf dem Worker vorhanden.':'OPENAI_API_KEY ist noch nicht als Worker Secret eingerichtet.';
   $('#identity').textContent=state.user.email?`${state.user.email} · ${state.user.role==='admin'?'Administrator':'Mitglied'}`:'';
-  $('#members-panel').hidden=state.read_only||state.user.role!=='admin';input('#import-submit').disabled=state.read_only;
+  $('#members-panel').hidden=__REZEPTWERK_DEMO__||state.read_only||state.user.role!=='admin';input('#import-submit').disabled=state.read_only;
   $('#member-list').innerHTML=state.members.map(m=>`<div class="member-row"><span>${esc(m.email)} · ${esc(m.role)} · ${m.active?'aktiv':'gesperrt'}</span>${m.id!==state.user.id?`<button class="text-button" data-member="${esc(m.id)}" data-active="${m.active?0:1}">${m.active?'Sperren':'Aktivieren'}</button>`:''}</div>`).join('');
   $('#import-history').innerHTML=state.imports.length?state.imports.map(i=>`<p class="field-help">${esc(new Date(i.created_at).toLocaleString('de-DE'))} · ${esc(i.status==='completed'?'Gespeichert':i.status==='running'?'Läuft':'Fehlgeschlagen')}${i.error_code?' · '+esc(i.error_code):''}${i.estimated_cost_microusd!==null?' · ca. '+(i.estimated_cost_microusd/1e6).toFixed(4)+' USD':''}</p>`).join(''):'<p class="field-help">Noch keine Importe.</p>';
   renderRecipes();renderShopping();
@@ -41,7 +69,8 @@ async function refresh(){state=await api<AppState>('/api/state');render();}
 function sourceLink(value:string){try{const url=new URL(value);if(url.protocol==='https:')return `<a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Originalquelle öffnen ↗</a>`;}catch{}return '';}
 function openRecipe(id:number){const r=state.recipes.find(r=>r.id===id);if(!r)return;
   $('#dialog-caption').textContent='AUS EUREM KOCHBUCH';
-  $('#dialog-content').innerHTML=`<h2>${esc(r.title)}</h2><p class="detail-meta">${r.servings===null?'Portionen unbekannt':fmt(r.servings)+' Portionen'}${r.prep_minutes!==null?' · Vorbereitung '+fmt(r.prep_minutes)+' Min.':' · Vorbereitung unbekannt'}${r.cook_minutes!==null?' · Kochen '+fmt(r.cook_minutes)+' Min.':' · Kochzeit unbekannt'}</p><p>${esc(r.description)}</p>${r.warnings.length?`<div class="hint"><ul class="warning-list">${r.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div>`:''}${sourceLink(r.source_url)}<h3>Zutaten</h3><ul class="ingredient-view">${r.ingredients.map(i=>`<li><strong>${esc(quantity(i))}</strong> ${esc(i.name)} ${esc(i.note)}</li>`).join('')}</ul><h3>Zubereitung</h3><ol>${r.steps.map(s=>`<li>${esc(s.text)}${s.ingredient_indices.length?`<span class="recipe-step-ingredients">Zutatenbezug: ${s.ingredient_indices.map(i=>r.steps.filter(step=>step.ingredient_indices.includes(i)).length>1?`${esc(r.ingredients[i].name)} (Rezeptgesamtmenge ${esc(quantity(r.ingredients[i]))||'unbekannt'}; Teilmenge siehe Schritttext)`:`${esc(quantity(r.ingredients[i]))} ${esc(r.ingredients[i].name)}`).join(', ')}</span>`:''}</li>`).join('')}</ol><div class="detail-actions"><button class="primary compact" data-add="${r.id}" ${r.servings===null||state.read_only?'disabled':''}>+ Zur Kochliste</button>${r.can_edit?`<button class="secondary" data-edit="${r.id}">Bearbeiten</button>`:''}${r.can_delete?`<button class="text-button danger" data-delete="${r.id}">Löschen</button>`:''}</div>`;
+  const [emoji,tone]=presentation(r);
+  $('#dialog-content').innerHTML=`<div class="detail-hero tone-${tone}"><div class="detail-hero-art" aria-hidden="true">${emoji}</div><div class="detail-hero-copy"><span class="detail-kicker">AUS DEINEM KOCHBUCH</span><h2>${esc(r.title)}</h2><p class="recipe-description">${esc(r.description)}</p></div></div><div class="recipe-facts"><div><span>⏱️ Vorbereitung</span><strong>${r.prep_minutes===null?'Unbekannt':fmt(r.prep_minutes)+' Min.'}</strong></div><div><span>🍳 Kochzeit</span><strong>${r.cook_minutes===null?'Unbekannt':fmt(r.cook_minutes)+' Min.'}</strong></div><div><span>🍽️ Portionen</span><strong>${r.servings===null?'Unbekannt':fmt(r.servings)}</strong></div><div><span>👩‍🍳 Zubereitung</span><strong>${r.steps.length} Schritte</strong></div></div>${r.warnings.length?`<div class="hint"><ul class="warning-list">${r.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div>`:''}<div class="recipe-columns"><section><h3>Zutaten</h3><ul class="ingredient-view">${r.ingredients.map((i,n)=>`<li><label class="ingredient-check"><input type="checkbox" aria-label="${esc(i.name)} vorbereitet"><span>${esc(i.name)}<small>${esc(i.note)}</small></span><strong>${esc(quantity(i))||'Menge offen'}</strong></label></li>`).join('')}</ul><div class="detail-source">${sourceLink(r.source_url)}</div></section><section><h3>Zubereitung</h3><ol class="method-list">${r.steps.map((s,n)=>{const notes=stepQuantityNotes(r,n);return `<li><span class="step-number" aria-hidden="true">${n+1}</span><p>${esc(s.text)}${notes.length?` <span class="step-quantity">(${notes.map(esc).join('; ')})</span>`:''}</p></li>`;}).join('')}</ol></section></div><div class="detail-actions"><button class="primary compact" data-add="${r.id}" ${r.servings===null||state.read_only?'disabled':''}>+ Zur Kochliste</button>${r.can_edit?`<button class="secondary" data-edit="${r.id}">Bearbeiten</button>`:''}${r.can_delete?`<button class="text-button danger" data-delete="${r.id}">Löschen</button>`:''}</div>`;
   if(!dialog().open)dialog().showModal();
 }
 function ingredientRow(i:Partial<Ingredient>={}){return `<div class="ingredient-edit"><input type="number" data-amount min="0" max="1000000" step="any" aria-label="Menge" value="${i.amount??''}"><input data-unit aria-label="Einheit" maxlength="30" value="${esc(i.unit||'')}"><input data-name aria-label="Zutat" required maxlength="300" value="${esc(i.name||'')}"><button type="button" class="icon-button danger" data-delete-row aria-label="Zutat entfernen">×</button><input class="ingredient-note" data-note aria-label="Hinweis" maxlength="300" value="${esc(i.note||'')}"></div>`;}
@@ -79,13 +108,13 @@ document.addEventListener('submit',async event=>{
   const form=event.target;if(!(form instanceof HTMLFormElement))return;event.preventDefault();const b=form.querySelector<HTMLButtonElement>('[type="submit"]');if(b)b.disabled=true;
   try{
     if(form.id==='import-form'){
-      if(b)b.textContent='Rezept wird aufbereitet …';const video=!$('#transcript-panel').hidden;
+      if(b){b.textContent='…';b.setAttribute('aria-busy','true');}$('#import-progress').hidden=false;const video=!$('#transcript-panel').hidden;
       const result=await api<{id:number;existing:boolean}>('/api/import',{value:input('#source').value,...(video?{transcript:$<HTMLTextAreaElement>('#transcript').value,authorized:input('#transcript-authorized').checked,duration_seconds:Number(input('#video-duration').value)*60}:{})});
       await refresh();showView('collection');notify(result.existing?'Das Rezept ist bereits gespeichert.':'Das Rezept wurde automatisch gespeichert.');
     }else if(form.id==='editor-form')await saveEditor();
     else if(form.id==='member-form'){await api('/api/members',{email:input('#member-email').value,role:$<HTMLSelectElement>('#member-role').value});await refresh();input('#member-email').value='';notify('Kochbuch-Zugriff erlaubt. Auch die Access-Richtlinie muss die Person zulassen.');}
   }catch(e){const message=e instanceof Error?e.message:'Anfrage fehlgeschlagen.';if(form.id==='editor-form'){$('#editor-error').textContent=message;$('#editor-error').hidden=false;}else notify(message,true);}
-  finally{if(b){b.disabled=state.read_only;if(form.id==='import-form')b.textContent='Rezept importieren ↗';}}
+  finally{if(b){b.disabled=state.read_only;if(form.id==='import-form'){b.textContent='→';b.removeAttribute('aria-busy');$('#import-progress').hidden=true;}}}
 });
 document.addEventListener('change',async event=>{const e=event.target;if(!(e instanceof HTMLInputElement))return;
   try{if(e.dataset.portions){if(!e.reportValidity())return;await api('/api/plan',{recipe_id:Number(e.dataset.portions),servings:Number(e.value)});await refresh();}if(e.dataset.check!==undefined){await api('/api/shopping/check',{key:e.dataset.check,checked:e.checked});await refresh();}}
@@ -94,5 +123,6 @@ document.addEventListener('change',async event=>{const e=event.target;if(!(e ins
 input('#search').addEventListener('input',renderRecipes);
 input('#source').addEventListener('input',()=>{try{$('#transcript-panel').hidden=!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(new URL(input('#source').value).hostname);}catch{$('#transcript-panel').hidden=true;}});
 showView(location.hash.slice(1));
-if(preview){render();notify('Statische Vorschau ohne private Datenbank oder KI.');clearTimeout(timer);}
+if(__REZEPTWERK_DEMO__){$('#demo-banner').hidden=false;refresh().catch(e=>notify(e.message,true));}
+else if(preview){render();notify('Statische Vorschau ohne private Datenbank oder KI.');clearTimeout(timer);}
 else refresh().catch(e=>notify(e instanceof Error?e.message:'Die App ist nicht erreichbar.',true));
