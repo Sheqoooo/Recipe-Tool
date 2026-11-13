@@ -3,7 +3,7 @@ import {AppError} from '../shared/errors.js';
 import {videoPlatform} from '../shared/video-platform.js';
 import {checkDns,limitedText} from './source.js';
 
-export const MAX_VIDEO_BYTES=12*1024*1024;
+export const MAX_VIDEO_BYTES=16*1024*1024;
 export const MAX_VIDEO_SECONDS=90;
 const unavailable=()=>new AppError('VIDEO_SOURCE_REQUIRED','Das Video ist nicht öffentlich und zuverlässig auslesbar. Eine Beschreibung oder ein Transkript kann weiterhin verwendet werden.',422);
 

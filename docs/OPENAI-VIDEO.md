@@ -10,7 +10,7 @@ Neu implementiert, aber **standardmäßig deaktiviert**: automatischer Medienpfa
 
 1. Instagram: normales öffentliches HTML der zugehörigen Einbettung auswerten; eine eindeutig auffindbare `video_url` aus JSON-Daten lesen. Höchstens vier begrenzte Entschachtelungsschritte, keine Script-Ausführung.
 2. TikTok: öffentlich ausgeliefertes `__UNIVERSAL_DATA_FOR_REHYDRATION__` lesen, Item-ID gegen den aufgelösten Videolink prüfen. Nur `video.playAddr`, keine Downloader-/Login-Alternative.
-3. Öffentlich erreichbare vollständige MP4-Datei bis **12 MiB / 90 Sekunden** vorübergehend laden. Dauer aus MP4-`moov/mvhd` prüfen; HTML-Dauerangaben sind kein Nachweis. Kein HLS, DASH, DRM, Live-Video oder Signaturentschlüsselung.
+3. Öffentlich erreichbare vollständige MP4-Datei bis **16 MiB / 90 Sekunden** vorübergehend laden. Dauer aus MP4-`moov/mvhd` prüfen; HTML-Dauerangaben sind kein Nachweis. Kein HLS, DASH, DRM, Live-Video oder Signaturentschlüsselung.
 4. Zusätzliches Budget atomar in D1 reservieren, bevor Medienaufbereitung und OpenAI starten. Eine Medienanalyse zugleich. Die bestehende normale Importreservierung bleibt für reine Beschreibungen ausreichend.
 5. Cloudflare Media Transformations extrahiert M4A-Audio (max. 2 MiB) und sechs JPEG-Bilder (je max. 512 KiB, 720 × 720 Begrenzungsrahmen) bei 5/23/41/59/77/95 Prozent der Dauer. Kein dauerhaftes Medienhosting, kein R2, kein eigener Rechner.
 6. OpenAI Audio Transcriptions mit `gpt-4o-mini-transcribe`, anschließend Responses mit `gpt-6.1-terra`: Beschreibung, Transkript und Bilder erzeugen gemeinsam das strukturierte Rezept. Mengen dürfen nicht aus sichtbaren Handvoll-/Löffelbewegungen geraten werden.
@@ -24,8 +24,8 @@ Am 13. November 2026 ohne Login/Cookies geprüft:
 
 | Beispiel | Beobachtung |
 |---|---|
-| Instagram `C-dcRN2JNk6` | Beschreibung enthält Rezeptmengen; öffentliche Einbettung liefert zusätzlich eine MP4-Adresse, kleiner Abrufausschnitt HTTP 206 |
-| Instagram `Ddt0AqgMcUW` | Beschreibung allein enthält keine ausreichenden Mengen; öffentliche Einbettung liefert eine MP4-Adresse, kleiner Abrufausschnitt HTTP 206 |
+| Instagram `C-dcRN2JNk6` | Beschreibung enthält Rezeptmengen; öffentliche Einbettung liefert zusätzlich eine MP4-Adresse, HTTP 200, vollständiges MP4 mit 12.006.860 Bytes / 39,054 s aus Container geprüft |
+| Instagram `Ddt0AqgMcUW` | Beschreibung allein enthält keine ausreichenden Mengen; öffentliche Einbettung liefert eine MP4-Adresse, öffentlicher Abrufausschnitt HTTP 206, Gesamtgröße laut Content-Range 13.521.786 Bytes |
 | TikTok-Kurzlink zum Video `7683441157837163798` | Öffentliche Metadaten/Playeradresse vorhanden, direkter Medienabruf HTTP 403; keine Umgehung |
 
 Dies belegt **nicht** die komplette Verarbeitung im produktiven Worker. Die CDN-Antworten sind zeit-, netz- und plattformabhängig. Keine signierten Originaladressen oder vollständigen Plattformseiten wurden als Testfixtures gespeichert.
