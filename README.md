@@ -112,3 +112,10 @@ Auf Smartphones bleibt die Einkaufseingabe am unteren Bildschirmrand über der N
 Die Einkaufsliste beginnt mit einer kompakten Überschrift und direkt den Produktkategorien. Der frühere Untertitel wurde entfernt. Artikelzahl, Kopieren, Quellen-/Lizenzhinweise und Sortiererklärung stehen am Ende der Liste und bleiben beim Scrollen erreichbar; die mobile Eingabe bleibt unten fixiert.
 
 Neue Importe verwenden GPT-6.1 Sol mit geringem Denkaufwand und Mengen in Klammern im Anweisungssatz. Die zusätzliche Zutatenklammer am Schrittende entfällt auch bei bestehenden Rezepten. Alte Rezepttexte werden nicht kostenpflichtig neu generiert. Details und Kostenbeispiel: [OpenAI-Integration](docs/OPENAI-VIDEO.md).
+
+### Videovorschaubilder und freie Importmaske
+Neue Audio-/Bildimporte wählen innerhalb der bestehenden Rezept-Antwort zusätzlich einen geeigneten der sechs Frames aus (oder keinen, wenn ungeeignet). Ein begrenzter Media-Abruf speichert ein echtes JPEG aus diesem Zeitpunkt samt Originalquelle in der vorhandenen Bildtabelle. Kein zusätzlicher OpenAI-Bildgenerierungsaufruf. Bei reinem Beschreibungsimport und fehlendem Bild kann ein frühes Videostandbild ergänzt werden, sofern öffentlich zugänglich.
+
+Bereits gespeicherte bildlose Instagram-/TikTok-Rezepte bieten Besitzern/Administratoren **Videovorschaubild laden**. Dieser bewusste Nachladevorgang verwendet ein Standbild bei 5 % der Videolänge, ohne OpenAI-Aufruf oder Änderung der Rezepttexte. Vorhandene Bilder werden nicht ersetzt. Keine automatische rückwirkende Verarbeitung aller Rezepte. Hochkant-Standbilder erscheinen in Kacheln zugeschnitten, im geöffneten Rezept vollständig eingepasst und mit Quellenhinweis. Ohne öffentlich erreichbares Video bleibt der Emoji-Platzhalter.
+
+Nach erfolgreichem Import (auch bei bereits gespeichertem Link) werden URL und optionale Transkriptdaten sofort zurückgesetzt. Fehlgeschlagene Importe behalten die Eingabe für eine Korrektur.

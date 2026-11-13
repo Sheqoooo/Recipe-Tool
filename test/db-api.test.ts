@@ -287,3 +287,13 @@ it('Videobilder respektieren Besitzerrechte und behalten bestehende Bilder',asyn
  await expect(repo.addVideoImage(id,other,image,imageJob)).rejects.toMatchObject({code:'FORBIDDEN'});expect(await repo.hasImage(id)).toBe(false);
  await repo.addVideoImage(id,owner,image,imageJob);expect(await repo.hasImage(id)).toBe(true);
 });
+it('reiner Beschreibungsimport ergänzt ein frühes Videobild ohne weitere Rezept-KI',async()=>{
+ const f=appFixture(),value='https://www.instagram.com/reel/caption/';
+ const generate=vi.fn(async()=>structuredClone(generated)),readVideo=vi.fn(async url=>({kind:'web' as const,url,text:'public',provenance:'public_video' as const}));
+ const videoImage=vi.fn(async()=>({bytes:new Uint8Array([1,2,3]).buffer,mime:'image/jpeg' as const,original_url:value,credit:'Standbild aus dem Originalvideo'}));
+ const app=createApp({read:async url=>({kind:'web',url,text:'complete recipe caption',provenance:'description'}),generate,readVideo,videoImage});
+ const config={...f.config,VIDEO_ANALYSIS_ENABLED:'true',MEDIA:{} as NonNullable<typeof f.config.MEDIA>};
+ const response=await app.fetch(new Request('http://localhost/api/import',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify({value})}),config);
+ expect(response.status).toBe(201);expect(generate).toHaveBeenCalledTimes(1);expect(readVideo).toHaveBeenCalledTimes(1);expect(videoImage).toHaveBeenCalledTimes(1);
+ const state=await(await app.fetch(new Request('http://localhost/api/state'),config)).json() as AppState;expect(state.recipes[0].image).not.toBeNull();
+});

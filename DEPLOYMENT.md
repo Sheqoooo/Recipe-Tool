@@ -196,3 +196,8 @@ Die produktive MEDIA-Anbindung wurde inzwischen im Dashboard eingerichtet und is
 6. Rücknahme: Flag false setzen und Binding entfernen, ohne Datenbankrücksetzung. Beschreibungs-/Webimport bleiben möglich.
 
 Automatische YouTube-Medien und HTTP-403-blockierte TikTok-Dateien sind hierdurch nicht gelöst. Die [konkrete Testliste](docs/SMOKE-TEST.md) trennt Bereitstellung, Media-Aufbereitung und tatsächliche KI-Analyse.
+
+### Videostandbilder / Formular-Reset
+Keine weitere Ressource, API-Berechtigung oder Migration nötig: MEDIA und `recipe_images` aus Migration 0003 werden wiederverwendet. Neue Medienimporte können ein ausgewähltes Standbild speichern; reine Beschreibungspfade und bestehende bildlose Rezepte können einen frühen Frame nachladen. Kein zusätzlicher OpenAI-Aufruf für Bildgenerierung, keine neue kostenpflichtige Bild-API. Ein gesonderter Media-Vorgang extrahiert das eine JPEG; die Cloudflare-Beta-Preisbedingungen bleiben gesondert zu prüfen. Nachladeversuche zählen zu den bestehenden App-Kontingenten. Für bestehende Rezepte den Knopf **Videovorschaubild laden** verwenden; Duplikatimporte regenerieren weiterhin keine Rezepte.
+
+Neue Browserprüfungen verwenden ausschließlich eine klar gekennzeichnete Demo-Illustration für Hochkant-Standbilder. Ein echter Produktions-Bildabruf wurde durch Codex nicht ausgelöst. Nach erfolgreichem Import soll die zurückgekehrte Eingabemaske leer sein, nach Fehlern bleibt die Eingabe erhalten.

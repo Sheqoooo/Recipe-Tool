@@ -15,6 +15,8 @@ test('reduzierter Start und Offline-Demo ohne HTTP- oder API-Aufrufe',async({pag
   await expect(page.locator('#recipe-grid')).toContainText('Dein importiertes Beispielrezept');
   await page.getByRole('button',{name:/Link einfügen/}).click();
   await expect(page.locator('#source')).toHaveValue('');await expect(page.locator('#transcript-panel')).toBeHidden();
+  await page.locator('#source').fill('https://recipes.example/demo/1');await page.locator('#import-submit').click();
+  await expect(page.locator('#notice')).toContainText('bereits gespeichert');await page.getByRole('button',{name:/Link einfügen/}).click();await expect(page.locator('#source')).toHaveValue('');
   expect(requests).toEqual([]);expect(errors).toEqual([]);
 });
 
