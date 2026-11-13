@@ -64,8 +64,12 @@ test('optionaler Rezeptwunsch bleibt unaufdringlich, erzeugt eine Variante und w
  const requests=[];page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
  await page.goto(demo);await expect(page.locator('#adaptation')).toBeHidden();
  await page.locator('#adaptation-options summary').click();await expect(page.locator('#adaptation')).toBeVisible();
+ await page.locator('#adaptation').fill('Testwunsch');await page.locator('#clear-adaptation').click();await expect(page.locator('#adaptation')).toHaveValue('');await expect(page.locator('#adaptation-active')).toBeHidden();
  await page.locator('#adaptation').fill('Hackfleisch durch Halloumi ersetzen');await expect(page.locator('#adaptation-active')).toBeVisible();
- await page.locator('#source').fill('https://recipes.example/demo/1');await page.screenshot({path:info.outputPath('import-adaptation.png')});await page.locator('#import-submit').click();
+ await page.locator('#adaptation-options summary').click();await expect(page.locator('#adaptation')).toBeHidden();await expect(page.locator('#adaptation-active')).toBeVisible();await page.locator('#adaptation-options summary').click();
+ await page.locator('#source').fill('https://recipes.example/demo/1');await page.screenshot({path:info.outputPath('import-adaptation.png')});
+ await page.locator('#source').fill('https://www.instagram.com/reel/adaptation-demo/');await page.locator('#import-submit').click();await expect(page.locator('#transcript-panel')).toBeVisible();await expect(page.locator('#adaptation')).toHaveValue('Hackfleisch durch Halloumi ersetzen');
+ await page.locator('#source').fill('https://recipes.example/demo/1');await page.locator('#import-submit').click();
  await expect(page.locator('#recipe-grid')).toContainText('Deine angepasste Rezeptvariante');await expect(page.locator('.recipe-card')).toHaveCount(7);
  await page.getByRole('button',{name:'Deine angepasste Rezeptvariante ansehen'}).click();await expect(page.locator('.ingredient-view')).toContainText('Halloumi');await expect(page.locator('.method-list')).toContainText('Halloumi (200 g) würfeln');await expect(page.locator('.recipe-notes')).toContainText('Hackfleisch durch Halloumi ersetzen');
  await page.locator('#close-dialog').click();await page.getByRole('button',{name:/Link einfügen/}).click();await expect(page.locator('#source')).toHaveValue('');await expect(page.locator('#adaptation')).toHaveValue('');await expect(page.locator('#adaptation')).toBeHidden();
