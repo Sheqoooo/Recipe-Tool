@@ -49,7 +49,7 @@ it('verfolgt signierte CDN-Redirects nicht und gibt deren Geheimnisse niemals au
 it('sperrt private DNS-Adressen vor dem Medienabruf',async()=>{
  const {config}=fixture();const f=vi.fn(async()=>Response.json({Status:0,Answer:[{type:1,data:'127.0.0.1'}]}));
  await expect(readPublicVideo(new URL(videoSource().url),new URL(videoSource().url),'',config,f as typeof fetch,Date.now()+10000)).rejects.toMatchObject({code:'SOURCE_PRIVATE'});
- expect(f.mock.calls.filter(c=>String(c[0]).startsWith('https://api.openai.com/'))).toHaveLength(2);
+ expect(f).toHaveBeenCalledTimes(2);
 });
 it('fällt automatisch von unzureichender Beschreibung auf öffentliche Einbettung und MP4 zurück',async()=>{
  const {config}=fixture();config.RECIPE_ALLOWED_HOSTS='';
