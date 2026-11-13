@@ -40,3 +40,5 @@ Neue Demo-Bedienung: Auf der Startseite direkt „Meine Rezepte“ oder „Meine
 Die Vorschau enthält jetzt dieselben importierten Lebensmittelbegriffe wie die spätere produktive App. Beispielsweise Pastinake oder Karamellsirup suchen. Das Laden/Tippen verwendet keine OpenAI- oder externen Suchanfragen. Originalquellen und Lizenzen stehen unter dem Eingabefeld. Gespeicherte Demo-Artikel sind weiterhin nur synthetische Daten im Arbeitsspeicher.
 
 Rezept- und Umrechnungshinweise stehen nach Zutaten, Zubereitung und Aktionen am Ende der Rezeptansicht. Sie bleiben vollständig erhalten, erscheinen aber als dezenter, kleiner Text statt als hervorgehobener Hinweisblock über den Zutaten. Fehler- und Importmeldungen außerhalb der Rezeptansicht bleiben unverändert.
+
+Die Demo simuliert außerdem das Nachladen eines Hochkant-Videovorschaubilds für importierte Instagram-/TikTok-Beispiele. Das Bild ist eine als solche bezeichnete SVG-Demo-Illustration, kein abgerufenener oder KI-generierter Videoframe. Der Browserablauf zeigt Quellenhinweis, vollständige Hochkantdarstellung und das zurückgesetzte Link-/Transkriptformular; weiterhin keinerlei echte API- oder Netzwerkaufrufe.

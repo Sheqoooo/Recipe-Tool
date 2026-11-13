@@ -7,7 +7,7 @@ import { authenticate,verifyIdentity } from './auth.js';
 import { normalizeUrl,readWeb,transcriptSource } from './source.js';
 import {videoPlatform,videoLink} from '../shared/video-platform.js';
 import { generateRecipe,reservationCost } from './openai.js';
-import {generateVideoRecipe,videoReservationCost} from './video-analysis.js';
+import {generateVideoRecipe,videoReservationCost,extractVideoImage} from './video-analysis.js';
 import { fetchRecipeImage } from './image.js';
 
 const security={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
@@ -34,6 +34,8 @@ export interface Dependencies {
   image?:typeof fetchRecipeImage;
   generate?:(source:Source,env:Env,id:string)=>Promise<Generated>;
   generateVideo?:typeof generateVideoRecipe;
+  videoImage?:typeof extractVideoImage;
+  readVideo?:(url:string,env:Env)=>Promise<Source>;
   read?:(url:string,env:Env)=>Promise<Source>;
 }
 export function createApp(deps:Dependencies={}){
@@ -66,6 +68,22 @@ export function createApp(deps:Dependencies={}){
       }
       if(request.method!=='POST')throw new AppError('METHOD','Methode nicht erlaubt.',405);
       assertWrite(request);const data=await body(request);
+      if(path==='/api/recipes/video-image'){
+        const recipeId=id(data.recipe_id),row=await repo.byId(recipeId);
+        if(!row)throw new AppError('NOT_FOUND','Rezept nicht gefunden.',404);
+        if(actor.role!=='admin'&&row.owner_id!==actor.id)throw new AppError('FORBIDDEN','Du darfst nur Bilder eigener Rezepte ergänzen.',403);
+        if(await repo.hasImage(recipeId))return json({ok:true,existing:true});
+        const platform=videoPlatform(normalizeUrl(row.source_url));
+        if(platform!=='instagram'&&platform!=='tiktok')throw new AppError('INVALID_VIDEO','Ein Videobild kann derzeit nur aus öffentlichen Instagram-/TikTok-Quellen ergänzt werden.',422);
+        if(env.VIDEO_ANALYSIS_ENABLED!=='true'||!env.MEDIA)throw new AppError('VIDEO_CONFIGURATION','Die Video-Bildfunktion ist noch nicht freigeschaltet.',503);
+        const job=await repo.reserve(actor,{url:row.source_url,kind:'web'},env,reservationCost(env));
+        try{
+          const source=await(deps.readVideo||((url,config)=>readWeb(url,config,fetch,0,Date.now()+45000,true)))(row.source_url,env);
+          source.url=normalizeUrl(source.url).href;
+          const image=await(deps.videoImage||extractVideoImage)(source,env,0);
+          await repo.addVideoImage(recipeId,actor,image,job);return json({ok:true,existing:false});
+        }catch(error){await repo.fail(job,error instanceof AppError?error.code:'IMAGE_FAILED');throw error;}
+      }
       if(path==='/api/shopping/from-recipe'){await repo.recipeToShopping(id(data.recipe_id),data.ingredient_indices,actor);return json({ok:true});}
       if(path==='/api/shopping/items/save'){await repo.saveShoppingItem(data,actor);return json({ok:true});}
       if(path==='/api/shopping/items/check'){await repo.checkShoppingItem(data.id,data.checked);return json({ok:true});}
@@ -85,8 +103,11 @@ export function createApp(deps:Dependencies={}){
           if(source.provenance==='public_video')await repo.reserveVideoBudget(importId,env,videoReservationCost(env));
           const generated=source.provenance==='public_video'?await(deps.generateVideo||generateVideoRecipe)(source,env,importId):await(deps.generate||generateRecipe)(source,env,importId);
           const recipe=validateRecipe(generated.recipe);
-          let image:RecipeImageData|undefined;
-          if(source.kind==='web'&&source.image){try{image=await(deps.image||fetchRecipeImage)(source.image,env);}catch{/* An optional image must not discard a valid recipe. */}}
+          let image:RecipeImageData|undefined=generated.image;
+          if(!image&&source.kind==='web'&&source.image){try{image=await(deps.image||fetchRecipeImage)(source.image,env);}catch{/* An optional image must not discard a valid recipe. */}}
+          if(!image&&source.provenance==='description'&&(platform==='instagram'||platform==='tiktok')&&env.VIDEO_ANALYSIS_ENABLED==='true'&&env.MEDIA){
+            try{const video=await(deps.readVideo||((url,config)=>readWeb(url,config,fetch,0,Date.now()+45000,true)))(canonical,env);image=await(deps.videoImage||extractVideoImage)(video,env,0);}catch{/* Recipe text remains valid even if the optional public video image is unavailable. */}
+          }
           const recipeId=await repo.save(recipe,actor,source,importId,generated.usage,image);
           return json({id:recipeId,existing:false},201);
         }catch(error){await repo.fail(importId,error instanceof AppError?error.code:'IMPORT_FAILED',error instanceof AppError?error.usage:undefined);if(platform&&error instanceof AppError&&['SOURCE_UNAVAILABLE','SOURCE_TYPE','SOURCE_EMPTY','NO_RECIPE'].includes(error.code))throw new AppError('VIDEO_SOURCE_REQUIRED','Das Rezept ist aus dem Video-Link nicht ausreichend auslesbar. Bitte Beschreibung oder Transkript bereitstellen.',422);throw error;}

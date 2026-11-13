@@ -1,6 +1,6 @@
 import {it,expect,vi} from 'vitest';
 import {instagramPlayback,tiktokPlayback,playbackUrl,mp4Duration,limitedBytes,readPublicVideo} from '../src/worker/public-video.js';
-import {preparePublicVideo,generateVideoRecipe,videoReservationCost} from '../src/worker/video-analysis.js';
+import {preparePublicVideo,generateVideoRecipe,videoReservationCost,extractVideoImage} from '../src/worker/video-analysis.js';
 import type {Source} from '../src/shared/types.js';
 import type {VideoMediaBinding} from '../src/worker/env.js';
 import {localEnv,recipe} from './fixtures.js';
@@ -13,7 +13,7 @@ export function mp4(seconds=50):Uint8Array<ArrayBuffer>{
 }
 const videoSource=():Source=>({kind:'web',url:'https://www.instagram.com/reel/test/',text:'Öffentliche Beschreibung ohne Mengen.',provenance:'public_video',video:{bytes:mp4(),duration:50}});
 function fixture(){
- const transform=vi.fn(async(mode:string)=>new Response(mode==='audio'?new Uint8Array([0,1,2]):new Uint8Array([255,216,255,1]),{headers:{'Content-Type':mode==='audio'?'audio/mp4':'image/jpeg'}}));
+ const transform=vi.fn(async(mode:string)=>new Response(mode==='audio'?new Uint8Array([0,1,2]):new Uint8Array([255,216,255,192,0,17,8,1,224,2,128,3,1,17,0,2,17,0,3,17,0,255,217]),{headers:{'Content-Type':mode==='audio'?'audio/mp4':'image/jpeg'}}));
  const media={input:vi.fn(()=>({transform:()=>({output:(options:{mode:string})=>({response:()=>transform(options.mode)})}),output:(options:{mode:string})=>({response:()=>transform(options.mode)})}))} as unknown as VideoMediaBinding;
  return {media,transform,config:{...localEnv({} as D1Database),VIDEO_ANALYSIS_ENABLED:'true',MEDIA:media}};
 }
@@ -75,11 +75,12 @@ it('nutzt ausschließlich OpenAI Audio und Responses mit Bildern und strukturier
   expect(String(input)).toBe('https://api.openai.com/v1/responses');
   const body=JSON.parse(String(options?.body));expect(body.model).toBe('gpt-6.1-terra');expect(body.store).toBe(false);expect(body.text.format.strict).toBe(true);
   expect(body.input[1].content.filter((part:{type:string})=>part.type==='input_image')).toHaveLength(6);
-  expect(JSON.stringify(body)).not.toContain('scontent.cdninstagram');
-  return Response.json({id:'mock',object:'response',status:'completed',model:'gpt-6.1-terra',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({is_recipe:true,recipe}),annotations:[]}]}],usage:{input_tokens:2000,output_tokens:1500,total_tokens:3500}});
+  expect(JSON.stringify(body)).not.toContain('scontent.cdninstagram');expect(body.text.format.schema.required).toContain('cover_frame_index');
+  return Response.json({id:'mock',object:'response',status:'completed',model:'gpt-6.1-terra',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({is_recipe:true,recipe,cover_frame_index:4}),annotations:[]}]}],usage:{input_tokens:2000,output_tokens:1500,total_tokens:3500}});
  });
  const result=await generateVideoRecipe(videoSource(),config,'mock-import',f as typeof fetch);
  expect(f.mock.calls.filter(c=>String(c[0]).startsWith('https://api.openai.com/'))).toHaveLength(2);expect(result.recipe.warnings[0]).toContain('sechs Einzelbilder');expect(result.usage.input_tokens).toBe(2100);
+ expect(result.image).toMatchObject({mime:'image/jpeg',original_url:videoSource().url,credit:'Standbild aus dem Originalvideo'});
  expect(result.usage.estimated_cost_microusd).toBe(12000);expect(videoReservationCost(config)).toBe(239000);
 });
 it('beendet Audiofehler ohne Bild-KI-Aufruf und ohne vertrauliche Anbieterfehler',async()=>{
@@ -92,6 +93,26 @@ it('zu lange Videos und ausgeschaltete Funktion verursachen keine OpenAI-Anfrage
  await expect(generateVideoRecipe(videoSource(),{...config,VIDEO_ANALYSIS_ENABLED:'false'},'mock-import',f)).rejects.toMatchObject({code:'VIDEO_CONFIGURATION'});expect(f).not.toHaveBeenCalled();
 });
 it('erfasst Audioaufwand auch bei abgelehntem Rezept und setzt keine Retries ab',async()=>{
- const {config}=fixture();const f=vi.fn(async(input:RequestInfo|URL)=>String(input)==='data:,'?new Response(''):String(input).includes('/audio/transcriptions')?Response.json({text:'Nur Musik.'}):Response.json({id:'mock',object:'response',status:'completed',model:'gpt-6.1-terra',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({is_recipe:false,recipe:null}),annotations:[]}]}],usage:{input_tokens:100,output_tokens:20,total_tokens:120}}));
+ const {config}=fixture();const f=vi.fn(async(input:RequestInfo|URL)=>String(input)==='data:,'?new Response(''):String(input).includes('/audio/transcriptions')?Response.json({text:'Nur Musik.'}):Response.json({id:'mock',object:'response',status:'completed',model:'gpt-6.1-terra',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({is_recipe:false,recipe:null,cover_frame_index:null}),annotations:[]}]}],usage:{input_tokens:100,output_tokens:20,total_tokens:120}}));
  await expect(generateVideoRecipe(videoSource(),config,'mock-import',f as typeof fetch)).rejects.toMatchObject({code:'NO_RECIPE',usage:{estimated_cost_microusd:2700}});expect(f.mock.calls.filter(c=>String(c[0]).startsWith('https://api.openai.com/'))).toHaveLength(2);
+});
+it('extrahiert ein Vorschaubild mit Original-Seitenverhältnis, echter Quelle und ohne KI-Aufruf',async()=>{
+ const {config,media}=fixture();const image=await extractVideoImage(videoSource(),config,4);
+ expect(media.input).toHaveBeenCalledTimes(1);expect(image.mime).toBe('image/jpeg');expect(image.bytes.byteLength).toBeGreaterThan(0);
+ expect(image.original_url).toBe(videoSource().url);
+ await expect(extractVideoImage(videoSource(),config,6)).rejects.toMatchObject({code:'VIDEO_FRAMES'});
+});
+it('verwirft ungültige und übergroße Vorschaubilder statt sie zu speichern',async()=>{
+ const {config,transform}=fixture();
+ for(const bytes of [new Uint8Array([255,216,255,1]),new Uint8Array(1048577)]){
+  transform.mockImplementation(async()=>new Response(bytes,{headers:{'Content-Type':'image/jpeg'}}));
+  await expect(extractVideoImage(videoSource(),config)).rejects.toBeDefined();
+ }
+});
+it('ein fehlgeschlagenes optionales Vorschaubild verwirft kein korrektes Rezept',async()=>{
+ const {config,transform}=fixture();let frames=0;
+ transform.mockImplementation(async mode=>new Response(mode==='audio'?new Uint8Array([0,1,2]):++frames>6?new Uint8Array([0]):new Uint8Array([255,216,255,1]),{headers:{'Content-Type':mode==='audio'?'audio/mp4':'image/jpeg'}}));
+ const f=vi.fn(async(input:RequestInfo|URL)=>String(input)==='data:,'?new Response(''):String(input).includes('/audio/transcriptions')?Response.json({text:'Tomaten (200 g) kochen.'}):Response.json({id:'mock',object:'response',status:'completed',model:'gpt-6.1-terra',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({is_recipe:true,recipe,cover_frame_index:4}),annotations:[]}]}],usage:{input_tokens:100,output_tokens:20,total_tokens:120}}));
+ const result=await generateVideoRecipe(videoSource(),config,'optional-image',f as typeof fetch);
+ expect(result.recipe.title).toBe(recipe.title);expect(result.image).toBeUndefined();expect(frames).toBe(7);
 });

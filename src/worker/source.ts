@@ -55,7 +55,7 @@ export function extractSource(html:string,url:string,documentUrl=url):Source{
   const image=extractSourceImage(html,documentUrl);
   return {kind:'web',url:normalizeUrl(url).href,text:extractRecipeContent(html,MAX_SOURCE_BYTES),...(image?{image}:{})};
 }
-export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch,depth=0,deadline=Date.now()+45000):Promise<Source>{
+export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch,depth=0,deadline=Date.now()+45000,forceVideo=false):Promise<Source>{
   const original=normalizeUrl(value),platform=videoPlatform(original);
   let url=original;if(platform){try{url=videoLink(value);}catch{throw new AppError('INVALID_VIDEO','Bitte einen gültigen Video-Link verwenden.',422);}}
   const canonical=url.href;
@@ -74,6 +74,7 @@ export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch,de
     const html=await limitedText(response,2000000);
     if(platform){
       const description=socialDescription(html,false);
+      if(forceVideo){const video=await readPublicVideo(new URL(canonical),url,html,env,fetcher,deadline);return {kind:'web',url:canonical,text:description,provenance:'public_video',video};}
       try{return {kind:'web',url:canonical,text:socialDescription(html),provenance:'description'};}catch(error){if(!(error instanceof AppError)||error.code!=='VIDEO_SOURCE_REQUIRED')throw error;}
       if(depth===0){for(const raw of description.match(/https:\/\/[^\s<>"']+/g)||[]){
         let linked:URL;try{linked=normalizeUrl(raw.replace(/[.,;)]+$/,''));}catch{continue;}

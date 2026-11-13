@@ -62,7 +62,10 @@ export async function demoApi<T>(path:string,data?:unknown):Promise<T>{
     if(['youtube.com','www.youtube.com','m.youtube.com','youtu.be','instagram.com','www.instagram.com','tiktok.com','www.tiktok.com','vm.tiktok.com','vt.tiktok.com'].includes(url.hostname)&&!body.transcript)throw Object.assign(new Error('Demo: Bitte Beschreibung oder Transkript bereitstellen. Kein echter Plattformabruf.'),{code:'VIDEO_SOURCE_REQUIRED'});
     const existing=state.recipes.find(r=>r.source_url===url.href);
     if(existing)result={id:existing.id,existing:true};
-    else{const recipe={...structuredClone(recipes[0]),id:nextId++,source_url:url.href,title:'Dein importiertes Beispielrezept'};state.recipes.unshift(recipe);result={id:recipe.id,existing:false};}
+    else{const recipe={...structuredClone(recipes[0]),...(['www.instagram.com','instagram.com','www.tiktok.com','tiktok.com'].includes(url.hostname)?{image:null}:{}),id:nextId++,source_url:url.href,title:'Dein importiertes Beispielrezept'};state.recipes.unshift(recipe);result={id:recipe.id,existing:false};}
+  }else if(path==='/api/recipes/video-image'){
+    const recipe=state.recipes.find(r=>r.id===Number(body.recipe_id));if(!recipe)throw new Error('Beispielrezept nicht gefunden.');
+    if(!recipe.image)recipe.image={url:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="960" viewBox="0 0 640 960"><rect width="640" height="960" fill="#e8eee3"/><circle cx="320" cy="480" r="240" fill="white"/><circle cx="320" cy="480" r="170" fill="#e3b55b"/><circle cx="270" cy="430" r="35" fill="#82a66b"/><circle cx="380" cy="500" r="42" fill="#b95647"/></svg>'),source_url:recipe.source_url,credit:'Standbild aus dem Originalvideo (Demo-Illustration)'};
   }else if(path==='/api/recipes/save'){
     const recipe=state.recipes.find(r=>r.id===Number(body.id));if(!recipe)throw new Error('Beispielrezept nicht gefunden.');
     const {id,revision,...data}=body;Object.assign(recipe,validateRecipe(data),{revision:recipe.revision+1});state.checked=[];

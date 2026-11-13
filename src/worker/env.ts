@@ -11,7 +11,7 @@ export interface Env {
 }
 export interface VideoMediaBinding {
   input(stream:ReadableStream<Uint8Array>):{
-    transform(options:{width:number;height:number;fit:'contain'}):{output(options:{mode:'frame';time:string;format:'jpg'}):{response():Promise<Response>}};
+    transform(options:{width:number;height?:number;fit?:'contain'|'cover'|'scale-down'}):{output(options:{mode:'frame';time:string;format:'jpg'}):{response():Promise<Response>}};
     output(options:{mode:'audio';time:string;duration:string;format:'m4a'}):{response():Promise<Response>};
   };
 }

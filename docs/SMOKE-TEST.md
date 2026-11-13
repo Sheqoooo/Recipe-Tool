@@ -91,3 +91,12 @@ Abschluss: Jeden Punkt als bestanden, fehlgeschlagen oder offen markieren. Ein f
 - [ ] Budget-/Parallelitätsgrenzen, 90-s-/12-MiB-Grenzen, falscher MIME-Typ und abgelaufene Quelle erzeugen kontrollierte Fehler ohne Wiederholungsschleife.
 - [ ] TikTok-Beispiel mit Medien-HTTP-403 bleibt abgewiesen. Keine automatische Umgehung. YouTube-Medienfähigkeit wird nicht suggeriert.
 - [ ] Cloudflare-CPU-/Speichermetriken und Media-Latenz prüfen; Native-Binding-Beta ist kein Nachweis der Eignung des Free-Worker-Tarifs.
+
+## Videostandbilder und Import-Reset
+
+- [ ] Neues berechtigtes Video mit tatsächlicher Medienanalyse importieren: sofern einer der sechs Frames geeignet ist, erscheint ein echtes Standbild mit Originalquelle. Keine zusätzliche Bildgenerierungsanfrage.
+- [ ] Rein aus Beschreibung importiertes Video ohne Bild: wenn das öffentliche Video abrufbar ist, wird ein früher Frame ergänzt; Bildfehler verwerfen das Rezept nicht.
+- [ ] In bestehendem bildlosen eigenen Instagram-/TikTok-Rezept **Videovorschaubild laden** verwenden: Bild erscheint, Rezepttext bleibt gleich, OpenAI-Verbrauch für den Nachladevorgang null. Vorhandenes Bild wird nicht überschrieben.
+- [ ] Als normales Mitglied kein fremdes Rezeptbild ergänzen; als Admin erlaubt. Vorschau/fehlendes Binding/ausgeschaltetes Flag ist gesperrt.
+- [ ] Hochkant im geöffneten Rezept vollständig sichtbar, in Übersicht als Kachel zugeschnitten. Quellenhinweis nennt das Originalvideo. Bei nicht auslesbarer Quelle bleibt ein klarer Fehler/Platzhalter.
+- [ ] Erfolgreicher neuer oder deduplizierter Import: zurück zur Maske → leeres URL-Feld, verstecktes Textpanel, leerer Transkripttext und keine gespeicherte Zustimmung. Fehlgeschlagener Import behält den Link.
