@@ -13,6 +13,8 @@ test('reduzierter Start und Offline-Demo ohne HTTP- oder API-Aufrufe',async({pag
   await page.screenshot({path:info.outputPath('design-start.png'),fullPage:true});
   await page.locator('#source').fill('https://example.com/offline-recipe');await page.locator('#import-submit').click();
   await expect(page.locator('#recipe-grid')).toContainText('Dein importiertes Beispielrezept');
+  await page.getByRole('button',{name:/Link einfügen/}).click();
+  await expect(page.locator('#source')).toHaveValue('');await expect(page.locator('#transcript-panel')).toBeHidden();
   expect(requests).toEqual([]);expect(errors).toEqual([]);
 });
 
@@ -55,6 +57,18 @@ test('Futterluke zeigt Bild, Nachweis und Emoji-Fallback offline',async({page},i
   await page.screenshot({path:info.outputPath('design-photo.png')});
   await page.locator('#recipe-dialog .recipe-photo').evaluate(e=>e.dispatchEvent(new Event('error')));
   await expect(page.locator('#recipe-dialog .recipe-photo')).toHaveCount(0);await expect(page.locator('.detail-hero-art')).toContainText('🍋');
+});
+test('Videobild nachladen, Hochkantdarstellung und leere Importmaske ohne echte API',async({page},info)=>{
+ const requests=[];page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
+ await page.goto(demo);await page.locator('#source').fill('https://www.instagram.com/reel/demo/');await page.locator('#import-submit').click();
+ await expect(page.locator('#transcript-panel')).toBeVisible();await expect(page.locator('#source')).toHaveValue('https://www.instagram.com/reel/demo/');
+ await page.locator('#transcript').fill('Zutaten: Tomaten (200 g). Zehn Minuten kochen und servieren.');await page.locator('#transcript-authorized').check();await page.locator('#import-submit').click();
+ await expect(page.locator('#view-collection')).toBeVisible();await expect(page.locator('#source')).toHaveValue('');await expect(page.locator('#transcript')).toHaveValue('');await expect(page.locator('#transcript-authorized')).not.toBeChecked();
+ await page.getByRole('button',{name:'Dein importiertes Beispielrezept ansehen'}).click();await expect(page.locator('#recipe-dialog .recipe-photo')).toHaveCount(0);
+ await page.getByRole('button',{name:'Videovorschaubild laden'}).click();const photo=page.locator('#recipe-dialog .video-still');await expect(photo).toBeVisible();
+ await expect.poll(()=>photo.evaluate(e=>e.complete&&e.naturalHeight>e.naturalWidth)).toBe(true);
+ await expect(page.locator('.image-credit')).toContainText('Demo-Illustration');await expect(page.getByRole('button',{name:'Videovorschaubild laden'})).toHaveCount(0);
+ await page.screenshot({path:info.outputPath('video-cover-portrait.png')});expect(requests).toEqual([]);
 });
 
 test('Einkaufskacheln: Vorschläge, Mengen, Emoji, Bearbeiten und Wiederverwenden ohne Netz',async({page},info)=>{

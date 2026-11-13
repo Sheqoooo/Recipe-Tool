@@ -257,3 +257,33 @@ it('Kostenlimit verhindert den Video-KI-Aufruf und speichert keine Medien-Rohdat
  const response=await app.fetch(new Request('http://localhost/api/state'),config),text=await response.text();
  expect(text).not.toContain('Public caption');expect(text).not.toContain('"bytes"');expect(text).not.toContain('"video"');expect(generateVideo).toHaveBeenCalledTimes(1);
 });
+it('ein ausgewähltes Videostandbild wird mit dem importierten Rezept gespeichert',async()=>{
+ const f=appFixture();const image={bytes:new Uint8Array([1,2,3]).buffer,mime:'image/jpeg' as const,original_url:'https://www.instagram.com/reel/photo/',credit:'Standbild aus dem Originalvideo'};
+ const app=createApp({read:async url=>({kind:'web',url,text:'public video',provenance:'public_video'}),generateVideo:async()=>({...structuredClone(generated),image})});
+ const response=await app.fetch(new Request('http://localhost/api/import',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify({value:image.original_url})}),f.config);
+ expect(response.status).toBe(201);const state=await(await app.fetch(new Request('http://localhost/api/state'),f.config)).json() as AppState;
+ expect(state.recipes[0].image).toMatchObject({credit:image.credit,source_url:image.original_url});expect(await env.DB.prepare('SELECT original_url FROM recipe_images').first('original_url')).toBe(image.original_url);
+});
+it('ergänzt ein fehlendes Videobild ohne erneute Rezept-KI und ersetzt vorhandene Bilder nicht',async()=>{
+ const f=appFixture();const value='https://www.instagram.com/reel/existing/';const {id}=await(await f.post('/api/import',{value})).json() as {id:number};
+ const readVideo=vi.fn(async url=>({kind:'web' as const,url,text:'Only public video',provenance:'public_video' as const}));
+ const image={bytes:new Uint8Array([1,2,3]).buffer,mime:'image/jpeg' as const,original_url:value,credit:'Standbild aus dem Originalvideo'};
+ const videoImage=vi.fn(async()=>image),generate=vi.fn();const app=createApp({readVideo,videoImage,generate});
+ const config={...f.config,VIDEO_ANALYSIS_ENABLED:'true',MEDIA:{} as NonNullable<typeof f.config.MEDIA>,OPENAI_API_KEY:undefined};
+ const post=(origin='http://localhost')=>app.fetch(new Request('http://localhost/api/recipes/video-image',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify({recipe_id:id})}),config);
+ expect((await post('https://evil.example')).status).toBe(403);expect(readVideo).not.toHaveBeenCalled();
+ expect((await post()).status).toBe(200);expect((await post()).status).toBe(200);expect(readVideo).toHaveBeenCalledTimes(1);expect(videoImage).toHaveBeenCalledTimes(1);expect(generate).not.toHaveBeenCalled();
+ expect(await env.DB.prepare('SELECT COUNT(*) FROM recipes').first('COUNT(*)')).toBe(1);
+ const state=await(await app.fetch(new Request('http://localhost/api/state'),config)).json() as AppState;
+ expect(state.recipes[0].image?.credit).toBe(image.credit);expect(JSON.stringify(state)).not.toContain('Only public video');
+ const job=await env.DB.prepare("SELECT model,estimated_cost_microusd FROM imports WHERE model='cloudflare-media-frame'").first<{model:string;estimated_cost_microusd:number}>();expect(job?.estimated_cost_microusd).toBe(0);
+});
+it('Videobilder respektieren Besitzerrechte und behalten bestehende Bilder',async()=>{
+ const repo=new Repository(env.DB),owner=actor('owner'),other=actor('other');await seed(owner);await seed(other);
+ const source={kind:'web' as const,url:'https://www.instagram.com/reel/owned/'},config=localEnv(env.DB);
+ const job=await repo.reserve(owner,source,config,100),id=await repo.save(recipe,owner,source,job,generated.usage);
+ const image={bytes:new Uint8Array([1]).buffer,mime:'image/jpeg' as const,original_url:source.url,credit:'Original'};
+ const imageJob=await repo.reserve(owner,source,config,100);
+ await expect(repo.addVideoImage(id,other,image,imageJob)).rejects.toMatchObject({code:'FORBIDDEN'});expect(await repo.hasImage(id)).toBe(false);
+ await repo.addVideoImage(id,owner,image,imageJob);expect(await repo.hasImage(id)).toBe(true);
+});

@@ -111,6 +111,21 @@ export class Repository {
     }));
   }
   async image(id:number):Promise<{content:number[];mime_type:string}|null>{return this.db.prepare('SELECT content,mime_type FROM recipe_images WHERE recipe_id=?').bind(id).first();}
+  async hasImage(id:number):Promise<boolean>{return Boolean(await this.db.prepare('SELECT 1 FROM recipe_images WHERE recipe_id=?').bind(id).first());}
+  async addVideoImage(id:number,actor:Member,image:RecipeImageData,importId:string):Promise<void>{
+    const row=await this.byId(id);
+    if(!row)throw new AppError('NOT_FOUND','Rezept nicht gefunden.',404);
+    if(actor.role!=='admin'&&row.owner_id!==actor.id)throw new AppError('FORBIDDEN','Du darfst nur Bilder eigener Rezepte ergänzen.',403);
+    const original=normalizeSourceUrl(image.original_url).href,source=normalizeSourceUrl(row.source_url).href;
+    await this.db.batch([
+      this.db.prepare(`INSERT INTO recipe_images(recipe_id,content,mime_type,original_url,source_page,credit)
+        SELECT ?,?,?,?,?,? FROM imports WHERE id=? AND status='running' AND lease_expires_at>? ON CONFLICT(recipe_id) DO NOTHING`)
+        .bind(id,image.bytes,image.mime,original,source,image.credit,importId,Date.now()),
+      this.db.prepare("UPDATE imports SET status='completed',recipe_id=?,input_tokens=0,output_tokens=0,model='cloudflare-media-frame',estimated_cost_microusd=0 WHERE id=? AND status='running' AND lease_expires_at>?")
+        .bind(id,importId,Date.now()),
+    ]);
+    if(!await this.hasImage(id))throw new AppError('IMAGE_EXPIRED','Der Bildvorgang ist abgelaufen. Bitte erneut versuchen.',409);
+  }
   async byId(id: number): Promise<Row | null> { return this.db.prepare('SELECT * FROM recipes WHERE id=?').bind(id).first<Row>(); }
   async bySource(url: string): Promise<{id:number} | null> { url=normalizeSourceUrl(url).href;return this.db.prepare('SELECT id FROM recipes WHERE source_url=? ORDER BY id LIMIT 1').bind(url).first(); }
   async plan(recipes: Recipe[]): Promise<PlanEntry[]> {
