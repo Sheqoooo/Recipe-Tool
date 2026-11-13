@@ -40,11 +40,11 @@ Vollständige Anleitung: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 Portionen, Zeiten und Mengen dürfen unbekannt sein. Die KI soll diese nicht erfinden. Unsicherheiten bleiben sichtbar; sachliche Modellfehler sind trotz Schema möglich. Cups werden nur zutatenabhängig in Gewicht umgerechnet. Vorbereitungs-/Kochzeit bleiben leer, wenn die Quelle sie nicht nennt.
 
-## Webseiten und YouTube
+## Webseiten und Kurzvideo-Links
 
 Öffentlich erreichbare HTTPS-Rezeptseiten können ohne vorherige Domainfreigabe importiert werden. Eine leere `RECIPE_ALLOWED_HOSTS`-Variable ist der Standard; eine nicht leere Liste kann den Import optional auf exakte Hostnamen beschränken. schema.org-Rezeptdaten werden auf Titel, Zutaten, Schritte, Portionen und Zeiten reduziert; große Bewertungen, Bilder und andere Metadaten werden ausgelassen. Ohne strukturierte Daten werden Rezeptkarten und erkennbare Zutaten-/Zubereitungsabschnitte gegenüber Seitentext bevorzugt. Maximal 2 MB HTML und 20 KB extrahierter Text; der eigentliche Rezeptkern wird nicht still gekürzt. Interne Adressen, ungültige Redirects und zu große Quellen werden abgewiesen. Dynamisch gerenderte oder blockierte Seiten können nicht immer importiert werden.
 
-**Eingeschränkter Zwischenstand:** Automatischer YouTube-Videoimport bleibt das langfristige Produktziel und ist noch nicht implementiert. YouTube-Links werden erkannt und benötigen derzeit ein rechtmäßig bereitgestelltes Transkript (max. 20 KB, angegebene Videolänge bis 20 Minuten). Es findet keine Bild-/Audioanalyse statt. Die modulare `Source`-Übergabe erlaubt spätere sichere Audio-/Frameadapter; diese sind noch nicht implementiert. [Mediengrenzen und Kosten](docs/OPENAI-VIDEO.md).
+Kurzvideo-Links werden auf öffentlich zugängliche Rezeptbeschreibungen oder höchstens eine verlinkte Rezeptseite geprüft. Unterstützte Linkformen: YouTube/Shorts, Instagram-Reels/Posts und TikTok. Falls kein ausreichender Text zugänglich ist, wird die Grenze klar angezeigt; eine optionale bereitgestellte Beschreibung oder ein Transkript bleibt als Zwischenstand möglich. Keine Video-Uploads. Ein optionaler Medienpfad (lokal standardmäßig aus, in der Produktionskonfiguration für die Veröffentlichung eingeschaltet) bereitet öffentlich erreichbare Instagram-/TikTok-MP4s über Cloudflare Media Transformations für OpenAI Audio und Vision auf. Er ist noch nicht produktiv erprobt; YouTube-Ton/Bild und blockierte Medien bleiben eingeschränkt. [Mediengrenzen und Modellempfehlung](docs/OPENAI-VIDEO.md).
 
 ## Tests
 

@@ -1,3 +1,4 @@
+import {videoPlatform} from '../src/shared/video-platform.js';
 import {installShoppingDock} from './shopping-dock.js';
 declare const __REZEPTWERK_DEMO__:boolean;
 import type { AppState,Recipe,RecipeData } from '../src/shared/types.js';
@@ -28,7 +29,7 @@ async function api<T>(path:string,data?:unknown):Promise<T>{
   if(preview)throw new Error('Diese statische Vorschau ist nicht mit der privaten App verbunden.');
   const response=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify(data)});
   if(!response.headers.get('Content-Type')?.includes('application/json'))throw new Error('Die Access-Anmeldung ist abgelaufen. Bitte neu laden.');
-  const result=await response.json() as {error?:string};if(!response.ok)throw new Error(result.error||'Anfrage fehlgeschlagen.');return result as T;
+  const result=await response.json() as {error?:string;code?:string};if(!response.ok)throw Object.assign(new Error(result.error||'Anfrage fehlgeschlagen.'),{code:result.code});return result as T;
 }
 function showView(view:string){
   if(!['import','collection','shopping','settings'].includes(view))view='import';
@@ -171,6 +172,7 @@ document.addEventListener('click',async event=>{
     if(b.dataset.productIndex!==undefined){await selectProduct(Number(b.dataset.productIndex));return;}
     if(b.id==='shopping-search-clear'){input('#shopping-name').value='';input('#shopping-name').focus({preventScroll:true});renderSuggestions();return;}
     if(b.id==='shopping-search-cancel'||b.id==='shopping-search-backdrop'){resetShoppingForm();if(document.activeElement instanceof HTMLElement)document.activeElement.blur();refreshDock();return;}
+    if(b.id==='provide-video'){$('#transcript-panel').hidden=false;return;}
     if(b.id==='cancel-shopping-edit'){resetShoppingForm();return;}
     if(b.dataset.manualEdit){const item=state.manual_items?.find(i=>i.id===b.dataset.manualEdit);if(item){shoppingEditId=item.id;input('#shopping-name').value=item.name;input('#shopping-quantity').value=item.quantity;$('#shopping-emoji').textContent=productFor(item.name).emoji;$('#shopping-edit-hint').hidden=false;$('#cancel-shopping-edit').hidden=false;input('#shopping-name').focus({preventScroll:true});if(matchMedia('(min-width:1001px), (min-width:700px) and (pointer:fine)').matches)$('#shopping-form').scrollIntoView({block:'center',behavior:'smooth'});refreshDock();}return;}
     if(b.dataset.manualDelete){await api('/api/shopping/items/delete',{id:b.dataset.manualDelete});if(shoppingEditId===b.dataset.manualDelete)resetShoppingForm();await refresh();notify('Artikel entfernt.');return;}
@@ -202,11 +204,12 @@ document.addEventListener('submit',async event=>{
       await saveShoppingEntry(input('#shopping-name').value);
     }else if(form.id==='import-form'){
       if(b){b.textContent='…';b.setAttribute('aria-busy','true');}$('#import-progress').hidden=false;const video=!$('#transcript-panel').hidden;
-      const result=await api<{id:number;existing:boolean}>('/api/import',{value:input('#source').value,...(video?{transcript:$<HTMLTextAreaElement>('#transcript').value,authorized:input('#transcript-authorized').checked,duration_seconds:Number(input('#video-duration').value)*60}:{})});
+      let evidence:Record<string,unknown>={};if(video){if(!input('#transcript-authorized').checked)throw new Error('Bitte bestätigen, dass du den Text verwenden darfst.');evidence={transcript:$<HTMLTextAreaElement>('#transcript').value,authorized:true,duration_seconds:Number(input('#video-duration').value)*60};}
+      const result=await api<{id:number;existing:boolean}>('/api/import',{value:input('#source').value,...evidence});
       await refresh();showView('collection');notify(result.existing?'Das Rezept ist bereits gespeichert.':'Das Rezept wurde automatisch gespeichert.');
     }else if(form.id==='editor-form')await saveEditor();
     else if(form.id==='member-form'){await api('/api/members',{email:input('#member-email').value,role:$<HTMLSelectElement>('#member-role').value});await refresh();input('#member-email').value='';notify('Kochbuch-Zugriff erlaubt. Auch die Access-Richtlinie muss die Person zulassen.');}
-  }catch(e){const message=e instanceof Error?e.message:'Anfrage fehlgeschlagen.';if(form.id==='editor-form'){$('#editor-error').textContent=message;$('#editor-error').hidden=false;}else notify(message,true);}
+  }catch(e){if(form.id==='import-form'&&e instanceof Error&&'code'in e&&e.code==='VIDEO_SOURCE_REQUIRED')$('#transcript-panel').hidden=false;const message=e instanceof Error?e.message:'Anfrage fehlgeschlagen.';if(form.id==='editor-form'){$('#editor-error').textContent=message;$('#editor-error').hidden=false;}else notify(message,true);}
   finally{if(b){b.disabled=state.read_only;if(form.id==='import-form'){b.textContent='→';b.removeAttribute('aria-busy');$('#import-progress').hidden=true;}}}
 });
 document.addEventListener('change',async event=>{const e=event.target;if(!(e instanceof HTMLInputElement))return;
@@ -227,7 +230,7 @@ input('#shopping-name').addEventListener('keydown',event=>{
 });
 document.addEventListener('click',event=>{if(event.target instanceof Node&&!$('#shopping-form').contains(event.target))hideSuggestions();});
 input('#search').addEventListener('input',renderRecipes);
-input('#source').addEventListener('input',()=>{try{$('#transcript-panel').hidden=!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(new URL(input('#source').value).hostname);}catch{$('#transcript-panel').hidden=true;}});
+input('#source').addEventListener('input',()=>{$('#transcript-panel').hidden=true;$<HTMLTextAreaElement>('#transcript').value='';input('#transcript-authorized').checked=false;try{$('#provide-video').hidden=!videoPlatform(new URL(input('#source').value));}catch{$('#provide-video').hidden=true;}});
 refreshDock=installShoppingDock();
 showView(location.hash.slice(1)||(location.pathname.startsWith('/shopping/')?'shopping':'import'));
 if(__REZEPTWERK_DEMO__){$('#demo-banner').hidden=false;refresh().catch(e=>notify(e.message,true));}

@@ -166,3 +166,13 @@ test('Chiliflocken und Nutella erhalten passende Vorschläge, Emojis und Einkauf
  await expect(brand.locator('.grocery-emoji')).toHaveText('🍫');await expect(page.locator('[data-department="pantry"]')).toContainText('Nutella');
  expect(external).toEqual([]);
 });
+
+test('Videolink versucht erst automatisch den Import und bietet danach Text als Alternative',async({page})=>{
+ await page.goto(demo);await page.locator('#source').fill('https://www.instagram.com/reel/demo/');
+ await expect(page.locator('#transcript-panel')).toBeHidden();
+ await page.locator('#import-submit').click();await expect(page.locator('#transcript-panel')).toBeVisible();
+ await page.locator('#transcript').fill('Zutaten: 200 g Tomaten und 100 g Reis. Reis kochen und Tomaten würfeln. Alles zusammen servieren.');
+ await page.locator('#transcript-authorized').check();await page.locator('#import-submit').click();
+ await expect(page.locator('#recipe-grid')).toContainText('Dein importiertes Beispielrezept');
+});
+

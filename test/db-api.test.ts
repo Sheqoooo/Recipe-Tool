@@ -87,6 +87,7 @@ it('signierte Preview bleibt ohne DB/KI lesbar, aber Schreibzugriffe und unsiche
   expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,DB:env.DB})).status).toBe(503);
   expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,OPENAI_API_KEY:'test-placeholder'})).status).toBe(503);
   expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,BOOTSTRAP_ADMIN_EMAILS:'admin@example.invalid'})).status).toBe(503);
+  expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,VIDEO_ANALYSIS_ENABLED:'true'})).status).toBe(503);
 });
 it.each(['access_token','apikey','X-Amz-Signature','%2561ccess_token'])('sensible Import-URLs erreichen weder Abruf, KI noch Importhistorie: %s',async key=>{
   const app=appFixture();const response=await app.post('/api/import',{value:'https://recipes.example/pasta?'+key+'=DO_NOT_EXPOSE'});
@@ -228,4 +229,31 @@ it('Zutaten-Batch ist bei Kapazitätsüberschreitung atomar',async()=>{
  expect((await f.post('/api/shopping/from-recipe',{recipe_id:id})).status).toBe(409);
  expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM shopping_items').first('n')).toBe(499);
  expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM shopping_items WHERE name IN ('Reis','Tomaten')").first('n')).toBe(0);
+});
+
+it('importiert autorisierten Videotext aller Plattformen ohne Seitenabruf und speichert keine Rohdaten',async()=>{
+ const f=appFixture();const response=await f.post('/api/import',{value:'https://www.instagram.com/reel/mock/',transcript:'Zutaten: 200 g Tomaten. Zehn Minuten kochen und servieren.',authorized:true,duration_seconds:60});
+ expect(response.status).toBe(201);expect(f.read).not.toHaveBeenCalled();expect(f.generate).toHaveBeenCalledTimes(1);
+ expect(f.generate.mock.calls[0][0]).toMatchObject({provenance:'provided_text',kind:'web'});
+ const state=await(await f.get()).json() as AppState;expect(JSON.stringify(state)).not.toContain('Zehn Minuten kochen und servieren.');expect(state.recipes[0].source_url).toBe('https://www.instagram.com/reel/mock/');
+});
+it('reserviert das zusätzliche Videobudget atomar und lässt höchstens eine Videoanalyse zu',async()=>{
+ const repo=new Repository(env.DB),owner=actor('owner');await seed(owner);const config=localEnv(env.DB);
+ const one=await repo.reserve(owner,{kind:'web',url:'https://www.instagram.com/reel/one/'},config,50000);
+ const two=await repo.reserve(owner,{kind:'web',url:'https://www.instagram.com/reel/two/'},config,50000);
+ const results=await Promise.allSettled([repo.reserveVideoBudget(one,config,239000),repo.reserveVideoBudget(two,config,239000)]);
+ expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+ const rows=await env.DB.prepare('SELECT reserved_cost_microusd FROM imports ORDER BY reserved_cost_microusd').all<{reserved_cost_microusd:number}>();
+ expect(rows.results.map(r=>r.reserved_cost_microusd)).toEqual([50000,239000]);
+});
+it('Kostenlimit verhindert den Video-KI-Aufruf und speichert keine Medien-Rohdaten',async()=>{
+ const generateVideo=vi.fn(async()=>structuredClone(generated));
+ const app=createApp({read:async url=>({kind:'web',url,text:'Public caption',provenance:'public_video',video:{bytes:new Uint8Array([1,2,3]),duration:50}}),generateVideo});
+ const config={...localEnv(env.DB),DAILY_BUDGET_MICROUSD:'200000'};
+ const request=()=>new Request('http://localhost/api/import',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify({value:'https://www.instagram.com/reel/test/'})});
+ expect((await app.fetch(request(),config)).status).toBe(429);expect(generateVideo).not.toHaveBeenCalled();
+ expect(await env.DB.prepare('SELECT COUNT(*) FROM recipes').first('COUNT(*)')).toBe(0);
+ config.DAILY_BUDGET_MICROUSD='2000000';expect((await app.fetch(request(),config)).status).toBe(201);
+ const response=await app.fetch(new Request('http://localhost/api/state'),config),text=await response.text();
+ expect(text).not.toContain('Public caption');expect(text).not.toContain('"bytes"');expect(text).not.toContain('"video"');expect(generateVideo).toHaveBeenCalledTimes(1);
 });

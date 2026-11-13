@@ -1,3 +1,6 @@
+import {videoPlatform,videoLink} from '../shared/video-platform.js';
+import {socialDescription} from './social-description.js';
+import {readPublicVideo} from './public-video.js';
 import type { Env } from "./env.js";
 import ipaddr from 'ipaddr.js';
 import { AppError } from '../shared/errors.js';
@@ -52,12 +55,15 @@ export function extractSource(html:string,url:string,documentUrl=url):Source{
   const image=extractSourceImage(html,documentUrl);
   return {kind:'web',url:normalizeUrl(url).href,text:extractRecipeContent(html,MAX_SOURCE_BYTES),...(image?{image}:{})};
 }
-export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch):Promise<Source>{
-  let url=normalizeUrl(value);
-  if(isYouTube(url))throw new AppError('TRANSCRIPT_REQUIRED','Für YouTube bitte ein rechtmäßig bereitgestelltes Transkript importieren.',422);
+export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch,depth=0,deadline=Date.now()+45000):Promise<Source>{
+  const original=normalizeUrl(value),platform=videoPlatform(original);
+  let url=original;if(platform){try{url=videoLink(value);}catch{throw new AppError('INVALID_VIDEO','Bitte einen gültigen Video-Link verwenden.',422);}}
+  const canonical=url.href;
   for(let redirects=0;redirects<=3;redirects++){
+    if(Date.now()>=deadline)throw new AppError('SOURCE_TIMEOUT','Die Quelle antwortet zu langsam.',504);
     checkAllowed(url,env);await checkDns(url.hostname,fetcher);
-    const response=await fetcher(url.href,{redirect:'manual',headers:{Accept:'text/html,application/xhtml+xml'},signal:AbortSignal.timeout(15000)});
+    if(Date.now()>=deadline)throw new AppError('SOURCE_TIMEOUT','Die Quelle antwortet zu langsam.',504);
+    const response=await fetcher(url.href,{redirect:'manual',headers:{Accept:'text/html,application/xhtml+xml'},signal:AbortSignal.timeout(Math.min(15000,deadline-Date.now()))});
     if([301,302,303,307,308].includes(response.status)){
       const location=response.headers.get('location');await response.body?.cancel();
       if(!location)throw new AppError('SOURCE_REDIRECT','Ungültige Weiterleitung.',422);
@@ -65,14 +71,29 @@ export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch):P
     }
     if(!response.ok)throw new AppError('SOURCE_UNAVAILABLE','Die Rezeptseite ist momentan nicht auslesbar.',422);
     if(!/^(text\/html|application\/xhtml\+xml)(;|$)/i.test(response.headers.get('content-type')||''))throw new AppError('SOURCE_TYPE','Der Link liefert keine Rezept-Webseite.',422);
-    return extractSource(await limitedText(response,2000000),value,url.href);
+    const html=await limitedText(response,2000000);
+    if(platform){
+      const description=socialDescription(html,false);
+      try{return {kind:'web',url:canonical,text:socialDescription(html),provenance:'description'};}catch(error){if(!(error instanceof AppError)||error.code!=='VIDEO_SOURCE_REQUIRED')throw error;}
+      if(depth===0){for(const raw of description.match(/https:\/\/[^\s<>"']+/g)||[]){
+        let linked:URL;try{linked=normalizeUrl(raw.replace(/[.,;)]+$/,''));}catch{continue;}
+        if(videoPlatform(linked)||linked.hostname===original.hostname||/(^|\.)(?:youtube\.com|youtu\.be|instagram\.com|tiktok\.com)$/.test(linked.hostname))continue;
+        const recipe=await readWeb(linked.href,env,fetcher,1,deadline);return {...recipe,url:canonical,text:'Verlinkte Rezeptseite: '+linked.href+'\n'+recipe.text,provenance:'description'};
+      }}
+      if(env.VIDEO_ANALYSIS_ENABLED==='true'&&env.MEDIA){
+        const video=await readPublicVideo(new URL(canonical),url,html,env,fetcher,deadline);
+        return {kind:'web',url:canonical,text:description,provenance:'public_video',video};
+      }
+      throw new AppError('VIDEO_SOURCE_REQUIRED','Die Videobeschreibung ist nicht ausreichend zugänglich. Bitte Beschreibung oder Transkript bereitstellen.',422);
+    }
+    return extractSource(html,value,url.href);
   }
   throw new AppError('SOURCE_REDIRECT','Zu viele Weiterleitungen.',422);
 }
 export function transcriptSource(value:unknown,transcript:unknown,authorized:unknown,duration:unknown):Source{
-  const url=youtubeUrl(value);
+  let url:URL;try{url=videoLink(value);}catch{throw new AppError('INVALID_VIDEO','Bitte einen unterstützten Video-Link angeben.',422);}
   if(authorized!==true)throw new AppError('AUTHORIZATION_REQUIRED','Bitte bestätigen, dass du das Transkript rechtmäßig verwenden darfst.');
   if(typeof duration!=='number'||!Number.isFinite(duration)||duration<=0||duration>1200)throw new AppError('VIDEO_LIMIT','Transkriptimporte sind auf Videos bis 20 Minuten begrenzt.');
   if(typeof transcript!=='string'||transcript.trim().length<30||new TextEncoder().encode(transcript).byteLength>MAX_SOURCE_BYTES)throw new AppError('TRANSCRIPT_LIMIT','Bitte ein Transkript mit 30 Zeichen bis 20 KB bereitstellen.');
-  return {kind:'youtube_transcript',url:url.href,text:transcript.trim()};
+  return {kind:videoPlatform(url)==='youtube'?'youtube_transcript':'web',url:url.href,text:transcript.trim(),provenance:'provided_text'};
 }

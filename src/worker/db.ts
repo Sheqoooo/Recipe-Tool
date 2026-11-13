@@ -151,6 +151,18 @@ export class Repository {
     } catch { throw new AppError('IMPORT_LIMIT','Import läuft bereits oder Anfrage-/Kostenlimit erreicht. Bitte später erneut versuchen.',429); }
     return id;
   }
+  async reserveVideoBudget(id:string,env:Env,cost:number):Promise<void>{
+    const now=Date.now(),dayStart=Date.parse(new Date().toISOString().slice(0,10)+'T00:00:00Z'),monthStart=Date.parse(new Date().toISOString().slice(0,7)+'-01T00:00:00Z');
+    // Single conditional UPDATE: concurrent upgrades cannot both overspend the same budget.
+    // Only one video analysis at a time; ordinary text imports retain their own limit.
+    const result=await this.db.prepare(`UPDATE imports SET reserved_cost_microusd=?
+      WHERE id=? AND status='running' AND lease_expires_at>?
+      AND NOT EXISTS(SELECT 1 FROM imports WHERE id<>? AND status='running' AND reserved_cost_microusd>=?)
+      AND COALESCE((SELECT SUM(reserved_cost_microusd) FROM imports WHERE created_at>=? AND id<>?),0)+?<=?
+      AND COALESCE((SELECT SUM(reserved_cost_microusd) FROM imports WHERE created_at>=? AND id<>?),0)+?<=?`)
+      .bind(cost,id,now,id,cost,dayStart,id,cost,intConfig(env.DAILY_BUDGET_MICROUSD,2000000),monthStart,id,cost,intConfig(env.MONTHLY_BUDGET_MICROUSD,10000000)).run();
+    if(!result.meta.changes)throw new AppError('IMPORT_LIMIT','Eine Videoanalyse läuft bereits oder das Kostenlimit ist erreicht.',429);
+  }
   async fail(id:string,code:string,usage?:Usage):Promise<void> {
     await this.db.prepare("UPDATE imports SET status='failed',error_code=?,input_tokens=?,output_tokens=?,model=?,estimated_cost_microusd=? WHERE id=? AND status='running'")
       .bind(code,usage?.input_tokens??null,usage?.output_tokens??null,usage?.model??null,usage?.estimated_cost_microusd??null,id).run();

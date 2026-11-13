@@ -59,7 +59,7 @@ export async function demoApi<T>(path:string,data?:unknown):Promise<T>{
     const id=shoppingItemId(body.id);state.manual_items=state.manual_items!.filter(i=>i.id!==id);
   }else if(path==='/api/import'){
     const url=normalizeSourceUrl(body.value);
-    if(['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(url.hostname))throw new Error('Die Design-Demo simuliert nur Webseitenimporte.');
+    if(['youtube.com','www.youtube.com','m.youtube.com','youtu.be','instagram.com','www.instagram.com','tiktok.com','www.tiktok.com','vm.tiktok.com','vt.tiktok.com'].includes(url.hostname)&&!body.transcript)throw Object.assign(new Error('Demo: Bitte Beschreibung oder Transkript bereitstellen. Kein echter Plattformabruf.'),{code:'VIDEO_SOURCE_REQUIRED'});
     const existing=state.recipes.find(r=>r.source_url===url.href);
     if(existing)result={id:existing.id,existing:true};
     else{const recipe={...structuredClone(recipes[0]),id:nextId++,source_url:url.href,title:'Dein importiertes Beispielrezept'};state.recipes.unshift(recipe);result={id:recipe.id,existing:false};}

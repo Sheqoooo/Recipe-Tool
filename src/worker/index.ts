@@ -4,8 +4,10 @@ import { AppError } from '../shared/errors.js';
 import { recipeSchema,validateRecipe,shoppingList } from '../shared/recipe.js';
 import { Repository } from './db.js';
 import { authenticate,verifyIdentity } from './auth.js';
-import { normalizeUrl,isYouTube,youtubeUrl,readWeb,transcriptSource } from './source.js';
+import { normalizeUrl,readWeb,transcriptSource } from './source.js';
+import {videoPlatform,videoLink} from '../shared/video-platform.js';
 import { generateRecipe,reservationCost } from './openai.js';
+import {generateVideoRecipe,videoReservationCost} from './video-analysis.js';
 import { fetchRecipeImage } from './image.js';
 
 const security={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
@@ -31,6 +33,7 @@ function admin(actor:Member):void{if(actor.role!=='admin')throw new AppError('FO
 export interface Dependencies {
   image?:typeof fetchRecipeImage;
   generate?:(source:Source,env:Env,id:string)=>Promise<Generated>;
+  generateVideo?:typeof generateVideoRecipe;
   read?:(url:string,env:Env)=>Promise<Source>;
 }
 export function createApp(deps:Dependencies={}){
@@ -42,7 +45,7 @@ export function createApp(deps:Dependencies={}){
       // Authentication runs before every asset AND API response.
       if(env.APP_ENV==='preview'){
         const identity=await verifyIdentity(request,env);
-        if(env.DB||env.OPENAI_API_KEY||env.BOOTSTRAP_ADMIN_EMAILS)throw new AppError('PREVIEW_ISOLATION','Die Vorschau ist wegen unsicherer Ressourcenbindung gesperrt.',503);
+        if(env.DB||env.OPENAI_API_KEY||env.BOOTSTRAP_ADMIN_EMAILS||env.MEDIA||env.VIDEO_ANALYSIS_ENABLED==='true')throw new AppError('PREVIEW_ISOLATION','Die Vorschau ist wegen unsicherer Ressourcenbindung gesperrt.',503);
         if(request.method!=='GET')throw new AppError('PREVIEW_READ_ONLY','Diese Vorschau ist schreibgeschützt.',403);
         if(path==='/api/state')return json({recipes:[],plan:[],shopping:[],checked:[],members:[],imports:[],has_key:false,read_only:true,user:{id:identity.sub,email:identity.email,role:'member',active:1}} satisfies AppState);
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
@@ -68,26 +71,25 @@ export function createApp(deps:Dependencies={}){
       if(path==='/api/shopping/items/check'){await repo.checkShoppingItem(data.id,data.checked);return json({ok:true});}
       if(path==='/api/shopping/items/delete'){await repo.deleteShoppingItem(data.id);return json({ok:true});}
       if(path==='/api/import'){
-        const url=normalizeUrl(data.value);
+        const url=normalizeUrl(data.value),platform=videoPlatform(url);
+        let canonical=url.href;if(platform){try{canonical=videoLink(data.value).href;}catch{throw new AppError('INVALID_VIDEO','Bitte einen gültigen Video-Link angeben.',422);}}
+        if(data.media!==undefined)throw new AppError('INVALID_SOURCE','Video-Uploads werden nicht unterstützt.',422);
         let source:Source|undefined;
-        if(isYouTube(url)){
-          if(!data.transcript)throw new AppError('TRANSCRIPT_REQUIRED','Für YouTube ein rechtmäßig bereitgestelltes Transkript hinzufügen.',422);
-          source=transcriptSource(data.value,data.transcript,data.authorized,data.duration_seconds);
-        }else if(data.transcript)throw new AppError('INVALID_SOURCE','Transkriptimporte benötigen einen YouTube-Link.');
-        const canonical=source?.url||url.href;
+        if(data.transcript){if(!platform)throw new AppError('INVALID_SOURCE','Bereitgestellte Videotexte benötigen einen Video-Link.',422);source=transcriptSource(data.value,data.transcript,data.authorized,data.duration_seconds);}
         const existing=await repo.bySource(canonical);if(existing)return json({id:existing.id,existing:true});
         if(!env.OPENAI_API_KEY)throw new AppError('AI_CONFIGURATION','Der Administrator muss OPENAI_API_KEY als Worker Secret hinterlegen.',503);
         const importId=await repo.reserve(actor,{url:canonical,kind:source?.kind||'web'},env,reservationCost(env));
         try{
           source||=await(deps.read||readWeb)(canonical,env);
           source.url=normalizeUrl(source.url).href;
-          const generated=await(deps.generate||generateRecipe)(source,env,importId);
+          if(source.provenance==='public_video')await repo.reserveVideoBudget(importId,env,videoReservationCost(env));
+          const generated=source.provenance==='public_video'?await(deps.generateVideo||generateVideoRecipe)(source,env,importId):await(deps.generate||generateRecipe)(source,env,importId);
           const recipe=validateRecipe(generated.recipe);
           let image:RecipeImageData|undefined;
           if(source.kind==='web'&&source.image){try{image=await(deps.image||fetchRecipeImage)(source.image,env);}catch{/* An optional image must not discard a valid recipe. */}}
           const recipeId=await repo.save(recipe,actor,source,importId,generated.usage,image);
           return json({id:recipeId,existing:false},201);
-        }catch(error){await repo.fail(importId,error instanceof AppError?error.code:'IMPORT_FAILED',error instanceof AppError?error.usage:undefined);throw error;}
+        }catch(error){await repo.fail(importId,error instanceof AppError?error.code:'IMPORT_FAILED',error instanceof AppError?error.usage:undefined);if(platform&&error instanceof AppError&&['SOURCE_UNAVAILABLE','SOURCE_TYPE','SOURCE_EMPTY','NO_RECIPE'].includes(error.code))throw new AppError('VIDEO_SOURCE_REQUIRED','Das Rezept ist aus dem Video-Link nicht ausreichend auslesbar. Bitte Beschreibung oder Transkript bereitstellen.',422);throw error;}
       }
       if(path==='/api/recipes/save'){
         const recipe=Object.fromEntries(Object.keys(recipeSchema.shape).map(key=>[key,data[key]]));

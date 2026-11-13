@@ -76,8 +76,18 @@ Timeouts, OpenAI-429/5xx und unvollständige Modellantworten sind mit Mocks auto
 
 ## 5. Eingeschränkter YouTube-Zwischenstand
 
-- [ ] YouTube-Link ohne Transkript: `TRANSCRIPT_REQUIRED`; kein automatischer Abruf und kein Videorezept.
+- [ ] YouTube-Shorts-/Instagram-/TikTok-Link ohne Transkript: öffentliche Beschreibung wird versucht; bei fehlendem Rezepttext `VIDEO_SOURCE_REQUIRED`. Keine Plattform-Anmeldung. Bei ausgeschaltetem Medienflag kein Videodateiabruf.
 - [ ] Optional und nur nach Kostenfreigabe: rechtmäßig bereitgestelltes Transkript bis 20 KB, Nutzungsbestätigung und angegebene Videodauer bis 20 Minuten importieren. Erwartung: Hinweis, dass ausschließlich Text und keine Bilder/Audio analysiert wurden. Die angegebene Dauer wird nicht am Video verifiziert.
-- [ ] Festhalten: **Automatische Analyse beliebiger YouTube-Links ist noch nicht implementiert.** Dieses Produktziel ist durch das Bestehen des Transkript-Tests nicht erreicht.
+- [ ] Festhalten: **Vollständige automatische Ton-/Bildanalyse beliebiger Plattformlinks ist nicht implementiert.** Der begrenzte öffentliche Medienadapter muss separat aktiviert und live geprüft werden; YouTube-Ton/Bild bleibt offen. Dieses Produktziel ist durch das Bestehen des Transkript-Tests nicht erreicht.
 
 Abschluss: Jeden Punkt als bestanden, fehlgeschlagen oder offen markieren. Ein fehlgeschlagener Schutztest blockiert die weitere Nutzung der privaten App bis zur Behebung. Keine offenen Live-Prüfungen als erfolgreich ausgeführt darstellen.
+
+## Optionaler automatischer Medienpfad (separate Freigabe nötig)
+
+- [ ] Vor Aktivierung: fehlendes Flag oder fehlendes MEDIA-Binding führt niemals zu Audio-/Vision-Anfragen. Preview mit MEDIA/Flag ist gesperrt.
+- [ ] Nach ausdrücklicher Kostenfreigabe und Aktivierung: kurzes berechtigtes Instagram-Video mit unzureichender Beschreibung importieren; echte Ton- und Bildverarbeitung prüfen, nicht nur Beschreibungserfolg.
+- [ ] Importhinweis nennt sechs Einzelbilder; Mengen, sichtbare Einblendungen und Tontranskription mit dem Original vergleichen. Fehlende Mengen werden nicht ergänzt.
+- [ ] In D1/Status nur Rezept, kanonischen Link und Verbrauch sehen; keine signierten Playback-URLs, Rohbytes, Frames oder vollständigen Transkripte.
+- [ ] Budget-/Parallelitätsgrenzen, 90-s-/12-MiB-Grenzen, falscher MIME-Typ und abgelaufene Quelle erzeugen kontrollierte Fehler ohne Wiederholungsschleife.
+- [ ] TikTok-Beispiel mit Medien-HTTP-403 bleibt abgewiesen. Keine automatische Umgehung. YouTube-Medienfähigkeit wird nicht suggeriert.
+- [ ] Cloudflare-CPU-/Speichermetriken und Media-Latenz prüfen; Native-Binding-Beta ist kein Nachweis der Eignung des Free-Worker-Tarifs.

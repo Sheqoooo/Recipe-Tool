@@ -113,7 +113,7 @@ Exportdateien gehören außerhalb des Repositories; `private-backup.sql` vor Ver
 - **AI_CREDITS_EMPTY / AI_QUOTA / AI_SPEND_LIMIT / AI_USAGE_LIMIT:** OpenAI meldet fehlendes Guthaben, ein Kontingent- oder Ausgabenlimit. Das verwendete API-Projekt bzw. die Organisation in der OpenAI-API-Abrechnung prüfen. ChatGPT Plus ist getrennt. Nicht blind wiederholt importieren oder ohne Prüfung Limits erhöhen; kein neuer API-Key erforderlich, solange dieser gültig ist.
 - **AI_RATE_LIMIT:** Kurzfristiges OpenAI-Anfragelimit; später erneut versuchen und bei Wiederholung API-Anfragelimits prüfen. **AI_LIMIT:** Nicht genauer klassifiziertes Anbieterlimit; Abrechnung und Anfragelimits prüfen. Die rohe Anbieterantwort wird nicht ausgegeben.
 - **IMPORT_LIMIT:** Paralleler Import, Anfragekontingent oder reserviertes Tages-/Monatsbudget erreicht. Keine unkontrollierten Wiederholungen starten.
-- **TRANSCRIPT_REQUIRED:** YouTube-Link allein ist nicht ausreichend. Rechtmäßig bereitgestelltes Transkript verwenden.
+- **VIDEO_SOURCE_REQUIRED:** Der Plattformlink liefert keinen ausreichenden zugänglichen Rezepttext. Optional eine rechtmäßig bereitgestellte Beschreibung oder ein Transkript verwenden.
 - **GitHub Pages:** Öffentliche statische Vorschau, keine private D1-/OpenAI-Verbindung. Für die echte App die Access-geschützte Worker-Domain verwenden.
 
 Die bestehende D1 `recipe-prod` / `58577ba1-de20-4078-915d-9c0a2962f555` ist bereits eingetragen. Worker-Adresse, Access-Teamdomain und Worker-AUD sind ebenfalls eingetragen. Der Betreiber hat die Secrets `OPENAI_API_KEY` und `BOOTSTRAP_ADMIN_EMAILS` nach eigener Angabe ausschließlich für Production hinterlegt; ihre Werte wurden nicht ausgelesen. Vor Veröffentlichung bleiben die getrennt freizugebende Migration und die GitHub-/Build-Einrichtung sowie die Live-Prüfung der tatsächlichen App. Keine eigene Domain erforderlich. GitHub-Verbindung und automatische Deployments erst nach Review, Access-Einrichtung und ausdrücklicher Aktivierung freischalten; das Verbinden kann bereits einen Build auslösen.
@@ -178,3 +178,21 @@ Der Nutzer hat Import und Veröffentlichung beauftragt. Der Produktkatalog wird 
 
 ### Mobile Einkaufsleiste / gefüllte Tüte
 Diese Änderung benötigt keine D1-Migration und keine neuen Secrets. PNGs und der dunkle Installations-Einstieg werden im Build erzeugt; alle Assets bleiben hinter Access. Nach Freigabe automatisch über den bestehenden GitHub-/Cloudflare-Prozess veröffentlichen. Im iOS-Smoke-Test Leiste bei Scrollen und eingeblendeter Tastatur sowie Home-Symbol nach erneutem Hinzufügen prüfen. Alte installierte Icons werden eventuell von iOS zwischengespeichert.
+
+## Kurzvideo-Links
+
+Keine zusätzliche Ressource, D1-Migration, Plattform-Zugangsdaten, Audio-Key-Berechtigung oder Tarifumstellung nötig. Öffentliches HTML wird nach bestehenden Sicherheitsregeln versucht. Der vorhandene OpenAI-Key mit Responses-Schreibrecht genügt. Sol bleibt für den Standardtextpfad aktiv. Der gesondert freizuschaltende Medienadapter für öffentliche Instagram-/TikTok-Dateien ist unten beschrieben. Video-Uploads wurden auf Nutzerwunsch gestrichen.
+
+### Medienanalyse später ausdrücklich aktivieren
+Die produktive MEDIA-Anbindung wurde inzwischen im Dashboard eingerichtet und ist in `wrangler.production.jsonc` übernommen. Die Produktionskonfiguration setzt `VIDEO_ANALYSIS_ENABLED=true` für das nächste vom Betreiber freigegebene Release; der offene PR ist dadurch noch nicht live. Der `previews`-Block enthält keine Media-Anbindung. Der Betreiber hat zusätzlich eine leere **Previews Base** und die OpenAI-Berechtigung **Audio → Request** bestätigt.
+
+**Noch nicht aktiviert, nicht live geprüft. Kein Deploy durch diese Anleitung.** Erst nach Freigabe Cloudflare-Verfügbarkeit, aktuelle Beta-Kosten und CPU-/Speichergrenzen im bestehenden Account prüfen. Kein Tarif wird automatisch gewechselt. Die derzeitige öffentliche Beta berechnet Binding-Transformationen laut [Cloudflare](https://developers.cloudflare.com/stream/transform-videos/bindings/) nicht; keine dauerhafte Preisgarantie.
+
+1. Im produktiven Worker die native Media-Transformations-Bindung mit Namen `MEDIA` einrichten. Die entsprechende spätere Repository-Konfiguration ist auf Root-Ebene von `wrangler.production.jsonc`: `"media": {"binding":"MEDIA"}`. Nicht zu Preview/local/test-Konfiguration hinzufügen. Die offizielle Dokumentation beschreibt auch die Binding-Einrichtung im Dashboard; deren konkrete Verfügbarkeit wurde im Nutzerkonto noch nicht gesehen.
+2. Als Produktionsvariablen setzen: `VIDEO_ANALYSIS_ENABLED=true`, `OPENAI_VIDEO_MODEL=gpt-6.1-terra`, `VIDEO_INPUT_USD_PER_MILLION=1.00`, `VIDEO_OUTPUT_USD_PER_MILLION=5.00`. Wrangler bleibt die Konfigurationsquelle; Dashboardwerte dürfen beim nächsten Build nicht unbemerkt überschrieben werden.
+3. Den vorhandenen OpenAI-Projektschlüssel selbst auf **Restricted → Model capabilities → Audio → Request** zusätzlich zur bestehenden Responses-Anfrageberechtigung erweitern. Kein neuer Plattformaccount/Instagrampasswort und kein Key im Chat. `OPENAI_API_KEY` bleibt Worker Secret. Je nach OpenAI-Oberfläche können die Rechtebezeichnungen abweichen; konkret benötigt wird POST `/v1/audio/transcriptions`.
+4. Vorschau ohne MEDIA, Medienflag, produktive D1/Secrets behalten. Der Server sperrt fehlkonfigurierte Previews. Keine D1-Migration erforderlich.
+5. Erst nach ausdrücklicher Freigabe für einen kostenpflichtigen Smoke-Test mit einem berechtigten kurzen Clip prüfen: CDN aus Cloudflare erreichbar, Audio/Frames erfolgreich, Verbrauch protokolliert, Rezept korrekt, keine Medien-/CDN-Rohdaten in D1/API. Worker CPU/Speicher/Latenz prüfen. Fehlender Free-Tier-Spielraum bedeutet Klärung vor einem Tarifwechsel.
+6. Rücknahme: Flag false setzen und Binding entfernen, ohne Datenbankrücksetzung. Beschreibungs-/Webimport bleiben möglich.
+
+Automatische YouTube-Medien und HTTP-403-blockierte TikTok-Dateien sind hierdurch nicht gelöst. Die [konkrete Testliste](docs/SMOKE-TEST.md) trennt Bereitstellung, Media-Aufbereitung und tatsächliche KI-Analyse.
