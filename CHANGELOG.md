@@ -1,5 +1,18 @@
 # Änderungsverlauf
 
+## 2026-11-13 – Rezeptwünsche und Varianten
+
+- Optionales Feld „Rezept anpassen“ unter dem Linkfeld; Zutaten und Zubereitung werden im bestehenden KI-Aufruf gemeinsam berücksichtigt.
+- Originale und angepasste Varianten getrennt speichern; identische normalisierte Wünsche wiederverwenden und die Herkunft sichtbar erhalten.
+- Wünsche nach erfolgreichem Import zurücksetzen; bei Fehlern und beim Zuklappen erhalten. Für mobile Nutzung und reduzierte Bewegung angepasst.
+- 213 Worker-/D1-/Logiktests und 42 Browserprüfungen mit Mocks erfolgreich; keine kostenpflichtigen OpenAI-Testaufrufe.
+
+## 2026-11-13 – Kurzvideos und Videostandbilder
+
+- Öffentliche Instagram-/TikTok-Playerdaten mit begrenztem Audio-/Bildpfad über Cloudflare Media Transformations und OpenAI auswerten, soweit der Medienabruf möglich ist. Automatische YouTube-Medien bleiben eingeschränkt.
+- Echte Videostandbilder mit Originalquelle speichern und fehlende Bilder eigener Rezepte nachladen; Hochkantbilder im Rezept vollständig einpassen.
+- Erfolgreiche Linkimporte leeren die Eingabemaske. Vorhandene Bilder und ursprüngliche Rezeptfassungen bleiben erhalten.
+
 ## 0.3.0 – Cloudflare-Migration (zur Prüfung)
 
 - Bestandsaufnahme und technische Entscheidungen dokumentiert; vorhandene Gestaltung und Einkaufslogik erhalten.
