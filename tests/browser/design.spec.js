@@ -9,7 +9,7 @@ test('reduzierter Start und Offline-Demo ohne HTTP- oder API-Aufrufe',async({pag
   page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});page.on('pageerror',e=>errors.push(e.message));
   await page.goto(demo);await expect(page.locator('#demo-banner')).toBeVisible();await expect(page.locator('#import-submit')).toBeEnabled();
   await expect(page.locator('#app-header')).toBeHidden();await expect(page.locator('#app-navigation')).toBeHidden();
-  await expect(page.getByRole('button')).toHaveCount(3);
+  await expect(page.locator('#adaptation-options')).toBeVisible();await expect(page.locator('#adaptation')).toBeHidden();
   await page.screenshot({path:info.outputPath('design-start.png'),fullPage:true});
   await page.locator('#source').fill('https://example.com/offline-recipe');await page.locator('#import-submit').click();
   await expect(page.locator('#recipe-grid')).toContainText('Dein importiertes Beispielrezept');
@@ -59,6 +59,17 @@ test('Futterluke zeigt Bild, Nachweis und Emoji-Fallback offline',async({page},i
   await page.screenshot({path:info.outputPath('design-photo.png')});
   await page.locator('#recipe-dialog .recipe-photo').evaluate(e=>e.dispatchEvent(new Event('error')));
   await expect(page.locator('#recipe-dialog .recipe-photo')).toHaveCount(0);await expect(page.locator('.detail-hero-art')).toContainText('🍋');
+});
+test('optionaler Rezeptwunsch bleibt unaufdringlich, erzeugt eine Variante und wird zurückgesetzt',async({page},info)=>{
+ const requests=[];page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
+ await page.goto(demo);await expect(page.locator('#adaptation')).toBeHidden();
+ await page.locator('#adaptation-options summary').click();await expect(page.locator('#adaptation')).toBeVisible();
+ await page.locator('#adaptation').fill('Hackfleisch durch Halloumi ersetzen');await expect(page.locator('#adaptation-active')).toBeVisible();
+ await page.locator('#source').fill('https://recipes.example/demo/1');await page.screenshot({path:info.outputPath('import-adaptation.png')});await page.locator('#import-submit').click();
+ await expect(page.locator('#recipe-grid')).toContainText('Deine angepasste Rezeptvariante');await expect(page.locator('.recipe-card')).toHaveCount(7);
+ await page.getByRole('button',{name:'Deine angepasste Rezeptvariante ansehen'}).click();await expect(page.locator('.ingredient-view')).toContainText('Halloumi');await expect(page.locator('.method-list')).toContainText('Halloumi (200 g) würfeln');await expect(page.locator('.recipe-notes')).toContainText('Hackfleisch durch Halloumi ersetzen');
+ await page.locator('#close-dialog').click();await page.getByRole('button',{name:/Link einfügen/}).click();await expect(page.locator('#source')).toHaveValue('');await expect(page.locator('#adaptation')).toHaveValue('');await expect(page.locator('#adaptation')).toBeHidden();
+ await page.locator('#source').fill('https://recipes.example/demo/1');await page.locator('#import-submit').click();await expect(page.locator('.recipe-card')).toHaveCount(7);await expect(page.locator('#notice')).toContainText('bereits gespeichert');expect(requests).toEqual([]);
 });
 test('Videobild nachladen, Hochkantdarstellung und leere Importmaske ohne echte API',async({page},info)=>{
  const requests=[];page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});

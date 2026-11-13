@@ -297,3 +297,23 @@ it('reiner Beschreibungsimport ergänzt ein frühes Videobild ohne weitere Rezep
  expect(response.status).toBe(201);expect(generate).toHaveBeenCalledTimes(1);expect(readVideo).toHaveBeenCalledTimes(1);expect(videoImage).toHaveBeenCalledTimes(1);
  const state=await(await app.fetch(new Request('http://localhost/api/state'),config)).json() as AppState;expect(state.recipes[0].image).not.toBeNull();
 });
+it('Original und gewünschte Variante sind getrennt und identische Wünsche werden dedupliziert',async()=>{
+ const f=appFixture(),value='https://recipes.example/adapt',adaptation='Hackfleisch durch Halloumi ersetzen';
+ await f.post('/api/import',{value});const original=(await(await f.get()).json() as AppState).recipes[0];
+ f.generate.mockResolvedValue({...structuredClone(generated),recipe:{...recipe,title:'Halloumi-Pfanne',ingredients:[{name:'Halloumi',amount:200,unit:'g',note:''}],steps:[{text:'Halloumi (200 g) würfeln und goldbraun anbraten.',ingredient_indices:[0]}]}});
+ expect((await f.post('/api/import',{value,adaptation})).status).toBe(201);
+ expect(f.generate.mock.calls[1][0].adaptation).toBe(adaptation);
+ expect((await f.post('/api/import',{value,adaptation:'  Hackfleisch\n durch Halloumi ersetzen  '})).status).toBe(200);
+ const normal=await(await f.post('/api/import',{value})).json() as {id:number};expect(normal.id).toBe(original.id);expect(f.generate).toHaveBeenCalledTimes(2);
+ const state=await(await f.get()).json() as AppState;expect(state.recipes).toHaveLength(2);expect(state.recipes.find(r=>r.id===original.id)?.title).toBe(original.title);
+ const variant=state.recipes.find(r=>r.id!==original.id)!;expect(variant.warnings[0]).toContain(adaptation);
+ await f.post('/api/recipes/save',{...variant,warnings:[]});const saved=(await(await f.get()).json() as AppState).recipes.find(r=>r.id===variant.id)!;expect(saved.warnings[0]).toContain(adaptation);
+});
+it('eine zuerst importierte Variante wird später nicht als Original zurückgegeben',async()=>{
+ const f=appFixture(),value='https://recipes.example/variant-first';await f.post('/api/import',{value,adaptation:'Vegetarisch anpassen'});
+ expect((await f.post('/api/import',{value})).status).toBe(201);expect(f.generate).toHaveBeenCalledTimes(2);
+});
+it('ungültige Anpassung wird vor Abruf, Reservierung und KI abgewiesen',async()=>{
+ const f=appFixture();for(const adaptation of [{},'x'.repeat(401)])expect((await f.post('/api/import',{value:'https://recipes.example/a',adaptation})).status).toBe(400);
+ expect(f.read).not.toHaveBeenCalled();expect(f.generate).not.toHaveBeenCalled();expect((await(await f.get()).json() as AppState).imports).toHaveLength(0);
+});

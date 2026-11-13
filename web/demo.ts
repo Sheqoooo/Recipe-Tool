@@ -3,6 +3,7 @@ import type { AppState,Recipe,RecipeData } from '../src/shared/types.js';
 import { shoppingList,validateRecipe } from '../src/shared/recipe.js';
 import {validateShoppingEntry,shoppingItemId,productKey,shoppingEntriesFromIngredients} from '../src/shared/products.js';
 import { normalizeSourceUrl } from '../src/shared/source-url.js';
+import {normalizeAdaptation,markAdaptation,adaptationNote,ADAPTATION_PREFIX} from '../src/shared/adaptation.js';
 const owner='demo-member';
 const make=(id:number,title:string,description:string,cook:number,items:[string,number,string][],texts:string[]):Recipe=>({
   id,owner_id:owner,title,description,servings:2,prep_minutes:10,cook_minutes:cook,
@@ -58,11 +59,11 @@ export async function demoApi<T>(path:string,data?:unknown):Promise<T>{
   }else if(path==='/api/shopping/items/delete'){
     const id=shoppingItemId(body.id);state.manual_items=state.manual_items!.filter(i=>i.id!==id);
   }else if(path==='/api/import'){
-    const url=normalizeSourceUrl(body.value);
+    const url=normalizeSourceUrl(body.value),adaptation=normalizeAdaptation(body.adaptation);
     if(['youtube.com','www.youtube.com','m.youtube.com','youtu.be','instagram.com','www.instagram.com','tiktok.com','www.tiktok.com','vm.tiktok.com','vt.tiktok.com'].includes(url.hostname)&&!body.transcript)throw Object.assign(new Error('Demo: Bitte Beschreibung oder Transkript bereitstellen. Kein echter Plattformabruf.'),{code:'VIDEO_SOURCE_REQUIRED'});
-    const existing=state.recipes.find(r=>r.source_url===url.href);
+    const existing=state.recipes.find(r=>r.source_url===url.href&&(adaptation?r.warnings.includes(adaptationNote(adaptation)):!r.warnings.some(note=>note.startsWith(ADAPTATION_PREFIX))));
     if(existing)result={id:existing.id,existing:true};
-    else{const recipe={...structuredClone(recipes[0]),...(['www.instagram.com','instagram.com','www.tiktok.com','tiktok.com'].includes(url.hostname)?{image:null}:{}),id:nextId++,source_url:url.href,title:'Dein importiertes Beispielrezept'};state.recipes.unshift(recipe);result={id:recipe.id,existing:false};}
+    else{const recipe={...structuredClone(recipes[0]),...(['www.instagram.com','instagram.com','www.tiktok.com','tiktok.com'].includes(url.hostname)?{image:null}:{}),id:nextId++,source_url:url.href,title:'Dein importiertes Beispielrezept'};if(adaptation){Object.assign(recipe,markAdaptation(recipe,adaptation));recipe.title='Deine angepasste Rezeptvariante';if(/halloumi/i.test(adaptation)){recipe.ingredients=[{name:'Halloumi',amount:200,unit:'g',note:'Demo-Annahme zur Anpassung.'}];recipe.steps=[{text:'Halloumi (200 g) würfeln und in einer Pfanne goldbraun anbraten.',ingredient_indices:[0]}];recipe.cook_minutes=null;}}state.recipes.unshift(recipe);result={id:recipe.id,existing:false};}
   }else if(path==='/api/recipes/video-image'){
     const recipe=state.recipes.find(r=>r.id===Number(body.recipe_id));if(!recipe)throw new Error('Beispielrezept nicht gefunden.');
     if(!recipe.image)recipe.image={url:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="960" viewBox="0 0 640 960"><rect width="640" height="960" fill="#e8eee3"/><circle cx="320" cy="480" r="240" fill="white"/><circle cx="320" cy="480" r="170" fill="#e3b55b"/><circle cx="270" cy="430" r="35" fill="#82a66b"/><circle cx="380" cy="500" r="42" fill="#b95647"/></svg>'),source_url:recipe.source_url,credit:'Standbild aus dem Originalvideo (Demo-Illustration)'};

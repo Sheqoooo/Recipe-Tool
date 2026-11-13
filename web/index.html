@@ -23,6 +23,7 @@
 <form id="import-form">
 <label id="source-label" class="sr-only" for="source">Link zum Rezept</label>
 <div class="link-field"><span class="link-symbol" aria-hidden="true">↗</span><input id="source" type="url" placeholder="Rezeptlink einfügen …" required maxlength="2000" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"><button id="import-submit" class="import-button" type="submit" aria-label="Rezept importieren" disabled>→</button></div>
+<details id="adaptation-options" class="adaptation-options"><summary><span aria-hidden="true">✎</span> Rezept anpassen <span id="adaptation-active" class="adaptation-active" hidden>Wunsch hinterlegt</span></summary><div class="adaptation-content"><label for="adaptation">Was möchtest du ändern?</label><textarea id="adaptation" rows="3" maxlength="400" placeholder="Zum Beispiel: Hackfleisch durch Halloumi ersetzen und die Zubereitung passend anpassen."></textarea><div class="adaptation-help"><p>Zutaten und Schritte werden gemeinsam angepasst und als eigene Variante gespeichert.</p><button id="clear-adaptation" type="button" class="text-button">Leeren</button></div></div></details>
 <p id="import-progress" class="field-help" role="status" hidden>Dein Rezept wird aufbereitet …</p>
 <div id="key-hint" class="hint" hidden>Die KI-Verbindung muss vom Administrator eingerichtet werden.</div>
 <button id="provide-video" type="button" class="text-button" hidden>Beschreibung oder Transkript bereitstellen</button>

@@ -184,6 +184,7 @@ document.addEventListener('click',async event=>{
       finally{b.disabled=state.read_only;}return;
     }
     if(b.dataset.videoImage){b.disabled=true;try{await api('/api/recipes/video-image',{recipe_id:Number(b.dataset.videoImage)});await refresh();openRecipe(Number(b.dataset.videoImage));dialog().scrollTop=0;notify('Videovorschaubild ergänzt.');}finally{b.disabled=false;}return;}
+    if(b.id==='clear-adaptation'){$<HTMLTextAreaElement>('#adaptation').value='';$('#adaptation-active').hidden=true;$<HTMLTextAreaElement>('#adaptation').focus();return;}
     if(b.dataset.open)openRecipe(Number(b.dataset.open));
     if(b.dataset.edit){const r=state.recipes.find(r=>r.id===Number(b.dataset.edit));if(r)openEditor(r);}
     if(b.dataset.add){const id=Number(b.dataset.add),r=state.recipes.find(r=>r.id===id);if(!r||r.servings===null)return;if(state.plan.some(p=>p.recipe_id===id)){dialog().close();showView('shopping');return;}await api('/api/plan',{recipe_id:id,servings:r.servings});await refresh();dialog().close();notify('Zur gemeinsamen Kochliste hinzugefügt.');}
@@ -207,8 +208,8 @@ document.addEventListener('submit',async event=>{
     }else if(form.id==='import-form'){
       if(b){b.textContent='…';b.setAttribute('aria-busy','true');}$('#import-progress').hidden=false;const video=!$('#transcript-panel').hidden;
       let evidence:Record<string,unknown>={};if(video){if(!input('#transcript-authorized').checked)throw new Error('Bitte bestätigen, dass du den Text verwenden darfst.');evidence={transcript:$<HTMLTextAreaElement>('#transcript').value,authorized:true,duration_seconds:Number(input('#video-duration').value)*60};}
-      const result=await api<{id:number;existing:boolean}>('/api/import',{value:input('#source').value,...evidence});
-      form.reset();$('#transcript-panel').hidden=true;$('#provide-video').hidden=true;
+      const result=await api<{id:number;existing:boolean}>('/api/import',{value:input('#source').value,adaptation:$<HTMLTextAreaElement>('#adaptation').value,...evidence});
+      form.reset();$<HTMLDetailsElement>('#adaptation-options').open=false;$('#adaptation-active').hidden=true;$('#transcript-panel').hidden=true;$('#provide-video').hidden=true;
       await refresh();showView('collection');notify(result.existing?'Das Rezept ist bereits gespeichert.':'Das Rezept wurde automatisch gespeichert.');
     }else if(form.id==='editor-form')await saveEditor();
     else if(form.id==='member-form'){await api('/api/members',{email:input('#member-email').value,role:$<HTMLSelectElement>('#member-role').value});await refresh();input('#member-email').value='';notify('Kochbuch-Zugriff erlaubt. Auch die Access-Richtlinie muss die Person zulassen.');}
@@ -239,3 +240,5 @@ showView(location.hash.slice(1)||(location.pathname.startsWith('/shopping/')?'sh
 if(__REZEPTWERK_DEMO__){$('#demo-banner').hidden=false;refresh().catch(e=>notify(e.message,true));}
 else if(preview){render();notify('Statische Vorschau ohne private Datenbank oder KI.');clearTimeout(timer);}
 else refresh().catch(e=>notify(e instanceof Error?e.message:'Die App ist nicht erreichbar.',true));
+
+$<HTMLTextAreaElement>('#adaptation').addEventListener('input',()=>{$('#adaptation-active').hidden=!$<HTMLTextAreaElement>('#adaptation').value.trim();});

@@ -75,10 +75,11 @@ it('nutzt ausschließlich OpenAI Audio und Responses mit Bildern und strukturier
   expect(String(input)).toBe('https://api.openai.com/v1/responses');
   const body=JSON.parse(String(options?.body));expect(body.model).toBe('gpt-6.1-terra');expect(body.store).toBe(false);expect(body.text.format.strict).toBe(true);
   expect(body.input[1].content.filter((part:{type:string})=>part.type==='input_image')).toHaveLength(6);
-  expect(JSON.stringify(body)).not.toContain('scontent.cdninstagram');expect(body.text.format.schema.required).toContain('cover_frame_index');
+  expect(JSON.stringify(body)).not.toContain('scontent.cdninstagram');expect(body.text.format.schema.required).toContain('cover_frame_index');expect(JSON.parse(body.input.at(-1).content)).toEqual({requested_adaptation:'Hackfleisch durch Halloumi ersetzen'});
   return Response.json({id:'mock',object:'response',status:'completed',model:'gpt-6.1-terra',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({is_recipe:true,recipe,cover_frame_index:4}),annotations:[]}]}],usage:{input_tokens:2000,output_tokens:1500,total_tokens:3500}});
  });
- const result=await generateVideoRecipe(videoSource(),config,'mock-import',f as typeof fetch);
+ const source=videoSource();source.adaptation='Hackfleisch durch Halloumi ersetzen';
+ const result=await generateVideoRecipe(source,config,'mock-import',f as typeof fetch);
  expect(f.mock.calls.filter(c=>String(c[0]).startsWith('https://api.openai.com/'))).toHaveLength(2);expect(result.recipe.warnings[0]).toContain('sechs Einzelbilder');expect(result.usage.input_tokens).toBe(2100);
  expect(result.image).toMatchObject({mime:'image/jpeg',original_url:videoSource().url,credit:'Standbild aus dem Originalvideo'});
  expect(result.usage.estimated_cost_microusd).toBe(12000);expect(videoReservationCost(config)).toBe(239000);
