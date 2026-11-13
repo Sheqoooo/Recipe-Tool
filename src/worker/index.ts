@@ -1,6 +1,7 @@
 import type { Env } from "./env.js";
 import type { Source,Generated,Member,AppState,RecipeImageData } from '../shared/types.js';
 import { AppError } from '../shared/errors.js';
+import {normalizeAdaptation,markAdaptation} from '../shared/adaptation.js';
 import { recipeSchema,validateRecipe,shoppingList } from '../shared/recipe.js';
 import { Repository } from './db.js';
 import { authenticate,verifyIdentity } from './auth.js';
@@ -89,20 +90,22 @@ export function createApp(deps:Dependencies={}){
       if(path==='/api/shopping/items/check'){await repo.checkShoppingItem(data.id,data.checked);return json({ok:true});}
       if(path==='/api/shopping/items/delete'){await repo.deleteShoppingItem(data.id);return json({ok:true});}
       if(path==='/api/import'){
+        const adaptation=normalizeAdaptation(data.adaptation);
         const url=normalizeUrl(data.value),platform=videoPlatform(url);
         let canonical=url.href;if(platform){try{canonical=videoLink(data.value).href;}catch{throw new AppError('INVALID_VIDEO','Bitte einen gültigen Video-Link angeben.',422);}}
         if(data.media!==undefined)throw new AppError('INVALID_SOURCE','Video-Uploads werden nicht unterstützt.',422);
         let source:Source|undefined;
         if(data.transcript){if(!platform)throw new AppError('INVALID_SOURCE','Bereitgestellte Videotexte benötigen einen Video-Link.',422);source=transcriptSource(data.value,data.transcript,data.authorized,data.duration_seconds);}
-        const existing=await repo.bySource(canonical);if(existing)return json({id:existing.id,existing:true});
+        const existing=await repo.bySource(canonical,adaptation);if(existing)return json({id:existing.id,existing:true});
         if(!env.OPENAI_API_KEY)throw new AppError('AI_CONFIGURATION','Der Administrator muss OPENAI_API_KEY als Worker Secret hinterlegen.',503);
-        const importId=await repo.reserve(actor,{url:canonical,kind:source?.kind||'web'},env,reservationCost(env));
+        const importId=await repo.reserve(actor,{url:canonical,kind:source?.kind||'web'},env,reservationCost(env,adaptation));
         try{
           source||=await(deps.read||readWeb)(canonical,env);
           source.url=normalizeUrl(source.url).href;
-          if(source.provenance==='public_video')await repo.reserveVideoBudget(importId,env,videoReservationCost(env));
+          source.adaptation=adaptation;
+          if(source.provenance==='public_video')await repo.reserveVideoBudget(importId,env,videoReservationCost(env,adaptation));
           const generated=source.provenance==='public_video'?await(deps.generateVideo||generateVideoRecipe)(source,env,importId):await(deps.generate||generateRecipe)(source,env,importId);
-          const recipe=validateRecipe(generated.recipe);
+          const recipe=validateRecipe(markAdaptation(generated.recipe,adaptation));
           let image:RecipeImageData|undefined=generated.image;
           if(!image&&source.kind==='web'&&source.image){try{image=await(deps.image||fetchRecipeImage)(source.image,env);}catch{/* An optional image must not discard a valid recipe. */}}
           if(!image&&source.provenance==='description'&&(platform==='instagram'||platform==='tiktok')&&env.VIDEO_ANALYSIS_ENABLED==='true'&&env.MEDIA){

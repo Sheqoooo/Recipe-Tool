@@ -119,3 +119,10 @@ Neue Audio-/Bildimporte wählen innerhalb der bestehenden Rezept-Antwort zusätz
 Bereits gespeicherte bildlose Instagram-/TikTok-Rezepte bieten Besitzern/Administratoren **Videovorschaubild laden**. Dieser bewusste Nachladevorgang verwendet ein Standbild bei 5 % der Videolänge, ohne OpenAI-Aufruf oder Änderung der Rezepttexte. Vorhandene Bilder werden nicht ersetzt. Keine automatische rückwirkende Verarbeitung aller Rezepte. Hochkant-Standbilder erscheinen in Kacheln zugeschnitten, im geöffneten Rezept vollständig eingepasst und mit Quellenhinweis. Ohne öffentlich erreichbares Video bleibt der Emoji-Platzhalter.
 
 Nach erfolgreichem Import (auch bei bereits gespeichertem Link) werden URL und optionale Transkriptdaten sofort zurückgesetzt. Fehlgeschlagene Importe behalten die Eingabe für eine Korrektur.
+
+### Rezeptwünsche beim Import
+Unter dem Linkfeld öffnet **Rezept anpassen** ein optionales Textfeld, beispielsweise „Hackfleisch durch Halloumi ersetzen“. Wünsche sind auf 400 Zeichen begrenzt. Die Aufbereitung berücksichtigt Zutaten, Mengenbezüge und sämtliche Arbeitsschritte zusammen. Neue unbelegte Zahlen werden nicht erfunden; notwendige Annahmen/fehlende Zeiten bleiben als Hinweise erkennbar.
+
+Mit Wunsch entsteht eine eigene Variante; gespeicherte Originale werden nicht überschrieben. Gleicher Quelllink plus exakt gleicher normalisierter Wunsch wird ohne weiteren KI-Aufruf wiederverwendet. Ohne Wunsch wird nur ein Original wiederverwendet, auch wenn zuvor ausschließlich eine Variante importiert wurde. Die Kennzeichnung **Nach Nutzerwunsch angepasst** bleibt am Rezept erhalten. Das Quellenbild kann weiterhin die ursprüngliche Fassung zeigen.
+
+Wünsche bleiben beim Zuklappen aktiv und sind dann über „Wunsch hinterlegt“ sichtbar. **Leeren** entfernt sie. Nach erfolgreichem Import werden Wunsch, Link und Transkriptdaten zurückgesetzt; nach Fehlern bleiben sie für Korrekturen erhalten. Es gibt keinen zusätzlichen Modellaufruf für die Anpassung, aber etwas mehr Eingabetext und entsprechend eine höhere konservative App-Reservierung.

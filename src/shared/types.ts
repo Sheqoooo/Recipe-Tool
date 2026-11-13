@@ -23,7 +23,7 @@ export interface AppState {
   recipes: Recipe[]; plan: PlanEntry[]; shopping: ShoppingItem[]; checked: string[];
   user: Member; members: Member[]; imports: ImportRecord[]; has_key: boolean; read_only: boolean;
 }
-export interface Source { provenance?:'description'|'provided_text'|'public_video'; video?:{bytes:Uint8Array<ArrayBuffer>;duration:number}; frames?:string[]; kind: SourceKind; url: string; text: string; image?:{url:string;credit:string} }
+export interface Source { adaptation?:string; provenance?:'description'|'provided_text'|'public_video'; video?:{bytes:Uint8Array<ArrayBuffer>;duration:number}; frames?:string[]; kind: SourceKind; url: string; text: string; image?:{url:string;credit:string} }
 export interface RecipeImageData {bytes:ArrayBuffer;mime:'image/jpeg'|'image/png'|'image/webp';original_url:string;credit:string}
 export interface Usage { input_tokens: number; output_tokens: number; estimated_cost_microusd: number; model: string }
 export interface Generated { recipe: RecipeData; usage: Usage; cover_frame_index?:number|null; image?:RecipeImageData }

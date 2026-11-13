@@ -100,3 +100,11 @@ Abschluss: Jeden Punkt als bestanden, fehlgeschlagen oder offen markieren. Ein f
 - [ ] Als normales Mitglied kein fremdes Rezeptbild ergänzen; als Admin erlaubt. Vorschau/fehlendes Binding/ausgeschaltetes Flag ist gesperrt.
 - [ ] Hochkant im geöffneten Rezept vollständig sichtbar, in Übersicht als Kachel zugeschnitten. Quellenhinweis nennt das Originalvideo. Bei nicht auslesbarer Quelle bleibt ein klarer Fehler/Platzhalter.
 - [ ] Erfolgreicher neuer oder deduplizierter Import: zurück zur Maske → leeres URL-Feld, verstecktes Textpanel, leerer Transkripttext und keine gespeicherte Zustimmung. Fehlgeschlagener Import behält den Link.
+
+## Optionale Rezeptanpassung
+
+- [ ] Start bleibt schlicht: **Rezept anpassen** öffnet ein optionales Feld. Zuklappen erhält den Wunsch und zeigt „Wunsch hinterlegt“; **Leeren** entfernt ihn. Tastatur und mobile Darstellung prüfen.
+- [ ] Nur nach ausdrücklicher Kostenfreigabe: Fleischrezept mit Wunsch „Hackfleisch durch Halloumi ersetzen“ importieren. Zutaten und alle Anweisungen auf verbliebene Fleischbegriffe/unpassende Garweisen prüfen. Mengen im Satz, Unsicherheiten und nicht mehr bekannte Zeiten sachlich beurteilen.
+- [ ] Original bleibt unverändert; identischer normalisierter Wunsch wird dedupliziert; anderer Wunsch erzeugt eine andere Variante. Ein normaler Import liefert kein angepasstes Rezept als Original zurück.
+- [ ] Gleiches Verhalten für bereitgestellten Videotext und tatsächlich analysiertes Video prüfen. Kein zusätzlicher Modellaufruf nur für den Wunsch.
+- [ ] Erfolg leert und schließt Wunschfeld und Linkmaske. Fehler bewahrt beides. Anpassungskennzeichnung bleibt nach manueller Rezeptkorrektur erhalten; Originalbild darf als ursprüngliche Version erkennbar sein.

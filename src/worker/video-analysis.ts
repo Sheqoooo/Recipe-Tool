@@ -12,11 +12,11 @@ export function videoModelEnv(env:Env):Env{
   MODEL_INPUT_USD_PER_MILLION:env.VIDEO_INPUT_USD_PER_MILLION||(model==='gpt-6.1-terra'?'1.00':undefined),
   MODEL_OUTPUT_USD_PER_MILLION:env.VIDEO_OUTPUT_USD_PER_MILLION||(model==='gpt-6.1-terra'?'5.00':undefined)};
 }
-export function videoReservationCost(env:Env):number{
+export function videoReservationCost(env:Env,adaptation=''):number{
  const p=prices(videoModelEnv(env));
  // Conservative envelope for <=20KB description + <=20KB transcript + six 720px frames.
  // Audio estimate reserves a 2x margin over the published per-minute approximation.
- return Math.max(reservationCost(env),Math.ceil(200000*p.input+6000*p.output+MAX_VIDEO_SECONDS/60*6000));
+ return Math.max(reservationCost(env,adaptation),Math.ceil(200000*p.input+6000*p.output+MAX_VIDEO_SECONDS/60*6000));
 }
 function stream(bytes:Uint8Array):ReadableStream<Uint8Array>{return new ReadableStream({start(controller){controller.enqueue(bytes);controller.close();}});}
 async function deadline<T>(work:Promise<T>,milliseconds:number):Promise<T>{
@@ -89,7 +89,7 @@ export async function generateVideoRecipe(source:Source,env:Env,id:string,fetche
   estimated_cost_microusd:(usage?.estimated_cost_microusd||0)+audioUsage.estimated_cost_microusd});
  try{
   if(typeof transcript.text!=='string'||new TextEncoder().encode(transcript.text).length>20000)throw new AppError('VIDEO_TRANSCRIPT_LIMIT','Die Tonspur überschreitet das Textlimit.',422);
-  const generated=await generateRecipe({kind:'web',url:source.url,provenance:'public_video',
+  const generated=await generateRecipe({kind:'web',url:source.url,provenance:'public_video',adaptation:source.adaptation,
    text:JSON.stringify({description:source.text,transcript:transcript.text,frame_times:VIDEO_FRAME_FRACTIONS.map(fraction=>Number((prepared.duration*fraction).toFixed(3)))}),frames:prepared.frames},modelEnv,id,fetcher);
   let image:RecipeImageData|undefined;
   if(generated.cover_frame_index!==undefined&&generated.cover_frame_index!==null){try{image=await extractVideoImage(source,env,generated.cover_frame_index);}catch{/* An optional cover must never discard a valid recipe. */}}

@@ -3,6 +3,7 @@ import type { Member, Recipe, RecipeData, Source, SourceKind, Usage, ImportRecor
 import { AppError } from '../shared/errors.js';
 import { normalizeSourceUrl,publicSourceUrl } from '../shared/source-url.js';
 import { positiveServings } from '../shared/recipe.js';
+import {normalizeAdaptation,adaptationNote,ADAPTATION_PREFIX,markAdaptation} from '../shared/adaptation.js';
 import {productKey,validateShoppingEntry,shoppingItemId,shoppingEntriesFromIngredients} from '../shared/shopping-entry.js';
 import type {ManualShoppingItem} from '../shared/types.js';
 
@@ -127,7 +128,13 @@ export class Repository {
     if(!await this.hasImage(id))throw new AppError('IMAGE_EXPIRED','Der Bildvorgang ist abgelaufen. Bitte erneut versuchen.',409);
   }
   async byId(id: number): Promise<Row | null> { return this.db.prepare('SELECT * FROM recipes WHERE id=?').bind(id).first<Row>(); }
-  async bySource(url: string): Promise<{id:number} | null> { url=normalizeSourceUrl(url).href;return this.db.prepare('SELECT id FROM recipes WHERE source_url=? ORDER BY id LIMIT 1').bind(url).first(); }
+  async bySource(url: string,adaptation=''): Promise<{id:number} | null> {
+    url=normalizeSourceUrl(url).href;const wish=normalizeAdaptation(adaptation);
+    const clause=wish?'EXISTS(SELECT 1 FROM json_each(recipes.warnings_json) WHERE value=?)':
+      'NOT EXISTS(SELECT 1 FROM json_each(recipes.warnings_json) WHERE substr(value,1,?)=?)';
+    return this.db.prepare('SELECT id FROM recipes WHERE source_url=? AND '+clause+' ORDER BY id LIMIT 1')
+      .bind(url,...(wish?[adaptationNote(wish)]:[ADAPTATION_PREFIX.length,ADAPTATION_PREFIX])).first();
+  }
   async plan(recipes: Recipe[]): Promise<PlanEntry[]> {
     const rows = (await this.db.prepare('SELECT * FROM plan ORDER BY recipe_id').all<{recipe_id:number;servings:number}>()).results;
     return rows.flatMap(row => { const recipe=recipes.find(r => r.id===row.recipe_id); return recipe ? [{...row,recipe}] : []; });
@@ -204,6 +211,9 @@ export class Repository {
     const previous=await this.byId(id);
     if(!previous)throw new AppError('NOT_FOUND','Rezept nicht gefunden.',404);
     if(actor.role!=='admin'&&previous.owner_id!==actor.id)throw new AppError('FORBIDDEN','Du darfst nur eigene Rezepte bearbeiten.',403);
+    // This provenance note cannot be forged or erased by editing the public warnings field.
+    const originalNote=(JSON.parse(previous.warnings_json) as string[]).find(note=>note.startsWith(ADAPTATION_PREFIX));
+    recipe=markAdaptation(recipe,originalNote?originalNote.slice(ADAPTATION_PREFIX.length):'');
     const token=crypto.randomUUID();
     const condition='EXISTS(SELECT 1 FROM recipes WHERE id=? AND write_token=?)';
     const statements=[this.db.prepare(`UPDATE recipes SET title=?,description=?,servings=?,prep_minutes=?,cook_minutes=?,warnings_json=?,revision=revision+1,write_token=?,updated_at=CURRENT_TIMESTAMP
