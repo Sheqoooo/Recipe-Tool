@@ -6,7 +6,7 @@ Stand: 13. November 2026. Video-Uploads sind auf Nutzerwunsch ausgeschlossen. Ke
 
 Der Linkimport prüft zuerst öffentliche Rezeptbeschreibungen (mindestens zwei Mengen-/Einheitsangaben als Heuristik) und höchstens eine ausdrücklich verlinkte externe Rezeptseite. Das ist Textverarbeitung und wird am Rezept so gekennzeichnet. Ein Datum oder der Ausdruck „recipe video“ allein genügt nicht.
 
-Neu implementiert, aber **standardmäßig deaktiviert**: automatischer Medienpfad für öffentlich zugängliche Instagram- und TikTok-Playerdaten. Er erfordert `VIDEO_ANALYSIS_ENABLED=true` UND das Cloudflare-Binding `MEDIA`. Es gibt kein Uploadformular und keine Übertragung von Videodateien aus dem Browser.
+Neu implementiert, lokal ohne Flag/Binding **standardmäßig deaktiviert**; die Produktionskonfiguration bereitet die Aktivierung beim vom Betreiber freigegebenen Merge/Deployment vor: automatischer Medienpfad für öffentlich zugängliche Instagram- und TikTok-Playerdaten. Er erfordert `VIDEO_ANALYSIS_ENABLED=true` UND das Cloudflare-Binding `MEDIA`. Es gibt kein Uploadformular und keine Übertragung von Videodateien aus dem Browser.
 
 1. Instagram: normales öffentliches HTML der zugehörigen Einbettung auswerten; eine eindeutig auffindbare `video_url` aus JSON-Daten lesen. Höchstens vier begrenzte Entschachtelungsschritte, keine Script-Ausführung.
 2. TikTok: öffentlich ausgeliefertes `__UNIVERSAL_DATA_FOR_REHYDRATION__` lesen, Item-ID gegen den aufgelösten Videolink prüfen. Nur `video.playAddr`, keine Downloader-/Login-Alternative.
@@ -43,8 +43,8 @@ Die Meta-Beschreibungsprüfung bleibt heuristisch: auch zwei Mengen beweisen kei
 | Aufgabe | Standard | Status |
 |---|---|---|
 | Normaler Rezept-/Beschreibungs-/Transkripttext | GPT-6.1 Sol, low | Bestehender Standard |
-| Video-Einzelbilder + Transkript | GPT-6.1 Terra | Implementiert, ausgeschaltet |
-| Automatische Tontranskription | GPT-4o Mini Transcribe | Implementiert, ausgeschaltet |
+| Video-Einzelbilder + Transkript | GPT-6.1 Terra | Implementiert; Aktivierung mit Produktionsrelease |
+| Automatische Tontranskription | GPT-4o Mini Transcribe | Implementiert; Aktivierung mit Produktionsrelease |
 
 `OPENAI_VIDEO_MODEL`, `VIDEO_INPUT_USD_PER_MILLION` und `VIDEO_OUTPUT_USD_PER_MILLION` konfigurieren die Bild-/Textgenerierung getrennt vom normalen Importmodell. Bei anderem Videomodell sind explizite Preise erforderlich. Audio ist vorerst bewusst auf Mini Transcribe beschränkt; kein ungeprüfter Modellwechsel mit falschen Kosten.
 
@@ -58,7 +58,7 @@ Gemeldete Tokenverbräuche werden addiert; Audio- und Texttokens sind verschiede
 
 ## Cloudflare, Datenschutz und Aktivierung
 
-Die [Media-Transformations-Bindings](https://developers.cloudflare.com/stream/transform-videos/bindings/) sind laut offizieller Dokumentation derzeit öffentliche Beta; Binding-Transformationen werden während dieser Phase nicht berechnet. Das ist keine dauerhafte Preiszusage. Free-Worker-CPU-/Speichergrenzen gelten weiterhin; tatsächliche Laufzeit, Speicher und Verfügbarkeit im bestehenden Account sind **noch nicht live geprüft**. Kein Tarif wurde geändert und keine neue Ressource aktiviert.
+Die [Media-Transformations-Bindings](https://developers.cloudflare.com/stream/transform-videos/bindings/) sind laut offizieller Dokumentation derzeit öffentliche Beta; Binding-Transformationen werden während dieser Phase nicht berechnet. Das ist keine dauerhafte Preiszusage. Free-Worker-CPU-/Speichergrenzen gelten weiterhin; tatsächliche Laufzeit, Speicher und Verfügbarkeit im bestehenden Account sind **noch nicht live geprüft**. Kein Tarif wurde geändert. Der Betreiber hat das produktive MEDIA-Binding eingerichtet, leere Previews Base und zusätzliche Audio-Berechtigung des OpenAI-Keys bestätigt. Die Freigabe des PR/Merge und der vollständige Live-Nachweis stehen noch aus.
 
 Cloudflare erhält die Videobytes zur technischen Aufbereitung; OpenAI erhält die Tonspur und ausgewählten Bilder samt Text. `store:false` gilt für Responses; es ist keine Zusicherung von Nullaufbewahrung aller Anbieter-/Missbrauchsprotokolle. Audio unterstützt diesen Responses-Parameter nicht. [OpenAI-Datenkontrollen](https://developers.openai.com/api/docs/guides/your-data).
 
