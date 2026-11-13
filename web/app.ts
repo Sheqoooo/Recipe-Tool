@@ -183,7 +183,7 @@ document.addEventListener('click',async event=>{
       try{await api('/api/shopping/from-recipe',{recipe_id:Number(b.dataset.ingredientsAdd),...(b.dataset.ingredientIndex!==undefined?{ingredient_indices:[Number(b.dataset.ingredientIndex)]}:{})});await refresh();notify(b.dataset.ingredientIndex!==undefined?'Zutat auf deiner Einkaufsliste.':'Alle Zutaten auf deiner Einkaufsliste.');}
       finally{b.disabled=state.read_only;}return;
     }
-    if(b.dataset.videoImage){b.disabled=true;try{await api('/api/recipes/video-image',{recipe_id:Number(b.dataset.videoImage)});await refresh();openRecipe(Number(b.dataset.videoImage));notify('Videovorschaubild ergänzt.');}finally{b.disabled=false;}return;}
+    if(b.dataset.videoImage){b.disabled=true;try{await api('/api/recipes/video-image',{recipe_id:Number(b.dataset.videoImage)});await refresh();openRecipe(Number(b.dataset.videoImage));dialog().scrollTop=0;notify('Videovorschaubild ergänzt.');}finally{b.disabled=false;}return;}
     if(b.dataset.open)openRecipe(Number(b.dataset.open));
     if(b.dataset.edit){const r=state.recipes.find(r=>r.id===Number(b.dataset.edit));if(r)openEditor(r);}
     if(b.dataset.add){const id=Number(b.dataset.add),r=state.recipes.find(r=>r.id===id);if(!r||r.servings===null)return;if(state.plan.some(p=>p.recipe_id===id)){dialog().close();showView('shopping');return;}await api('/api/plan',{recipe_id:id,servings:r.servings});await refresh();dialog().close();notify('Zur gemeinsamen Kochliste hinzugefügt.');}

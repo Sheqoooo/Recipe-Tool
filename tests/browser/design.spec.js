@@ -68,7 +68,7 @@ test('Videobild nachladen, Hochkantdarstellung und leere Importmaske ohne echte 
  await expect(page.locator('#view-collection')).toBeVisible();await expect(page.locator('#source')).toHaveValue('');await expect(page.locator('#transcript')).toHaveValue('');await expect(page.locator('#transcript-authorized')).not.toBeChecked();
  await page.getByRole('button',{name:'Dein importiertes Beispielrezept ansehen'}).click();await expect(page.locator('#recipe-dialog .recipe-photo')).toHaveCount(0);
  await page.getByRole('button',{name:'Videovorschaubild laden'}).click();const photo=page.locator('#recipe-dialog .video-still');await expect(photo).toBeVisible();
- await expect.poll(()=>photo.evaluate(e=>e.complete&&e.naturalHeight>e.naturalWidth)).toBe(true);
+ await expect.poll(()=>photo.evaluate(e=>e.complete&&e.naturalHeight>e.naturalWidth)).toBe(true);await expect(photo).toBeInViewport({ratio:.95});
  await expect(page.locator('.image-credit')).toContainText('Demo-Illustration');await expect(page.getByRole('button',{name:'Videovorschaubild laden'})).toHaveCount(0);
  await page.screenshot({path:info.outputPath('video-cover-portrait.png')});expect(requests).toEqual([]);
 });
