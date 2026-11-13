@@ -25,12 +25,11 @@
 <div class="link-field"><span class="link-symbol" aria-hidden="true">↗</span><input id="source" type="url" placeholder="Rezeptlink einfügen …" required maxlength="2000" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"><button id="import-submit" class="import-button" type="submit" aria-label="Rezept importieren" disabled>→</button></div>
 <p id="import-progress" class="field-help" role="status" hidden>Dein Rezept wird aufbereitet …</p>
 <div id="key-hint" class="hint" hidden>Die KI-Verbindung muss vom Administrator eingerichtet werden.</div>
-<button id="provide-video" type="button" class="text-button" hidden>Video oder Beschreibung bereitstellen</button>
+<button id="provide-video" type="button" class="text-button" hidden>Beschreibung oder Transkript bereitstellen</button>
 <div id="transcript-panel" class="panel transcript-panel" hidden>
-<p class="field-help">Wenn die Beschreibung nicht reicht: Video mit Ton bereitstellen (bis 3 Minuten / 20 MB). Ton und sechs Einzelbilder werden ausgewertet. Alternativ Beschreibung oder Transkript einfügen. Keine Garantie, dass kurze Einblendungen erfasst werden.</p>
-<label for="video-file">Video mit Ton (MP4, MOV oder WebM)</label><input id="video-file" disabled type="file" accept="video/mp4,video/quicktime,video/webm"><p id="video-upload-note" class="field-help">Der Dateiimport ist noch nicht freigeschaltet. Beschreibungen kannst du bereits verwenden.</p><label for="transcript">Oder: Beschreibung / Transkript</label><textarea id="transcript" rows="5" maxlength="20000" placeholder="Transkript einfügen …"></textarea>
+<p class="field-help">Die öffentliche Videobeschreibung liefert noch kein ausreichend auslesbares Rezept. Du kannst optional eine rechtmäßig bereitgestellte Beschreibung oder ein Transkript einfügen. Ton und Videobilder werden dabei nicht analysiert.</p><label for="transcript">Beschreibung / Transkript</label><textarea id="transcript" rows="5" maxlength="20000" placeholder="Transkript einfügen …"></textarea>
 <label for="video-duration">Videolänge in Minuten (maximal 20)</label><input id="video-duration" value="3" type="number" min="0.1" max="20" step="any">
-<label class="authorization"><input id="transcript-authorized" type="checkbox"> Ich darf den bereitgestellten Text oder das Video für diesen Import verwenden.</label>
+<label class="authorization"><input id="transcript-authorized" type="checkbox"> Ich darf den bereitgestellten Text für diesen Import verwenden.</label>
 </div>
 </form>
 <div class="start-shortcuts"><button class="saved-button" data-view="collection"><span aria-hidden="true">📚</span> Meine Rezepte <span id="recipe-count" class="count">0</span></button><button class="saved-button" data-view="shopping"><span aria-hidden="true">🛍️</span> Meine Einkaufsliste <span id="home-shopping-count" class="count">0</span></button></div>

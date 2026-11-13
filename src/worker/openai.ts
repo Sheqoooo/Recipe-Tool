@@ -39,7 +39,7 @@ export async function generateRecipe(source:Source,env:Env,importId:string,fetch
   let response;
   try{
     response=await client.responses.create({model:env.OPENAI_MODEL||'gpt-6.1-sol',store:false,
-      max_output_tokens:6000,...(['gpt-6.1-sol','gpt-6.1-terra'].includes(env.OPENAI_MODEL||'gpt-6.1-sol')?{reasoning:{effort:'low' as const}}:{}),input:[{role:'developer',content:instructions},{role:'user',content:source.media?[{type:'input_text' as const,text:source.text},...source.media.frames.map(image_url=>({type:'input_image' as const,image_url,detail:'high' as const}))]:source.text}],
+      max_output_tokens:6000,...((env.OPENAI_MODEL||'gpt-6.1-sol')==='gpt-6.1-sol'?{reasoning:{effort:'low' as const}}:{}),input:[{role:'developer',content:instructions},{role:'user',content:source.text}],
       text:{format:{type:'json_schema',name:'recipe',schema,strict:true}}},
       {headers:{'Idempotency-Key':importId}});
   }catch(error){
@@ -58,8 +58,8 @@ export async function generateRecipe(source:Source,env:Env,importId:string,fetch
     if(!envelope.success)throw new AppError('AI_INVALID','Die strukturierte KI-Antwort ist ungültig.',422);
     if(!envelope.data.is_recipe||!envelope.data.recipe)throw new AppError('NO_RECIPE','In der Quelle wurde kein vollständiges Rezept erkannt.',422);
     const recipe=validateRecipe(envelope.data.recipe);
-    if((source.kind==='youtube_transcript'||source.provenance==='provided_text')&&recipe.warnings.length<20)recipe.warnings.push('Nur bereitgestellten Text ausgewertet; Ton und Bildinhalte wurden nicht analysiert.');
-    if(source.provenance==='description'&&recipe.warnings.length<20)recipe.warnings.push('Nur zugängliche Videobeschreibung oder verlinkte Rezeptseite ausgewertet; Ton und Videobilder wurden nicht analysiert.');
+    if(source.kind==='youtube_transcript'||source.provenance==='provided_text')recipe.warnings=['Nur bereitgestellten Text ausgewertet; Ton und Bildinhalte wurden nicht analysiert.',...recipe.warnings].slice(0,20);
+    if(source.provenance==='description')recipe.warnings=['Nur zugängliche Videobeschreibung oder verlinkte Rezeptseite ausgewertet; Ton und Videobilder wurden nicht analysiert.',...recipe.warnings].slice(0,20);
     return {recipe,usage};
   }catch(error){if(error instanceof AppError)error.usage=usage;throw error;}
 }

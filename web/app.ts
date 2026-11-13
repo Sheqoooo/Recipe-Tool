@@ -1,4 +1,3 @@
-import {prepareVideo} from './video-upload.js';
 import {videoPlatform} from '../src/shared/video-platform.js';
 import {installShoppingDock} from './shopping-dock.js';
 declare const __REZEPTWERK_DEMO__:boolean;
@@ -144,7 +143,6 @@ function render(){
   $('#members-panel').hidden=__REZEPTWERK_DEMO__||state.read_only||state.user.role!=='admin';input('#import-submit').disabled=state.read_only;
   $('#member-list').innerHTML=state.members.map(m=>`<div class="member-row"><span>${esc(m.email)} · ${esc(m.role)} · ${m.active?'aktiv':'gesperrt'}</span>${m.id!==state.user.id?`<button class="text-button" data-member="${esc(m.id)}" data-active="${m.active?0:1}">${m.active?'Sperren':'Aktivieren'}</button>`:''}</div>`).join('');
   $('#import-history').innerHTML=state.imports.length?state.imports.map(i=>`<p class="field-help">${esc(new Date(i.created_at).toLocaleString('de-DE'))} · ${esc(i.status==='completed'?'Gespeichert':i.status==='running'?'Läuft':'Fehlgeschlagen')}${i.error_code?' · '+esc(i.error_code):''}${i.estimated_cost_microusd!==null?' · ca. '+(i.estimated_cost_microusd/1e6).toFixed(4)+' USD':''}</p>`).join(''):'<p class="field-help">Noch keine Importe.</p>';
-  input('#video-file').disabled=state.read_only||!state.media_upload_enabled;$('#video-upload-note').hidden=Boolean(state.media_upload_enabled);
   renderRecipes();renderShopping();
 }
 async function refresh(){state=await api<AppState>('/api/state');render();}
@@ -206,7 +204,7 @@ document.addEventListener('submit',async event=>{
       await saveShoppingEntry(input('#shopping-name').value);
     }else if(form.id==='import-form'){
       if(b){b.textContent='…';b.setAttribute('aria-busy','true');}$('#import-progress').hidden=false;const video=!$('#transcript-panel').hidden;
-      let evidence:Record<string,unknown>={};if(video){if(!input('#transcript-authorized').checked)throw new Error('Bitte bestätigen, dass du den Text oder das Video verwenden darfst.');const file=input('#video-file').files?.[0];if(file)evidence={media:await prepareVideo(file,text=>{$('#import-progress').textContent=text;}),authorized:true};else evidence={transcript:$<HTMLTextAreaElement>('#transcript').value,authorized:true,duration_seconds:Number(input('#video-duration').value)*60};}
+      let evidence:Record<string,unknown>={};if(video){if(!input('#transcript-authorized').checked)throw new Error('Bitte bestätigen, dass du den Text verwenden darfst.');evidence={transcript:$<HTMLTextAreaElement>('#transcript').value,authorized:true,duration_seconds:Number(input('#video-duration').value)*60};}
       const result=await api<{id:number;existing:boolean}>('/api/import',{value:input('#source').value,...evidence});
       await refresh();showView('collection');notify(result.existing?'Das Rezept ist bereits gespeichert.':'Das Rezept wurde automatisch gespeichert.');
     }else if(form.id==='editor-form')await saveEditor();
@@ -232,7 +230,7 @@ input('#shopping-name').addEventListener('keydown',event=>{
 });
 document.addEventListener('click',event=>{if(event.target instanceof Node&&!$('#shopping-form').contains(event.target))hideSuggestions();});
 input('#search').addEventListener('input',renderRecipes);
-input('#source').addEventListener('input',()=>{$('#transcript-panel').hidden=true;input('#video-file').value='';$<HTMLTextAreaElement>('#transcript').value='';input('#transcript-authorized').checked=false;try{$('#provide-video').hidden=!videoPlatform(new URL(input('#source').value));}catch{$('#provide-video').hidden=true;}});
+input('#source').addEventListener('input',()=>{$('#transcript-panel').hidden=true;$<HTMLTextAreaElement>('#transcript').value='';input('#transcript-authorized').checked=false;try{$('#provide-video').hidden=!videoPlatform(new URL(input('#source').value));}catch{$('#provide-video').hidden=true;}});
 refreshDock=installShoppingDock();
 showView(location.hash.slice(1)||(location.pathname.startsWith('/shopping/')?'shopping':'import'));
 if(__REZEPTWERK_DEMO__){$('#demo-banner').hidden=false;refresh().catch(e=>notify(e.message,true));}

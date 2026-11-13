@@ -19,15 +19,12 @@ export interface ImportRecord {
   created_at: number; input_tokens: number | null; output_tokens: number | null; estimated_cost_microusd: number | null;
 }
 export interface AppState {
-  media_upload_enabled?:boolean;
   manual_items?:ManualShoppingItem[];
   recipes: Recipe[]; plan: PlanEntry[]; shopping: ShoppingItem[]; checked: string[];
   user: Member; members: Member[]; imports: ImportRecord[]; has_key: boolean; read_only: boolean;
 }
-export interface Source { media?:{audio:Uint8Array;frames:string[];duration_seconds:number}; provenance?:'description'|'provided_text'|'provided_media'; kind: SourceKind; url: string; text: string; image?:{url:string;credit:string} }
+export interface Source { provenance?:'description'|'provided_text'; kind: SourceKind; url: string; text: string; image?:{url:string;credit:string} }
 export interface RecipeImageData {bytes:ArrayBuffer;mime:'image/jpeg'|'image/png'|'image/webp';original_url:string;credit:string}
 export interface Usage { input_tokens: number; output_tokens: number; estimated_cost_microusd: number; model: string }
 export interface Generated { recipe: RecipeData; usage: Usage }
 
-// Bounded client-prepared media; raw video files are never sent to the Worker.
-export interface MediaPayload {audio:string;frames:string[]}

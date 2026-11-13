@@ -28,7 +28,7 @@ const state:AppState={manual_items:[
 {id:'00000000-0000-4000-8000-000000000005',name:'Salz',quantity:'',checked:false,updated_at:'2026-11-12T10:00:00Z'},
 {id:'00000000-0000-4000-8000-000000000006',name:'Rosenkohl',quantity:'500 g',checked:true,updated_at:'2026-11-12T10:00:00Z'},
 {id:'00000000-0000-4000-8000-000000000007',name:'Weißwein',quantity:'1 Flasche',checked:true,updated_at:'2026-11-12T10:00:00Z'}
-],media_upload_enabled:true,recipes,plan:[],shopping:[],checked:[],members:[],imports:[],has_key:true,read_only:false,user:{id:owner,email:'demo@example.invalid',role:'member',active:1}};
+],recipes,plan:[],shopping:[],checked:[],members:[],imports:[],has_key:true,read_only:false,user:{id:owner,email:'demo@example.invalid',role:'member',active:1}};
 let nextId=7;
 function recalculate(){state.shopping=shoppingList(state.plan);state.manual_items!.sort((a,b)=>Number(a.checked)-Number(b.checked)||b.updated_at.localeCompare(a.updated_at)||a.id.localeCompare(b.id));}
 export async function demoApi<T>(path:string,data?:unknown):Promise<T>{
@@ -59,7 +59,7 @@ export async function demoApi<T>(path:string,data?:unknown):Promise<T>{
     const id=shoppingItemId(body.id);state.manual_items=state.manual_items!.filter(i=>i.id!==id);
   }else if(path==='/api/import'){
     const url=normalizeSourceUrl(body.value);
-    if(['youtube.com','www.youtube.com','m.youtube.com','youtu.be','instagram.com','www.instagram.com','tiktok.com','www.tiktok.com','vm.tiktok.com','vt.tiktok.com'].includes(url.hostname)&&!body.transcript&&!body.media)throw Object.assign(new Error('Demo: Bitte Video oder Beschreibung bereitstellen. Kein echter Plattformabruf.'),{code:'VIDEO_SOURCE_REQUIRED'});
+    if(['youtube.com','www.youtube.com','m.youtube.com','youtu.be','instagram.com','www.instagram.com','tiktok.com','www.tiktok.com','vm.tiktok.com','vt.tiktok.com'].includes(url.hostname)&&!body.transcript)throw Object.assign(new Error('Demo: Bitte Beschreibung oder Transkript bereitstellen. Kein echter Plattformabruf.'),{code:'VIDEO_SOURCE_REQUIRED'});
     const existing=state.recipes.find(r=>r.source_url===url.href);
     if(existing)result={id:existing.id,existing:true};
     else{const recipe={...structuredClone(recipes[0]),id:nextId++,source_url:url.href,title:'Dein importiertes Beispielrezept'};state.recipes.unshift(recipe);result={id:recipe.id,existing:false};}

@@ -4,21 +4,20 @@ import { AppError } from '../shared/errors.js';
 import { recipeSchema,validateRecipe,shoppingList } from '../shared/recipe.js';
 import { Repository } from './db.js';
 import { authenticate,verifyIdentity } from './auth.js';
-import { normalizeUrl,isYouTube,youtubeUrl,readWeb,transcriptSource } from './source.js';
-import {generateMediaRecipe,mediaSource,mediaReservationCost} from './media.js';
+import { normalizeUrl,readWeb,transcriptSource } from './source.js';
 import {videoPlatform,videoLink} from '../shared/video-platform.js';
 import { generateRecipe,reservationCost } from './openai.js';
 import { fetchRecipeImage } from './image.js';
 
 const security={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
-  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
+  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
 function json(body:unknown,status=200):Response{return Response.json(body,{status,headers:security});}
 function id(value:unknown):number{if(typeof value!=='number'||!Number.isSafeInteger(value)||value<=0)throw new AppError('INVALID_ID','Ungültige Rezept-ID.');return value;}
-async function body(request:Request,limit=100000):Promise<Record<string,unknown>>{
+async function body(request:Request):Promise<Record<string,unknown>>{
   if(!/^application\/json(;|$)/i.test(request.headers.get('Content-Type')||''))throw new AppError('JSON_REQUIRED','JSON-Eingabe erwartet.',415);
   const reader=request.body?.getReader();if(!reader)throw new AppError('JSON_REQUIRED','Die Eingabe ist leer.');
   let size=0;const chunks:Uint8Array[]=[];
-  try{while(true){const value=await reader.read();if(value.done)break;size+=value.value.byteLength;if(size>limit)throw new AppError('REQUEST_LIMIT','Die Eingabe ist zu groß.',413);chunks.push(value.value);}}
+  try{while(true){const value=await reader.read();if(value.done)break;size+=value.value.byteLength;if(size>100000)throw new AppError('REQUEST_LIMIT','Die Eingabe ist zu groß.',413);chunks.push(value.value);}}
   finally{await reader.cancel().catch(()=>{});}
   const data=new Uint8Array(size);let offset=0;for(const chunk of chunks){data.set(chunk,offset);offset+=chunk.length;}
   try{const result=JSON.parse(new TextDecoder().decode(data));if(!result||typeof result!=='object'||Array.isArray(result))throw new Error();return result as Record<string,unknown>;}
@@ -58,13 +57,13 @@ export function createApp(deps:Dependencies={}){
         if(path==='/api/state'){
           const recipes=await repo.recipes(actor),plan=await repo.plan(recipes);
           return json({recipes,plan,shopping:shoppingList(plan),manual_items:await repo.shoppingItems(),checked:await repo.checked(),user:actor,
-            members:actor.role==='admin'?await repo.members():[],imports:await repo.history(actor),has_key:Boolean(env.OPENAI_API_KEY),media_upload_enabled:env.APP_ENV==='local'||env.MEDIA_UPLOAD_ENABLED==='true',read_only:false} satisfies AppState);
+            members:actor.role==='admin'?await repo.members():[],imports:await repo.history(actor),has_key:Boolean(env.OPENAI_API_KEY),read_only:false} satisfies AppState);
         }
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
         return protect(await env.ASSETS.fetch(request));
       }
       if(request.method!=='POST')throw new AppError('METHOD','Methode nicht erlaubt.',405);
-      assertWrite(request);const data=await body(request,path==='/api/import'&&(env.APP_ENV==='local'||env.MEDIA_UPLOAD_ENABLED==='true')?10000000:100000);
+      assertWrite(request);const data=await body(request);
       if(path==='/api/shopping/from-recipe'){await repo.recipeToShopping(id(data.recipe_id),data.ingredient_indices,actor);return json({ok:true});}
       if(path==='/api/shopping/items/save'){await repo.saveShoppingItem(data,actor);return json({ok:true});}
       if(path==='/api/shopping/items/check'){await repo.checkShoppingItem(data.id,data.checked);return json({ok:true});}
@@ -72,22 +71,22 @@ export function createApp(deps:Dependencies={}){
       if(path==='/api/import'){
         const url=normalizeUrl(data.value),platform=videoPlatform(url);
         let canonical=url.href;if(platform){try{canonical=videoLink(data.value).href;}catch{throw new AppError('INVALID_VIDEO','Bitte einen gültigen Video-Link angeben.',422);}}
+        if(data.media!==undefined)throw new AppError('INVALID_SOURCE','Video-Uploads werden nicht unterstützt.',422);
         let source:Source|undefined;
-        if(data.media!==undefined){if(env.APP_ENV!=='local'&&env.MEDIA_UPLOAD_ENABLED!=='true')throw new AppError('MEDIA_DISABLED','Der Dateiimport ist noch nicht freigeschaltet. Bitte die Beschreibung verwenden.',503);if(!platform)throw new AppError('INVALID_SOURCE','Bitte den ursprünglichen YouTube-, Instagram- oder TikTok-Link angeben.',422);source=mediaSource(data.media,canonical,data.authorized);}
-        else if(data.transcript){if(!platform)throw new AppError('INVALID_SOURCE','Bereitgestellte Videotexte benötigen einen Video-Link.',422);source=transcriptSource(data.value,data.transcript,data.authorized,data.duration_seconds);}
+        if(data.transcript){if(!platform)throw new AppError('INVALID_SOURCE','Bereitgestellte Videotexte benötigen einen Video-Link.',422);source=transcriptSource(data.value,data.transcript,data.authorized,data.duration_seconds);}
         const existing=await repo.bySource(canonical);if(existing)return json({id:existing.id,existing:true});
         if(!env.OPENAI_API_KEY)throw new AppError('AI_CONFIGURATION','Der Administrator muss OPENAI_API_KEY als Worker Secret hinterlegen.',503);
-        const importId=await repo.reserve(actor,{url:canonical,kind:source?.kind||'web'},env,source?.media?mediaReservationCost(env):reservationCost(env));
+        const importId=await repo.reserve(actor,{url:canonical,kind:source?.kind||'web'},env,reservationCost(env));
         try{
           source||=await(deps.read||readWeb)(canonical,env);
           source.url=normalizeUrl(source.url).href;
-          const generated=await(deps.generate||(source.media?generateMediaRecipe:generateRecipe))(source,env,importId);
+          const generated=await(deps.generate||generateRecipe)(source,env,importId);
           const recipe=validateRecipe(generated.recipe);
           let image:RecipeImageData|undefined;
           if(source.kind==='web'&&source.image){try{image=await(deps.image||fetchRecipeImage)(source.image,env);}catch{/* An optional image must not discard a valid recipe. */}}
           const recipeId=await repo.save(recipe,actor,source,importId,generated.usage,image);
           return json({id:recipeId,existing:false},201);
-        }catch(error){await repo.fail(importId,error instanceof AppError?error.code:'IMPORT_FAILED',error instanceof AppError?error.usage:undefined);if(platform&&!source?.media&&error instanceof AppError&&['SOURCE_UNAVAILABLE','SOURCE_TYPE','SOURCE_EMPTY','NO_RECIPE'].includes(error.code))throw new AppError('VIDEO_SOURCE_REQUIRED','Das Rezept ist aus dem Video-Link nicht ausreichend auslesbar. Bitte Video oder Beschreibung bereitstellen.',422);throw error;}
+        }catch(error){await repo.fail(importId,error instanceof AppError?error.code:'IMPORT_FAILED',error instanceof AppError?error.usage:undefined);if(platform&&error instanceof AppError&&['SOURCE_UNAVAILABLE','SOURCE_TYPE','SOURCE_EMPTY','NO_RECIPE'].includes(error.code))throw new AppError('VIDEO_SOURCE_REQUIRED','Das Rezept ist aus dem Video-Link nicht ausreichend auslesbar. Bitte Beschreibung oder Transkript bereitstellen.',422);throw error;}
       }
       if(path==='/api/recipes/save'){
         const recipe=Object.fromEntries(Object.keys(recipeSchema.shape).map(key=>[key,data[key]]));

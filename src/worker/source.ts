@@ -79,7 +79,7 @@ export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch,de
         if(videoPlatform(linked)||linked.hostname===original.hostname||/(^|\.)(?:youtube\.com|youtu\.be|instagram\.com|tiktok\.com)$/.test(linked.hostname))continue;
         const recipe=await readWeb(linked.href,env,fetcher,1,deadline);return {...recipe,url:canonical,text:'Verlinkte Rezeptseite: '+linked.href+'\n'+recipe.text,provenance:'description'};
       }}
-      throw new AppError('VIDEO_SOURCE_REQUIRED','Die Videobeschreibung ist nicht ausreichend zugänglich. Bitte Video oder Beschreibung bereitstellen.',422);
+      throw new AppError('VIDEO_SOURCE_REQUIRED','Die Videobeschreibung ist nicht ausreichend zugänglich. Bitte Beschreibung oder Transkript bereitstellen.',422);
     }
     return extractSource(html,value,url.href);
   }
