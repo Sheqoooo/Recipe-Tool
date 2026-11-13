@@ -181,4 +181,16 @@ Diese Änderung benötigt keine D1-Migration und keine neuen Secrets. PNGs und d
 
 ## Kurzvideo-Links
 
-Keine zusätzliche Ressource, D1-Migration, Plattform-Zugangsdaten, Audio-Key-Berechtigung oder Tarifumstellung nötig. Öffentliches HTML wird nach bestehenden Sicherheitsregeln versucht. Der vorhandene OpenAI-Key mit Responses-Schreibrecht genügt. Sol bleibt aktiv; Terra/Mini Transcribe sind nur eine dokumentierte Empfehlung für einen möglichen späteren automatischen Medienadapter. Video-Uploads wurden auf Nutzerwunsch gestrichen.
+Keine zusätzliche Ressource, D1-Migration, Plattform-Zugangsdaten, Audio-Key-Berechtigung oder Tarifumstellung nötig. Öffentliches HTML wird nach bestehenden Sicherheitsregeln versucht. Der vorhandene OpenAI-Key mit Responses-Schreibrecht genügt. Sol bleibt für den Standardtextpfad aktiv. Der gesonderte, ausgeschaltete Medienadapter für öffentliche Instagram-/TikTok-Dateien ist unten beschrieben. Video-Uploads wurden auf Nutzerwunsch gestrichen.
+
+### Medienanalyse später ausdrücklich aktivieren
+**Noch nicht aktiviert, nicht live geprüft. Kein Deploy durch diese Anleitung.** Erst nach Freigabe Cloudflare-Verfügbarkeit, aktuelle Beta-Kosten und CPU-/Speichergrenzen im bestehenden Account prüfen. Kein Tarif wird automatisch gewechselt. Die derzeitige öffentliche Beta berechnet Binding-Transformationen laut [Cloudflare](https://developers.cloudflare.com/stream/transform-videos/bindings/) nicht; keine dauerhafte Preisgarantie.
+
+1. Im produktiven Worker die native Media-Transformations-Bindung mit Namen `MEDIA` einrichten. Die entsprechende spätere Repository-Konfiguration ist auf Root-Ebene von `wrangler.production.jsonc`: `"media": {"binding":"MEDIA"}`. Nicht zu Preview/local/test-Konfiguration hinzufügen. Die offizielle Dokumentation beschreibt auch die Binding-Einrichtung im Dashboard; deren konkrete Verfügbarkeit wurde im Nutzerkonto noch nicht gesehen.
+2. Als Produktionsvariablen setzen: `VIDEO_ANALYSIS_ENABLED=true`, `OPENAI_VIDEO_MODEL=gpt-6.1-terra`, `VIDEO_INPUT_USD_PER_MILLION=1.00`, `VIDEO_OUTPUT_USD_PER_MILLION=5.00`. Wrangler bleibt die Konfigurationsquelle; Dashboardwerte dürfen beim nächsten Build nicht unbemerkt überschrieben werden.
+3. Den vorhandenen OpenAI-Projektschlüssel selbst auf **Restricted → Model capabilities → Audio → Write** zusätzlich zu **Responses → Write** erweitern. Kein neuer Plattformaccount/Instagrampasswort und kein Key im Chat. `OPENAI_API_KEY` bleibt Worker Secret. Je nach OpenAI-Oberfläche können die Rechtebezeichnungen abweichen; konkret benötigt wird POST `/v1/audio/transcriptions`.
+4. Vorschau ohne MEDIA, Medienflag, produktive D1/Secrets behalten. Der Server sperrt fehlkonfigurierte Previews. Keine D1-Migration erforderlich.
+5. Erst nach ausdrücklicher Freigabe für einen kostenpflichtigen Smoke-Test mit einem berechtigten kurzen Clip prüfen: CDN aus Cloudflare erreichbar, Audio/Frames erfolgreich, Verbrauch protokolliert, Rezept korrekt, keine Medien-/CDN-Rohdaten in D1/API. Worker CPU/Speicher/Latenz prüfen. Fehlender Free-Tier-Spielraum bedeutet Klärung vor einem Tarifwechsel.
+6. Rücknahme: Flag false setzen und Binding entfernen, ohne Datenbankrücksetzung. Beschreibungs-/Webimport bleiben möglich.
+
+Automatische YouTube-Medien und HTTP-403-blockierte TikTok-Dateien sind hierdurch nicht gelöst. Die [konkrete Testliste](docs/SMOKE-TEST.md) trennt Bereitstellung, Media-Aufbereitung und tatsächliche KI-Analyse.

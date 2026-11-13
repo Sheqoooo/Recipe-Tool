@@ -1,48 +1,67 @@
 # Kurzvideo-Links, Modelle und Grenzen
 
-Stand: 13. November 2026. Keine kostenpflichtigen API-Aufrufe in Entwicklungstests. **Video-Uploads wurden auf Nutzerwunsch gestrichen.**
+Stand: 13. November 2026. Video-Uploads sind auf Nutzerwunsch ausgeschlossen. Kein kostenpflichtiger OpenAI-Aufruf in Entwicklungstests.
 
-## Implementierter Ablauf
+## Status und tatsächlicher Ablauf
 
-- YouTube einschließlich Shorts, Instagram-Reel-/Post-Links und TikTok-Video-/Kurzlinks werden erkannt. YouTube-IDs werden kanonisiert. Trackingparameter bei Instagram/TikTok werden erst nach der Prüfung auf Zugangsdaten entfernt.
-- Der Server liest nur öffentlich erreichbares HTML. Ausreichende Meta-Beschreibungen werden aufbereitet. Falls die Beschreibung selbst kein erkennbares Rezept enthält, kann höchstens eine darin ausdrücklich verlinkte externe Rezeptseite über dieselben Sicherheitsprüfungen gelesen werden.
-- Keine Anmeldung, Cookies, Plattform-API/oEmbed-Zweckentfremdung, Video-Downloads oder Umgehung von Zugriffsbeschränkungen. DNS-/IP-/Redirect-/Größenprüfungen bleiben erhalten. Ein gemeinsames Zeitfenster begrenzt Beschreibung und verlinkte Rezeptseite.
-- Ist kein Rezept ausreichend auslesbar, gibt die API `VIDEO_SOURCE_REQUIRED` aus. Die App zeigt dies klar an. Die bisherige optionale Bereitstellung eines autorisierten Texts/Transkripts bleibt als Zwischenlösung erhalten, ohne sich bereits beim Einfügen eines Links zu öffnen.
-- Es findet **keine Ton- oder Videobildanalyse** statt. Das gespeicherte Rezept weist ausdrücklich auf die tatsächlich verwendete Textgrundlage hin.
-- Kein zusätzlicher Cloudflare-Dienst, Tarifwechsel, neuer API-Key oder D1-Migrationsschritt.
+Der Linkimport prüft zuerst öffentliche Rezeptbeschreibungen (mindestens zwei Mengen-/Einheitsangaben als Heuristik) und höchstens eine ausdrücklich verlinkte externe Rezeptseite. Das ist Textverarbeitung und wird am Rezept so gekennzeichnet. Ein Datum oder der Ausdruck „recipe video“ allein genügt nicht.
 
-Metadatenzugriff ist heuristisch: Plattformen können Beschreibungen kürzen, HTML ändern, öffentliche Seiten blockieren oder Anmeldung verlangen. Ein erfolgreicher Linkimport bedeutet nur, dass ausreichend zugänglicher Rezepttext vorhanden war, nicht dass das Video gesehen wurde.
+Neu implementiert, aber **standardmäßig deaktiviert**: automatischer Medienpfad für öffentlich zugängliche Instagram- und TikTok-Playerdaten. Er erfordert `VIDEO_ANALYSIS_ENABLED=true` UND das Cloudflare-Binding `MEDIA`. Es gibt kein Uploadformular und keine Übertragung von Videodateien aus dem Browser.
 
-## Modelle und Empfehlung
+1. Instagram: normales öffentliches HTML der zugehörigen Einbettung auswerten; eine eindeutig auffindbare `video_url` aus JSON-Daten lesen. Höchstens vier begrenzte Entschachtelungsschritte, keine Script-Ausführung.
+2. TikTok: öffentlich ausgeliefertes `__UNIVERSAL_DATA_FOR_REHYDRATION__` lesen, Item-ID gegen den aufgelösten Videolink prüfen. Nur `video.playAddr`, keine Downloader-/Login-Alternative.
+3. Öffentlich erreichbare vollständige MP4-Datei bis **12 MiB / 90 Sekunden** vorübergehend laden. Dauer aus MP4-`moov/mvhd` prüfen; HTML-Dauerangaben sind kein Nachweis. Kein HLS, DASH, DRM, Live-Video oder Signaturentschlüsselung.
+4. Zusätzliches Budget atomar in D1 reservieren, bevor Medienaufbereitung und OpenAI starten. Eine Medienanalyse zugleich. Die bestehende normale Importreservierung bleibt für reine Beschreibungen ausreichend.
+5. Cloudflare Media Transformations extrahiert M4A-Audio (max. 2 MiB) und sechs JPEG-Bilder (je max. 512 KiB, 720 × 720 Begrenzungsrahmen) bei 5/23/41/59/77/95 Prozent der Dauer. Kein dauerhaftes Medienhosting, kein R2, kein eigener Rechner.
+6. OpenAI Audio Transcriptions mit `gpt-4o-mini-transcribe`, anschließend Responses mit `gpt-6.1-terra`: Beschreibung, Transkript und Bilder erzeugen gemeinsam das strukturierte Rezept. Mengen dürfen nicht aus sichtbaren Handvoll-/Löffelbewegungen geraten werden.
+7. Zod-/Referenzvalidierung wie beim Webseitenimport. Nur Rezept, kanonischer Original-Link, Hinweise und Verbrauchsmetadaten speichern. Keine Rohvideos, Bilderfolgen, Audio, vollständigen Transkripte oder signierten CDN-Adressen in D1/API/Logs.
 
-Aktiv bleibt `OPENAI_MODEL=gpt-6.1-sol` für Webseiten, zugängliche Beschreibungen und bereitgestellte Texte. Responses API mit Structured Outputs und festem Schema, zusätzliche serverseitige Validierung, Denkaufwand low, maximal 20 KB Quelltext und 6.000 Ausgabetokens. Fehlende Mengen/Zeiten/Portionen werden nicht erfunden.
+Fehlen Zugriff, unterstütztes Format oder ausreichende Angaben, entsteht kein erfundenes Rezept. Bei fehlendem öffentlichen Medienzugriff erscheint `VIDEO_SOURCE_REQUIRED`; optional bereitgestellter Text bleibt eine ausdrücklich eingeschränkte Zwischenlösung. Sechs Bilder sind eine Stichprobe, keine lückenlose Sichtung. Kurze Texteinblendungen oder stumme Handlungen können fehlen. Stumme/ungeeignete Tonspuren können kontrolliert scheitern.
 
-Für einen späteren rechtmäßigen **automatischen** Zugriff auf Mediendaten wäre meine begründete Startempfehlung:
+## Read-only-Nachweis an Nutzerbeispielen
 
-| Aufgabe | Modell | Aktueller Status |
+Am 13. November 2026 ohne Login/Cookies geprüft:
+
+| Beispiel | Beobachtung |
+|---|---|
+| Instagram `C-dcRN2JNk6` | Beschreibung enthält Rezeptmengen; öffentliche Einbettung liefert zusätzlich eine MP4-Adresse, kleiner Abrufausschnitt HTTP 206 |
+| Instagram `Ddt0AqgMcUW` | Beschreibung allein enthält keine ausreichenden Mengen; öffentliche Einbettung liefert eine MP4-Adresse, kleiner Abrufausschnitt HTTP 206 |
+| TikTok-Kurzlink zum Video `7683441157837163798` | Öffentliche Metadaten/Playeradresse vorhanden, direkter Medienabruf HTTP 403; keine Umgehung |
+
+Dies belegt **nicht** die komplette Verarbeitung im produktiven Worker. Die CDN-Antworten sind zeit-, netz- und plattformabhängig. Keine signierten Originaladressen oder vollständigen Plattformseiten wurden als Testfixtures gespeichert.
+
+## Plattformgrenzen
+
+YouTube/Shorts: Linkerkennung, Beschreibung und rechtmäßig bereitgestellter Text; **automatischer Ton-/Bildzugriff noch nicht implementiert**. Die offizielle [Captions-Downloadmethode](https://developers.google.com/youtube/data/reference/rest/v3/captions/download) verlangt Bearbeitungsrechte. Keine allgemeine Fremd-Untertitel-API.
+
+Instagram/TikTok: nur Daten, die die Plattform im normalen öffentlichen Player ausliefert UND deren Medienabruf tatsächlich erlaubt wird. Ein öffentlicher Post garantiert weder technischen Zugriff noch Nutzungsrechte. Keine Account-Cookies, privaten Videos, wechselnden Proxies, Challenge-Umgehung, Signaturentschlüsselung oder ungeprüften Downloader. Betreiber/Nutzer müssen die Berechtigung zur Verarbeitung und Plattformbedingungen prüfen. Die Anwendung verleiht keine Nutzungsrechte.
+
+Die Meta-Beschreibungsprüfung bleibt heuristisch: auch zwei Mengen beweisen kein vollständiges Rezept. Ein vom Modell abgelehnter Beschreibungsimport wird derzeit nicht durch eine zweite kostenpflichtige Videoanalyse wiederholt.
+
+## Modelle und Kosten
+
+| Aufgabe | Standard | Status |
 |---|---|---|
-| Tonspur transkribieren | GPT-4o Mini Transcribe | Nur vorgeschlagen, nicht implementiert oder aktiviert |
-| Ausgewählte Einzelbilder mit Text auswerten | GPT-6.1 Terra | Nur vorgeschlagen, nicht implementiert oder aktiviert |
-| Aktueller Rezepttextimport | GPT-6.1 Sol | Implementiert |
+| Normaler Rezept-/Beschreibungs-/Transkripttext | GPT-6.1 Sol, low | Bestehender Standard |
+| Video-Einzelbilder + Transkript | GPT-6.1 Terra | Implementiert, ausgeschaltet |
+| Automatische Tontranskription | GPT-4o Mini Transcribe | Implementiert, ausgeschaltet |
 
-Terra ist für visuelle Aufgaben ausgelegt; Luna ist günstiger. Ein realer Vergleich mit Kochvideos wurde nicht durchgeführt. Terra/Sol/Luna unterstützen Bild- und Texteingaben, aber keinen beliebigen Plattformlink als native Videoeingabe. Die Wahl löst deshalb nicht das vorgelagerte Zugriffsproblem.
+`OPENAI_VIDEO_MODEL`, `VIDEO_INPUT_USD_PER_MILLION` und `VIDEO_OUTPUT_USD_PER_MILLION` konfigurieren die Bild-/Textgenerierung getrennt vom normalen Importmodell. Bei anderem Videomodell sind explizite Preise erforderlich. Audio ist vorerst bewusst auf Mini Transcribe beschränkt; kein ungeprüfter Modellwechsel mit falschen Kosten.
 
-Offizielle Quellen: [Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra), [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), [Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol), [Audio](https://developers.openai.com/api/docs/guides/speech-to-text), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
+Sol: 2/10 USD je Million Eingabe-/Ausgabetokens. Beispiel 2.000 + 1.500 Tokens = 0,019 USD. Terra: 1/5 USD. Beispiel 5.000 Eingabetokens einschließlich Bildern + 2.000 Ausgabe + eine Audiominute à ungefähr 0,003 USD = **0,018 USD**. Annahmen, kein gemessener Durchschnitt; Bild-/Denk- und Textverbrauch variieren. Terra ist die begründete Startwahl für Vision, kein empirisch bewiesener Sieger im Kochvideovergleich.
 
-## Kosten
+Interne Medienreservierung beim Standardmodell: **239.000 Mikro-USD = 0,239 USD** (200.000 Eingabetokens, 6.000 Ausgabetokens, 90 Sekunden Audio mit zusätzlichem Schätzpuffer). Sie ist ein konservatives App-Kontingent, keine tatsächliche Rechnung oder garantierter Anbieter-Hard-Cap. Auch fehlgeschlagene Versuche behalten ihre Reservierung. Standardbudget 2 USD/Tag und 10 USD/Monat bleibt bestehen. Unter diesen Reservierungen sind weniger Importe möglich, als die tatsächlichen Beispielkosten vermuten lassen.
 
-Sol kostet regulär 2 USD je Million Eingabe- und 10 USD je Million Ausgabetokens. Beispiel: 2.000 Eingabetokens plus 1.500 Ausgabetokens ergeben 0,019 USD pro Import. Zusätzliche Denktokens und tatsächliche Textlänge verändern den Verbrauch.
+Gemeldete Tokenverbräuche werden addiert; Audio- und Texttokens sind verschiedene Modalitäten und kein direkt vergleichbarer Verbrauch. Audio-Kosten sind als laufzeitbasierte Näherung gekennzeichnet, Responses-Kosten anhand gemeldeter Tokens berechnet. Bei nachfolgendem KI-Fehler bleibt bereits bekannter Audioverbrauch am Fehlerdatensatz erhalten. Fehlende Verbrauchsdaten eines abgebrochenen Anbieteraufrufs lassen sich nicht nachträglich exakt rekonstruieren; Reservierung bleibt.
 
-Für den vorgeschlagenen späteren Medienpfad: Terra regulär 1/5 USD je Million Eingabe-/Ausgabetokens; Mini Transcribe geschätzt 0,003 USD je Audiominute. Beispiel: 5.000 API-Eingabetokens inklusive Bildern, 2.000 Ausgabetokens und eine Audiominute ergeben 0,018 USD. Das ist nur eine Rechnung mit angenommenem Verbrauch, keine Prognose oder aktivierte Funktion. [Offizielle Preise](https://developers.openai.com/api/docs/pricing)
+[OpenAI-Preise](https://developers.openai.com/api/docs/pricing), [Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra), [Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol), [Audio](https://developers.openai.com/api/docs/guides/speech-to-text), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
 
-Unverändert: persistente Limits für Importhäufigkeit, Parallelität und konservative Tages-/Monatsreservierungen vor KI-Aufrufen, keine automatischen SDK-Retries, kontrollierte Timeouts/Fehler. Fehlgeschlagene Quellenzugriffe können interne Reservierungen verbrauchen, auch ohne tatsächlich kostenpflichtigen KI-Aufruf. Das interne Budget ist keine Anbieterrechnung.
+## Cloudflare, Datenschutz und Aktivierung
 
-## Daten und Plattformgrenzen
+Die [Media-Transformations-Bindings](https://developers.cloudflare.com/stream/transform-videos/bindings/) sind laut offizieller Dokumentation derzeit öffentliche Beta; Binding-Transformationen werden während dieser Phase nicht berechnet. Das ist keine dauerhafte Preiszusage. Free-Worker-CPU-/Speichergrenzen gelten weiterhin; tatsächliche Laufzeit, Speicher und Verfügbarkeit im bestehenden Account sind **noch nicht live geprüft**. Kein Tarif wurde geändert und keine neue Ressource aktiviert.
 
-Nur Rezept, Quelle, Hinweise und Verbrauchsmetadaten werden gespeichert, keine vollständigen Beschreibungen/Transkripte. Beschreibungsimporte verwenden den bestehenden generischen Quelltyp `web`; der historische bereitgestellte YouTube-Textpfad behält `youtube_transcript`. Die Warnungen unterscheiden zugängliche Beschreibung/verlinkte Rezeptseite von bereitgestelltem Text.
+Cloudflare erhält die Videobytes zur technischen Aufbereitung; OpenAI erhält die Tonspur und ausgewählten Bilder samt Text. `store:false` gilt für Responses; es ist keine Zusicherung von Nullaufbewahrung aller Anbieter-/Missbrauchsprotokolle. Audio unterstützt diesen Responses-Parameter nicht. [OpenAI-Datenkontrollen](https://developers.openai.com/api/docs/guides/your-data).
 
-`store:false` gilt für Responses, ist aber keine pauschale Zusicherung von Nullaufbewahrung sämtlicher Anbieterprotokolle. [OpenAI-Datenkontrollen](https://developers.openai.com/api/docs/guides/your-data)
+Abrufrahmen 45 Sekunden, native Medienaufbereitung 25 Sekunden, Audio 20 Sekunden, Rezeptgenerierung 45 Sekunden; keine automatischen SDK-Retries. Die bestehende D1-Lease beträgt 180 Sekunden. Ein Media-Timeout bricht das Warten ab; die Binding-API bietet in diesem Ablauf keine Stornierung einer schon gestarteten nativen Transformation. Deren Ergebnis wird verworfen und keine KI-Anfrage danach gestartet.
 
-YouTubes offizielle [Captions-Downloadmethode](https://developers.google.com/youtube/data/reference/rest/v3/captions/download) verlangt Bearbeitungsrechte am Video und wird nicht als allgemeiner Fremd-Untertitelabruf verwendet. Für beliebige Reels/Shorts/TikToks bleibt vollständiger automatischer Zugriff auf Ton und Bilder ungelöst. Die App behauptet diese Fähigkeit nicht.
-
-Bereitgestellter Text: ausdrückliche Nutzungsbestätigung, 30 Zeichen bis 20 KB und angegebene Länge bis 20 Minuten. Die ursprüngliche Videolänge wird nicht verifiziert; tatsächlich erzwungene Kosten-/Eingabegrenze ist die Textgröße.
+Quelltyp bleibt für neue Social-Importe `web`; flüchtige `provenance=public_video` steuert den tatsächlichen Verarbeitungsweg und den dauerhaften Prüfhinweis. Kein D1-Schemawechsel. Preview mit MEDIA, eingeschalteter Analyse oder produktiven Ressourcen wird serverseitig gesperrt. Aktivierungsschritte: [DEPLOYMENT.md](../DEPLOYMENT.md).

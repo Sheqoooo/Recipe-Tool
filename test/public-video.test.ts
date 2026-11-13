@@ -4,6 +4,7 @@ import {preparePublicVideo,generateVideoRecipe,videoReservationCost} from '../sr
 import type {Source} from '../src/shared/types.js';
 import type {VideoMediaBinding} from '../src/worker/env.js';
 import {localEnv,recipe} from './fixtures.js';
+import {readWeb} from '../src/worker/source.js';
 
 export function mp4(seconds=50):Uint8Array<ArrayBuffer>{
  const bytes=new Uint8Array(52),view=new DataView(bytes.buffer);
@@ -48,7 +49,19 @@ it('verfolgt signierte CDN-Redirects nicht und gibt deren Geheimnisse niemals au
 it('sperrt private DNS-Adressen vor dem Medienabruf',async()=>{
  const {config}=fixture();const f=vi.fn(async()=>Response.json({Status:0,Answer:[{type:1,data:'127.0.0.1'}]}));
  await expect(readPublicVideo(new URL(videoSource().url),new URL(videoSource().url),'',config,f as typeof fetch,Date.now()+10000)).rejects.toMatchObject({code:'SOURCE_PRIVATE'});
- expect(f).toHaveBeenCalledTimes(2);
+ expect(f.mock.calls.filter(c=>String(c[0]).startsWith('https://api.openai.com/'))).toHaveLength(2);
+});
+it('fällt automatisch von unzureichender Beschreibung auf öffentliche Einbettung und MP4 zurück',async()=>{
+ const {config}=fixture();config.RECIPE_ALLOWED_HOSTS='';
+ const f=vi.fn(async(input:RequestInfo|URL,options?:RequestInit)=>{
+  const url=String(input);
+  if(url.includes('dns-query'))return Response.json({Status:0,Answer:[{type:1,data:'93.184.216.34'}]});
+  expect(options?.redirect).toBe('manual');expect(options?.headers).not.toHaveProperty('Cookie');expect(options?.headers).not.toHaveProperty('Authorization');
+  if(url.includes('cdninstagram.com'))return new Response(mp4(51),{headers:{'Content-Type':'video/mp4'}});
+  return new Response(url.endsWith('/embed/')?JSON.stringify({video_url:'https://scontent.cdninstagram.com/clip.mp4?sig=SYNTHETIC_SECRET'}):'<meta name="description" content="Easy tofu dinner, watch the video for the recipe.">',{headers:{'Content-Type':'text/html'}});
+ });
+ const source=await readWeb('https://www.instagram.com/reel/test/?igsh=tracking',config,f as typeof fetch);
+ expect(source.provenance).toBe('public_video');expect(source.video?.duration).toBe(51);expect(source.url).toBe('https://www.instagram.com/reel/test/');expect(source.text).not.toContain('SYNTHETIC_SECRET');
 });
 it('extrahiert sechs Bilder und Audio über separate Media-Eingänge, ohne Browserupload',async()=>{
  const {config,media}=fixture();const result=await preparePublicVideo(videoSource(),config);
@@ -58,20 +71,27 @@ it('extrahiert sechs Bilder und Audio über separate Media-Eingänge, ohne Brows
 it('nutzt ausschließlich OpenAI Audio und Responses mit Bildern und strukturierten Rezeptdaten',async()=>{
  const {config}=fixture();const f=vi.fn(async(input:RequestInfo|URL,options?:RequestInit)=>{
   if(String(input).includes('/audio/transcriptions'))return Response.json({text:'Tomaten (200 g) zehn Minuten kochen.',usage:{input_tokens:100,output_tokens:20}});
+  if(String(input)==='data:,')return new Response('');
+  expect(String(input)).toBe('https://api.openai.com/v1/responses');
   const body=JSON.parse(String(options?.body));expect(body.model).toBe('gpt-6.1-terra');expect(body.store).toBe(false);expect(body.text.format.strict).toBe(true);
   expect(body.input[1].content.filter((part:{type:string})=>part.type==='input_image')).toHaveLength(6);
   expect(JSON.stringify(body)).not.toContain('scontent.cdninstagram');
   return Response.json({id:'mock',object:'response',status:'completed',model:'gpt-6.1-terra',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({is_recipe:true,recipe}),annotations:[]}]}],usage:{input_tokens:2000,output_tokens:1500,total_tokens:3500}});
  });
  const result=await generateVideoRecipe(videoSource(),config,'mock-import',f as typeof fetch);
- expect(f).toHaveBeenCalledTimes(2);expect(result.recipe.warnings[0]).toContain('sechs Einzelbilder');expect(result.usage.input_tokens).toBe(2100);
+ expect(f.mock.calls.filter(c=>String(c[0]).startsWith('https://api.openai.com/'))).toHaveLength(2);expect(result.recipe.warnings[0]).toContain('sechs Einzelbilder');expect(result.usage.input_tokens).toBe(2100);
  expect(result.usage.estimated_cost_microusd).toBe(12000);expect(videoReservationCost(config)).toBe(239000);
 });
 it('beendet Audiofehler ohne Bild-KI-Aufruf und ohne vertrauliche Anbieterfehler',async()=>{
- const {config}=fixture();const f=vi.fn(async()=>Response.json({error:{message:'SYNTHETIC_SECRET',type:'rate_limit_error'}},{status:429}));
- await expect(generateVideoRecipe(videoSource(),config,'mock-import',f as typeof fetch)).rejects.toMatchObject({code:'AI_LIMIT'});expect(f).toHaveBeenCalledTimes(1);
+ const {config}=fixture();const f=vi.fn(async(input:RequestInfo|URL)=>String(input)==='data:,'?new Response(''):Response.json({error:{message:'SYNTHETIC_SECRET',type:'rate_limit_error'}},{status:429}));
+ await expect(generateVideoRecipe(videoSource(),config,'mock-import',f as typeof fetch)).rejects.toMatchObject({code:'AI_LIMIT'});expect(f.mock.calls.filter(c=>String(c[0]).startsWith('https://api.openai.com/'))).toHaveLength(1);
+});
+it('zu lange Videos und ausgeschaltete Funktion verursachen keine OpenAI-Anfrage',async()=>{
+ const {config}=fixture();const f=vi.fn();const source=videoSource();source.video!.bytes=mp4(91);
+ await expect(generateVideoRecipe(source,config,'mock-import',f)).rejects.toMatchObject({code:'VIDEO_LIMIT'});
+ await expect(generateVideoRecipe(videoSource(),{...config,VIDEO_ANALYSIS_ENABLED:'false'},'mock-import',f)).rejects.toMatchObject({code:'VIDEO_CONFIGURATION'});expect(f).not.toHaveBeenCalled();
 });
 it('erfasst Audioaufwand auch bei abgelehntem Rezept und setzt keine Retries ab',async()=>{
- const {config}=fixture();const f=vi.fn(async(input:RequestInfo|URL)=>String(input).includes('/audio/transcriptions')?Response.json({text:'Nur Musik.'}):Response.json({id:'mock',object:'response',status:'completed',model:'gpt-6.1-terra',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({is_recipe:false,recipe:null}),annotations:[]}]}],usage:{input_tokens:100,output_tokens:20,total_tokens:120}}));
- await expect(generateVideoRecipe(videoSource(),config,'mock-import',f as typeof fetch)).rejects.toMatchObject({code:'NO_RECIPE',usage:{estimated_cost_microusd:2700}});expect(f).toHaveBeenCalledTimes(2);
+ const {config}=fixture();const f=vi.fn(async(input:RequestInfo|URL)=>String(input)==='data:,'?new Response(''):String(input).includes('/audio/transcriptions')?Response.json({text:'Nur Musik.'}):Response.json({id:'mock',object:'response',status:'completed',model:'gpt-6.1-terra',output:[{type:'message',role:'assistant',content:[{type:'output_text',text:JSON.stringify({is_recipe:false,recipe:null}),annotations:[]}]}],usage:{input_tokens:100,output_tokens:20,total_tokens:120}}));
+ await expect(generateVideoRecipe(videoSource(),config,'mock-import',f as typeof fetch)).rejects.toMatchObject({code:'NO_RECIPE',usage:{estimated_cost_microusd:2700}});expect(f.mock.calls.filter(c=>String(c[0]).startsWith('https://api.openai.com/'))).toHaveLength(2);
 });
