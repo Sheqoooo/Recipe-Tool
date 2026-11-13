@@ -1,5 +1,6 @@
 import {videoPlatform,videoLink} from '../shared/video-platform.js';
 import {socialDescription} from './social-description.js';
+import {readPublicVideo} from './public-video.js';
 import type { Env } from "./env.js";
 import ipaddr from 'ipaddr.js';
 import { AppError } from '../shared/errors.js';
@@ -79,6 +80,10 @@ export async function readWeb(value:string,env:Env,fetcher:typeof fetch=fetch,de
         if(videoPlatform(linked)||linked.hostname===original.hostname||/(^|\.)(?:youtube\.com|youtu\.be|instagram\.com|tiktok\.com)$/.test(linked.hostname))continue;
         const recipe=await readWeb(linked.href,env,fetcher,1,deadline);return {...recipe,url:canonical,text:'Verlinkte Rezeptseite: '+linked.href+'\n'+recipe.text,provenance:'description'};
       }}
+      if(env.VIDEO_ANALYSIS_ENABLED==='true'&&env.MEDIA){
+        const video=await readPublicVideo(new URL(canonical),url,html,env,fetcher,deadline);
+        return {kind:'web',url:canonical,text:description,provenance:'public_video',video};
+      }
       throw new AppError('VIDEO_SOURCE_REQUIRED','Die Videobeschreibung ist nicht ausreichend zugänglich. Bitte Beschreibung oder Transkript bereitstellen.',422);
     }
     return extractSource(html,value,url.href);

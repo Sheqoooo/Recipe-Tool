@@ -46,3 +46,6 @@ it('akzeptiert ausdrücklich bereitgestellten Text aller drei Plattformen und pr
  expect(transcriptSource('https://www.tiktok.com/@cook/video/123','Zutaten: 200 g Tomaten. In Stücke schneiden und kochen.',true,60).kind).toBe('web');
  expect(()=>transcriptSource('https://www.tiktok.com/@cook/video/123','x'.repeat(80),false,60)).toThrow();
 });
+it('hält Veröffentlichungsdaten und allgemeine Kochwerbung nicht für Zutatenmengen',()=>{
+ expect(()=>socialDescription('<meta name="description" content="November 12, 2026: EASY TOFU DÖNER. This recipe video shows a delicious dinner. Watch the full video for all ingredients!">')).toThrow();
+});

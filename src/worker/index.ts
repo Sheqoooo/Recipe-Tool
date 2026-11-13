@@ -7,6 +7,7 @@ import { authenticate,verifyIdentity } from './auth.js';
 import { normalizeUrl,readWeb,transcriptSource } from './source.js';
 import {videoPlatform,videoLink} from '../shared/video-platform.js';
 import { generateRecipe,reservationCost } from './openai.js';
+import {generateVideoRecipe,videoReservationCost} from './video-analysis.js';
 import { fetchRecipeImage } from './image.js';
 
 const security={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
@@ -32,6 +33,7 @@ function admin(actor:Member):void{if(actor.role!=='admin')throw new AppError('FO
 export interface Dependencies {
   image?:typeof fetchRecipeImage;
   generate?:(source:Source,env:Env,id:string)=>Promise<Generated>;
+  generateVideo?:typeof generateVideoRecipe;
   read?:(url:string,env:Env)=>Promise<Source>;
 }
 export function createApp(deps:Dependencies={}){
@@ -43,7 +45,7 @@ export function createApp(deps:Dependencies={}){
       // Authentication runs before every asset AND API response.
       if(env.APP_ENV==='preview'){
         const identity=await verifyIdentity(request,env);
-        if(env.DB||env.OPENAI_API_KEY||env.BOOTSTRAP_ADMIN_EMAILS)throw new AppError('PREVIEW_ISOLATION','Die Vorschau ist wegen unsicherer Ressourcenbindung gesperrt.',503);
+        if(env.DB||env.OPENAI_API_KEY||env.BOOTSTRAP_ADMIN_EMAILS||env.MEDIA||env.VIDEO_ANALYSIS_ENABLED==='true')throw new AppError('PREVIEW_ISOLATION','Die Vorschau ist wegen unsicherer Ressourcenbindung gesperrt.',503);
         if(request.method!=='GET')throw new AppError('PREVIEW_READ_ONLY','Diese Vorschau ist schreibgeschützt.',403);
         if(path==='/api/state')return json({recipes:[],plan:[],shopping:[],checked:[],members:[],imports:[],has_key:false,read_only:true,user:{id:identity.sub,email:identity.email,role:'member',active:1}} satisfies AppState);
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
@@ -80,7 +82,8 @@ export function createApp(deps:Dependencies={}){
         try{
           source||=await(deps.read||readWeb)(canonical,env);
           source.url=normalizeUrl(source.url).href;
-          const generated=await(deps.generate||generateRecipe)(source,env,importId);
+          if(source.provenance==='public_video')await repo.reserveVideoBudget(importId,env,videoReservationCost(env));
+          const generated=source.provenance==='public_video'?await(deps.generateVideo||generateVideoRecipe)(source,env,importId):await(deps.generate||generateRecipe)(source,env,importId);
           const recipe=validateRecipe(generated.recipe);
           let image:RecipeImageData|undefined;
           if(source.kind==='web'&&source.image){try{image=await(deps.image||fetchRecipeImage)(source.image,env);}catch{/* An optional image must not discard a valid recipe. */}}
