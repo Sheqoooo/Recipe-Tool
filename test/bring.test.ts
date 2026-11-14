@@ -88,7 +88,7 @@ it('Client verwendet feste HTTPS-Ziele, begrenzte Antworten und ein einziges Bat
  });
  const client=new BringClient(config(),transport as typeof fetch);await client.login();expect(await client.lists()).toEqual([{id:listId,name:'Zuhause'}]);
  await client.add(listId,[{name:'Tomaten',quantity:'200 g'},{name:'Salz',quantity:'Menge offen'}],userId);
- expect(calls.every(c=>c.url.startsWith('https://api.getbring.com/rest/')&&c.init.redirect==='error'&&new Headers(c.init.headers).get('Accept')==='application/json')).toBe(true);
+ expect(calls.every(c=>c.url.startsWith('https://api.getbring.com/rest/')&&c.init.redirect==='manual'&&new Headers(c.init.headers).get('Accept')==='application/json')).toBe(true);
  expect(calls[0].init.body).toContain('TEST_PASSWORD_ONLY');
  const put=calls.at(-1)!;expect(put.init.method).toBe('PUT');const changes=JSON.parse(String(put.init.body)).changes;
  expect(changes[0]).toMatchObject({itemId:'Tomaten',spec:'200 g',operation:'TO_PURCHASE'});
@@ -161,5 +161,18 @@ it('falsch kopierter Clientschlüssel verursacht vor jedem Fremdabruf einen sich
 it('Text-Kennzeichnung umgeht weder Login-Schema noch Tokenprüfung',async()=>{
  const transport=vi.fn(async()=>new Response(JSON.stringify({uuid:userId,publicUuid:userId,access_token:'BAD\\nTOKEN',token_type:'Bearer'}),{headers:{'Content-Type':'text/plain'}}));
  await expect(new BringClient(config(),transport as typeof fetch).login()).rejects.toMatchObject({code:'BRING_AUTH'});
+ expect(transport).toHaveBeenCalledTimes(1);
+});
+
+it('konstruiert Bring-Anfragen mit dem echten Workers-Request und blockiert Redirects ohne Folgeabruf',async()=>{
+ const urls:string[]=[];
+ const transport=vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{
+   // Native workerd Request construction catches unsupported redirect modes.
+   const request=new Request(url,init);expect(request.redirect).toBe('manual');urls.push(request.url);
+   return new Response(null,{status:302,headers:{Location:'https://untrusted.example/?token=TEST_TOKEN_ONLY'}});
+ });
+ try{await new BringClient(config(),transport as typeof fetch).login();throw new Error('expected');}
+ catch(error){expect(error).toMatchObject({code:'BRING_LOGIN_REDIRECT'});expect(String(error)).not.toContain('TEST_TOKEN_ONLY');}
+ expect(urls).toEqual(['https://api.getbring.com/rest/v2/bringauth']);
  expect(transport).toHaveBeenCalledTimes(1);
 });

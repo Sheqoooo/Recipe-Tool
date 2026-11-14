@@ -2,6 +2,8 @@
 
 ## 2026-11-14 – Bring!-Antwortverarbeitung
 
+- Nicht unterstütztes `redirect: error` durch Workers-kompatibles `manual` mit expliziter 3xx-Sperre ersetzt; echter Request-Konstruktionstest verhindert Rückfall.
+
 - JSON bei Bring! explizit anfordern und auch bei Klartext-/fehlender Kennzeichnung streng validieren; HTML/XML bleiben gesperrt.
 - Sichere Fehlercodes für Phase, Netzwerk, Zeitüberschreitung und Antwortverarbeitung statt einer einzigen Sammelmeldung.
 - Keine Änderung an Datenbank oder Credentials, keine automatischen Schreibwiederholungen.

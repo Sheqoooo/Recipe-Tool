@@ -18,7 +18,7 @@ export class BringClient {
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
     try{
       const headers=new Headers(this.headers);new Headers(init.headers).forEach((value,key)=>headers.set(key,value));
-      const response=await this.transport(API+path,{...init,headers,redirect:'error',signal:controller.signal});
+      const response=await this.transport(API+path,{...init,headers,redirect:'manual',signal:controller.signal});
       if(!response.ok){
         await response.body?.cancel().catch(()=>{});
         if(response.status>=300&&response.status<400)throw failure('REDIRECT','Bring! hat '+action+' eine nicht erlaubte Weiterleitung geliefert');
@@ -43,7 +43,7 @@ export class BringClient {
     }catch(error){
       if(error instanceof AppError)throw error;
       if(controller.signal.aborted)throw failure('TIMEOUT','Bring! hat '+action+' nicht rechtzeitig geantwortet');
-      throw failure('NETWORK','Die Verbindung zu Bring! wurde '+action+' unterbrochen. Auch eine blockierte Weiterleitung kann die Ursache sein');
+      throw failure('NETWORK','Die Verbindung zu Bring! wurde '+action+' unterbrochen. ');
     }finally{clearTimeout(timer);}
   }
   async login():Promise<void>{
