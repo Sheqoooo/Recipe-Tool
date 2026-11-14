@@ -88,7 +88,7 @@ it('Client verwendet feste HTTPS-Ziele, begrenzte Antworten und ein einziges Bat
  });
  const client=new BringClient(config(),transport as typeof fetch);await client.login();expect(await client.lists()).toEqual([{id:listId,name:'Zuhause'}]);
  await client.add(listId,[{name:'Tomaten',quantity:'200 g'},{name:'Salz',quantity:'Menge offen'}],userId);
- expect(calls.every(c=>c.url.startsWith('https://api.getbring.com/rest/')&&c.init.redirect==='error')).toBe(true);
+ expect(calls.every(c=>c.url.startsWith('https://api.getbring.com/rest/')&&c.init.redirect==='manual'&&new Headers(c.init.headers).get('Accept')==='application/json')).toBe(true);
  expect(calls[0].init.body).toContain('TEST_PASSWORD_ONLY');
  const put=calls.at(-1)!;expect(put.init.method).toBe('PUT');const changes=JSON.parse(String(put.init.body)).changes;
  expect(changes[0]).toMatchObject({itemId:'Tomaten',spec:'200 g',operation:'TO_PURCHASE'});
@@ -114,7 +114,65 @@ it('Client bricht langsame Anfragen ab und startet keinen neuen Versuch',async()
      init?.signal?.addEventListener('abort',()=>reject(new Error('TEST_TOKEN_ONLY')),{once:true});
    }));
    const operation=new BringClient(config(),transport as typeof fetch).login();
-   const assertion=expect(operation).rejects.toMatchObject({code:'BRING_UNAVAILABLE',status:503});
+   const assertion=expect(operation).rejects.toMatchObject({code:'BRING_LOGIN_TIMEOUT',status:503});
    await vi.advanceTimersByTimeAsync(10001);await assertion;expect(transport).toHaveBeenCalledTimes(1);
  }finally{vi.useRealTimers();}
+});
+
+it.each(['text/plain; charset=utf-8','Application/JSON; charset=UTF-8','application/problem+json',null])('verarbeitet gültiges streng validiertes JSON bei abweichender Kennzeichnung %s',async contentType=>{
+ const transport=vi.fn(async(url:RequestInfo|URL)=>{
+   const data=String(url).endsWith('/v2/bringauth')?{uuid:userId,publicUuid:userId,access_token:'TEST_TOKEN_ONLY',token_type:'Bearer'}:{lists:[{listUuid:listId,name:'Zuhause'}]};
+   const response=new Response(new TextEncoder().encode(JSON.stringify(data)));
+   if(contentType)response.headers.set('Content-Type',contentType);
+   return response;
+ });
+ const client=new BringClient(config(),transport as typeof fetch);await client.login();
+ expect(await client.lists()).toEqual([{id:listId,name:'Zuhause'}]);
+ expect(transport).toHaveBeenCalledTimes(2);
+});
+it.each(['text/html','application/xml'])('lehnt %s selbst mit JSON-Inhalt ab',async type=>{
+ const transport=vi.fn(async()=>new Response(JSON.stringify({uuid:userId}),{headers:{'Content-Type':type}}));
+ await expect(new BringClient(config(),transport as typeof fetch).login()).rejects.toMatchObject({code:'BRING_LOGIN_FORMAT'});
+ expect(transport).toHaveBeenCalledTimes(1);
+});
+it('unterscheidet Netzwerk-, Parse-, Größen- und Listenfehler ohne vertrauliche Rohdaten',async()=>{
+ const cases=[
+   {response:()=>new Response('TEST_TOKEN_ONLY',{headers:{'Content-Type':'text/plain'}}),code:'BRING_LOGIN_JSON'},
+   {response:()=>new Response('TEST_TOKEN_ONLY'.repeat(12000),{headers:{'Content-Type':'text/plain'}}),code:'BRING_LOGIN_SIZE'},
+   {response:()=>{throw new Error('TEST_PASSWORD_ONLY TEST_TOKEN_ONLY');},code:'BRING_LOGIN_NETWORK'}
+ ];
+ for(const test of cases){
+   const transport=vi.fn(async()=>test.response());
+   try{await new BringClient(config(),transport as typeof fetch).login();throw new Error('expected');}
+   catch(error){expect(error).toMatchObject({code:test.code,status:503});expect(String(error)).not.toMatch(/TEST_TOKEN|TEST_PASSWORD/);}
+ }
+ const transport=vi.fn(async(url:RequestInfo|URL)=>String(url).endsWith('/v2/bringauth')?Response.json({uuid:userId,publicUuid:userId,access_token:'TEST_TOKEN_ONLY',token_type:'Bearer'}):new Response('<html>TEST_TOKEN_ONLY</html>',{headers:{'Content-Type':'text/html'}}));
+ const client=new BringClient(config(),transport as typeof fetch);await client.login();
+ await expect(client.lists()).rejects.toMatchObject({code:'BRING_LISTS_FORMAT'});
+});
+it('falsch kopierter Clientschlüssel verursacht vor jedem Fremdabruf einen sicheren Konfigurationsfehler',async()=>{
+ for(const value of ['"TEST_CLIENT_KEY_ONLY"','bad\nkey']){
+   const transport=vi.fn(async()=>Response.json({}));
+   await expect(new BringClient({...config(),BRING_CLIENT_KEY:value},transport as typeof fetch).login()).rejects.toMatchObject({code:'BRING_CONFIGURATION'});
+   expect(transport).not.toHaveBeenCalled();
+ }
+});
+
+it('Text-Kennzeichnung umgeht weder Login-Schema noch Tokenprüfung',async()=>{
+ const transport=vi.fn(async()=>new Response(JSON.stringify({uuid:userId,publicUuid:userId,access_token:'BAD\\nTOKEN',token_type:'Bearer'}),{headers:{'Content-Type':'text/plain'}}));
+ await expect(new BringClient(config(),transport as typeof fetch).login()).rejects.toMatchObject({code:'BRING_AUTH'});
+ expect(transport).toHaveBeenCalledTimes(1);
+});
+
+it('konstruiert Bring-Anfragen mit dem echten Workers-Request und blockiert Redirects ohne Folgeabruf',async()=>{
+ const urls:string[]=[];
+ const transport=vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{
+   // Native workerd Request construction catches unsupported redirect modes.
+   const request=new Request(url,init);expect(request.redirect).toBe('manual');urls.push(request.url);
+   return new Response(null,{status:302,headers:{Location:'https://untrusted.example/?token=TEST_TOKEN_ONLY'}});
+ });
+ try{await new BringClient(config(),transport as typeof fetch).login();throw new Error('expected');}
+ catch(error){expect(error).toMatchObject({code:'BRING_LOGIN_REDIRECT'});expect(String(error)).not.toContain('TEST_TOKEN_ONLY');}
+ expect(urls).toEqual(['https://api.getbring.com/rest/v2/bringauth']);
+ expect(transport).toHaveBeenCalledTimes(1);
 });
