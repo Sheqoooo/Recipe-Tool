@@ -1,5 +1,10 @@
 # Änderungsverlauf
 
+## 2026-11-14 – Bring!-Aufrufkontext
+
+- Bring!-Transport ohne falschen Client-Receiver aufrufen, damit natives workerd-fetch nicht vor dem Netzwerkzugriff mit „Illegal invocation“ scheitert.
+- Regression mit echter Cloudflare-fetch-Funktion und ausschließlich lokalen Datenantworten ergänzt; Secrets, Schema und produktive Daten unverändert.
+
 ## 2026-11-14 – Bring!-Antwortverarbeitung
 
 - Nicht unterstütztes `redirect: error` durch Workers-kompatibles `manual` mit expliziter 3xx-Sperre ersetzt; echter Request-Konstruktionstest verhindert Rückfall.

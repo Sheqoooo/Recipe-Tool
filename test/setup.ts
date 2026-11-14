@@ -1,3 +1,4 @@
+import './runtime-fetch.js';
 import { env } from 'cloudflare:workers';
 import { applyD1Migrations } from 'cloudflare:test';
 import { beforeAll,afterEach,vi } from 'vitest';

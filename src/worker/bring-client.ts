@@ -18,7 +18,9 @@ export class BringClient {
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
     try{
       const headers=new Headers(this.headers);new Headers(init.headers).forEach((value,key)=>headers.set(key,value));
-      const response=await this.transport(API+path,{...init,headers,redirect:'manual',signal:controller.signal});
+      // Calling global fetch as a client-instance method violates workerd's receiver check.
+      const transport=this.transport;
+      const response=await transport(API+path,{...init,headers,redirect:'manual',signal:controller.signal});
       if(!response.ok){
         await response.body?.cancel().catch(()=>{});
         if(response.status>=300&&response.status<400)throw failure('REDIRECT','Bring! hat '+action+' eine nicht erlaubte Weiterleitung geliefert');
