@@ -38,7 +38,7 @@ export class BringClient {
       const chunks:Uint8Array[]=[];let size=0;
       try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>131072)throw failure('SIZE','Die Bring!-Antwort ist '+action+' zu groß');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
       const bytes=new Uint8Array(size);let at=0;for(const chunk of chunks){bytes.set(chunk,at);at+=chunk.length;}
-      try{return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}
+      try{return JSON.parse(new TextDecoder('utf-8',{fatal:true,ignoreBOM:false}).decode(bytes));}
       catch{throw failure('JSON','Bring! hat '+action+' keine lesbaren JSON-Daten geliefert');}
     }catch(error){
       if(error instanceof AppError)throw error;
