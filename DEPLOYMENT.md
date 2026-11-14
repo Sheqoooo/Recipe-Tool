@@ -238,3 +238,9 @@ Quellen/Protokollstand geprüft am 14.11.2026: [bring-api, inoffizieller Client]
 7. Entkopplung: die drei Worker Secrets entfernen (bewusste Produktionsänderung durch Betreiber). Der nächste Statusabruf blendet die Exportfunktion aus. Bereits in Bring! vorhandene Artikel bleiben bestehen.
 
 Noch nicht live verifiziert: Apple-Relay-Kontoanmeldung, tatsächliche Bring!-Batch-Antworten, Artikel-/Mengendarstellung und mögliche Anbieterlimits. Alle automatisierten Prüfungen verwenden Mocks, keine echten Bring!-Konten.
+
+### Bring!-Antwortformate und Fehlerdiagnose
+
+Bring!-Anfragen fordern JSON ausdrücklich mit `Accept: application/json` an. Begrenzt eingelesenes JSON darf auch als `text/plain` oder ohne Content-Type gekennzeichnet sein; HTML/XML bleiben gesperrt. Endpunktspezifische Schema- und Tokenvalidierung sowie 128-KiB-Grenze bleiben bestehen. Netzwerk-, Timeout-, Format-, JSON- und Größenfehler erhalten einen festen, nicht vertraulichen Code mit Phase (`LOGIN`, `LISTS`, `WRITE`). Weder Rohantworten noch Tokens, E-Mail, Passwörter oder Request-Header werden für die Diagnose ausgegeben. Ein Netzwerkfehler kann auch eine vom Fetch-Client abgewiesene Weiterleitung bedeuten; es gibt weiterhin keine automatischen Schreibwiederholungen. Der Clientschlüssel wird auf versehentlich mitkopierte Anführungszeichen, Zeilenumbrüche und ungültige Header-Zeichen geprüft.
+
+Bei einer Meldung den angezeigten festen Fehlercode und die betätigte Schaltfläche nennen; keine Zugangsdaten, Rohantworten oder Netzwerk-Header teilen. `BRING_AUTH` bedeutet abgewiesene Anmeldung, während `BRING_LOGIN_NETWORK` oder `BRING_LISTS_FORMAT` Transport bzw. Antwortformat eingrenzen. Eine konkrete Live-Ursache lässt sich ohne diese Diagnose nicht bestätigen. Protokollvergleich: [Upstream-Anfragen](https://github.com/miaucl/bring-api/wiki/Raw-API-Requests).

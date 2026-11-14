@@ -1,5 +1,11 @@
 # Änderungsverlauf
 
+## 2026-11-14 – Bring!-Antwortverarbeitung
+
+- JSON bei Bring! explizit anfordern und auch bei Klartext-/fehlender Kennzeichnung streng validieren; HTML/XML bleiben gesperrt.
+- Sichere Fehlercodes für Phase, Netzwerk, Zeitüberschreitung und Antwortverarbeitung statt einer einzigen Sammelmeldung.
+- Keine Änderung an Datenbank oder Credentials, keine automatischen Schreibwiederholungen.
+
 ## 2026-11-14 – Optionale direkte Bring!-Übertragung
 
 - Gemeinsame Bring!-Zielliste durch Administratoren auswählen; Mitglieder senden gespeicherte Rezeptzutaten samt Mengen.
