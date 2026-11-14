@@ -86,7 +86,7 @@ test('Bring-Zielliste einrichten und einzelne Zutaten über Plus senden',async({
    await route.fulfill({json:{ok:true,existing:false,count:1,list_name:'Zuhause'}});
  });
  await page.goto('/#settings');await page.locator('#bring-load-lists').click();await page.locator('#bring-list').selectOption('11111111-1111-4111-8111-111111111111');await page.locator('#bring-form button').click();await expect(page.locator('#bring-status')).toContainText('Zuhause');
- await page.getByRole('button',{name:/Meine Rezepte/}).click();await page.locator('[data-open="'+id+'"]').click();
+ await page.getByRole('button',{name:/Meine Rezepte/}).click();await page.locator('.recipe-cover[data-open="'+id+'"]').click();
  await expect(page.getByRole('button',{name:'Zutaten an Bring! senden'})).toHaveCount(0);
  const plus=page.locator('[data-bring-ingredient="0"]');await expect(plus).toHaveAttribute('aria-label','Tomaten an Bring! senden');await plus.click();await page.locator('[data-bring-ingredient="1"]').click();await expect(plus).toHaveText('✓');await expect(page.locator('[data-bring-ingredient="1"]')).toHaveText('✓');
  expect(payloads.map(p=>p.ingredient_index)).toEqual([0,1]);expect(maxInFlight).toBe(1);expect(payloads).toHaveLength(2);expect(requests).toEqual([]);expect(errors).toEqual([]);

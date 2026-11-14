@@ -9,7 +9,7 @@ async function fixture(page,role='admin'){
    await route.fulfill({json:{...state,user:{...state.user,role},recipes:deletes.length?[]:[{...recipe,title:calls>1?'Aktualisierte Pasta':recipe.title}]}});
  });
  await page.route('**/api/recipes/delete',async route=>{deletes.push(route.request().postDataJSON());await route.fulfill({json:{ok:true}});});
- await page.goto('/#collection');await expect(page.locator('.recipe-title')).toBeVisible();
+ await page.goto('/?gesture-role='+role+'#collection');await expect(page.locator('.recipe-title')).toBeVisible();
  return {calls:()=>calls,deletes,setFailure:()=>{failRefresh=true;},hold:p=>{holdRefresh=p;}};
 }
 async function pull(page,dx=0,dy=170){

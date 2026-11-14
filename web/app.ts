@@ -124,7 +124,7 @@ async function confirmDelete(){
  }catch(error){$('#delete-error').textContent=error instanceof Error?error.message:'Das Rezept konnte nicht gelöscht werden.';$('#delete-error').hidden=false;}
  finally{deleting=false;input('#confirm-delete').disabled=false;input('#cancel-delete').disabled=false;}
 }
-$<HTMLDialogElement>('#delete-dialog').addEventListener('close',()=>{pendingDelete=null;});
+$<HTMLDialogElement>('#delete-dialog').addEventListener('close',()=>{if(!$<HTMLDialogElement>('#delete-dialog').open)pendingDelete=null;});
 $<HTMLDialogElement>('#delete-dialog').addEventListener('cancel',event=>{if(deleting)event.preventDefault();});
 const collectionGestures=installCollectionGestures({
  root:$('#view-collection'),indicator:$('#collection-refresh'),
