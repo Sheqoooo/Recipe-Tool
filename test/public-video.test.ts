@@ -1,5 +1,5 @@
 import {it,expect,vi} from 'vitest';
-import {instagramPlayback,tiktokPlayback,playbackUrl,mp4Duration,limitedBytes,readPublicVideo} from '../src/worker/public-video.js';
+import {instagramPlayback,instagramPagePlayback,tiktokPlayback,playbackUrl,mp4Duration,limitedBytes,readPublicVideo} from '../src/worker/public-video.js';
 import {preparePublicVideo,generateVideoRecipe,videoReservationCost,extractVideoImage} from '../src/worker/video-analysis.js';
 import type {Source} from '../src/shared/types.js';
 import type {VideoMediaBinding} from '../src/worker/env.js';
@@ -23,6 +23,38 @@ it('liest öffentliche Instagram-Playerdaten mit begrenzter JSON-Entschachtelung
  expect(instagramPlayback(JSON.stringify(JSON.stringify(data))).hostname).toBe('scontent.cdninstagram.com');
  expect(()=>instagramPlayback(data+data)).toThrow();
  expect(()=>instagramPlayback('script requiring eval')).toThrow();
+});
+const reelJson=(items:unknown)=>'<script type="application/json" data-sjs>'+JSON.stringify({require:[['RelayPrefetchedStreamCache','next',[],[{__bbox:{result:{data:{items}}}}]]]}).replaceAll('<','\\u003c')+'</script>';
+const reelItem=(code='DfZugRbMuDa',url='https://scontent.cdninstagram.com/reel.mp4?sig=SYNTHETIC_SECRET')=>({code,video_versions:[{width:720,height:1280,url}]});
+it('liest moderne öffentliche Reel-JSON-Daten und wählt eine begrenzte Auflösung',()=>{
+ const item=reelItem();item.video_versions.push({width:480,height:854,url:'https://scontent.cdninstagram.com/small.mp4'});
+ expect(instagramPagePlayback(reelJson([reelItem('recommendation'),item]),item.code).pathname).toBe('/small.mp4');
+ expect(instagramPagePlayback(reelJson([{shortcode:item.code,video_url:item.video_versions[0].url}]),item.code).hostname).toBe('scontent.cdninstagram.com');
+ // The observed public page exposes type + url without per-rendition dimensions.
+ expect(instagramPagePlayback(reelJson([{code:item.code,video_versions:[{type:101,url:item.video_versions[0].url},{type:102,url:'https://scontent.cdninstagram.com/second.mp4'}]}]),item.code).pathname).toBe('/reel.mp4');
+});
+it('verwirft fremde oder mehrdeutige Reels, ausführbare Scripts und unsichere Adressen',()=>{
+ for(const html of [reelJson([reelItem('other')]),reelJson([reelItem(),reelItem()]),'<script>'+JSON.stringify(reelItem())+'</script>',reelJson([reelItem('DfZugRbMuDa','https://evil.example/video.mp4?sig=SYNTHETIC_SECRET')]),reelJson([reelItem('DfZugRbMuDa','https://127.0.0.1/video.mp4')])]){
+  let error:unknown;try{instagramPagePlayback(html,'DfZugRbMuDa');}catch(e){error=e;}
+  expect(error).toMatchObject({code:'VIDEO_SOURCE_REQUIRED'});expect(String(error)).not.toContain('SYNTHETIC_SECRET');
+ }
+ expect(()=>instagramPagePlayback('x'.repeat(2000001),'DfZugRbMuDa')).toThrow();
+ let deep:unknown=reelItem();for(let i=0;i<70;i++)deep={child:deep};
+ expect(()=>instagramPagePlayback(reelJson(deep),'DfZugRbMuDa')).toThrow();
+});
+it('verwendet passende Reel-Seitendaten ohne Einbettungsabruf, KI-Aufruf oder gespeicherte CDN-Adresse',async()=>{
+ const {config}=fixture();config.RECIPE_ALLOWED_HOSTS='';
+ const f=vi.fn(async(input:RequestInfo|URL,options?:RequestInit)=>{
+  const url=String(input);expect(options?.redirect).toBe('manual');
+  if(url.includes('dns-query'))return Response.json({Status:0,Answer:[{type:1,data:'93.184.216.34'}]});
+  if(url.includes('cdninstagram.com'))return new Response(mp4(51),{headers:{'Content-Type':'video/mp4'}});
+  expect(url).toBe('https://www.instagram.com/reel/DfZugRbMuDa/');
+  return new Response(reelJson([reelItem()]),{headers:{'Content-Type':'text/html'}});
+ });
+ const source=await readWeb('https://www.instagram.com/reel/DfZugRbMuDa/?psln=tracking',config,f as typeof fetch);
+ expect(source.provenance).toBe('public_video');expect(source.video?.duration).toBe(51);
+ expect(source.url).toBe('https://www.instagram.com/reel/DfZugRbMuDa/');expect(source.text).not.toContain('SYNTHETIC_SECRET');
+ expect(f.mock.calls.some(([url])=>String(url).includes('/embed/')||String(url).includes('api.openai.com'))).toBe(false);
 });
 it.each(['http://scontent.cdninstagram.com/a','https://scontent.cdninstagram.com.attacker.example/a','https://127.0.0.1/a','https://user:pass@scontent.cdninstagram.com/a','https://scontent.cdninstagram.com:8443/a'])('verwirft unsichere Medienadressen %s',url=>expect(()=>playbackUrl(url,'instagram')).toThrow());
 it('bindet TikTok-Playerdaten an die erwartete Video-ID',()=>{

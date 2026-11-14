@@ -2,10 +2,11 @@ import type {Env} from './env.js';
 import {AppError} from '../shared/errors.js';
 import {videoPlatform} from '../shared/video-platform.js';
 import {checkDns,limitedText} from './source.js';
+import {parse,type DefaultTreeAdapterMap} from 'parse5';
 
 export const MAX_VIDEO_BYTES=16*1024*1024;
 export const MAX_VIDEO_SECONDS=90;
-const unavailable=()=>new AppError('VIDEO_SOURCE_REQUIRED','Das Video ist nicht öffentlich und zuverlässig auslesbar. Eine Beschreibung oder ein Transkript kann weiterhin verwendet werden.',422);
+const unavailable=()=>new AppError('VIDEO_SOURCE_REQUIRED','Für diesen Link konnte keine öffentlich abrufbare Videodatei erkannt werden. Das bedeutet nicht, dass das Reel privat ist. Eine Beschreibung oder ein Transkript kann weiterhin verwendet werden.',422);
 
 /** Signed playback URLs are ephemeral capabilities, never recipe source URLs. */
 export function playbackUrl(value:string,platform:'instagram'|'tiktok'):URL{
@@ -27,6 +28,43 @@ export function instagramPlayback(html:string):URL{
   text=text.replace(/\\(["\\/])/g,'$1');
  }
  throw unavailable();
+}
+
+/** Public JSON only. Bind media to the requested reel, never recommendations. */
+export function instagramPagePlayback(html:string,code:string):URL{
+ if(html.length>2000000||!/^[-\w]{1,100}$/.test(code))throw unavailable();
+ type Node=DefaultTreeAdapterMap['node'];
+ const nodes:Node[]=[parse(html)],values:{value:unknown;depth:number}[]=[],matches:URL[]=[];
+ let visited=0;
+ while(nodes.length){
+  if(++visited>50000)throw unavailable();
+  const node=nodes.pop()!;
+  if('tagName'in node&&node.tagName==='script'&&node.attrs.some(a=>a.name==='type'&&a.value.toLowerCase()==='application/json')){
+   const raw=node.childNodes.filter(n=>n.nodeName==='#text').map(n=>'value'in n?n.value:'').join('');
+   try{values.push({value:JSON.parse(raw),depth:0});}catch{/* No evaluation of executable scripts. */}
+  }
+  if('childNodes'in node)for(const child of node.childNodes)nodes.push(child);
+ }
+ while(values.length){
+  if(++visited>50000)throw unavailable();
+  const {value,depth}=values.pop()!;if(depth>64)throw unavailable();
+  if(!value||typeof value!=='object')continue;
+  if(Array.isArray(value)){for(const entry of value)values.push({value:entry,depth:depth+1});continue;}
+  const record=value as Record<string,unknown>;
+  if((record.code===code||record.shortcode===code)&&('video_versions'in record||'video_url'in record)){
+   const variants=Array.isArray(record.video_versions)?record.video_versions:[];
+   // Prefer the smallest >=480px rendition to conserve the existing byte budget.
+   const candidates=variants.filter((v):v is {url:string;width?:number}=>!!v&&typeof v==='object'&&typeof v.url==='string'&&(v.width===undefined||(Number.isInteger(v.width)&&v.width>0&&v.width<=16384)))
+    .map(v=>({url:playbackUrl(v.url,'instagram'),width:v.width}));
+   const rank=(width:number|undefined)=>width===undefined?2:width>=480?0:1;
+   candidates.sort((a,b)=>rank(a.width)-rank(b.width)||(a.width!==undefined&&b.width!==undefined?(a.width>=480?a.width-b.width:b.width-a.width):0));
+   if(candidates.length)matches.push(candidates[0].url);
+   else if(typeof record.video_url==='string')matches.push(playbackUrl(record.video_url,'instagram'));
+  }
+  for(const entry of Object.values(record))values.push({value:entry,depth:depth+1});
+ }
+ if(matches.length!==1)throw unavailable();
+ return matches[0];
 }
 export function tiktokPlayback(html:string,videoId:string):URL{
  if(html.length>2000000)throw unavailable();
@@ -90,10 +128,15 @@ export async function readPublicVideo(source:URL,pageUrl:URL,html:string,env:Env
  };
  let playback:URL;
  if(platform==='instagram'){
+  const code=source.pathname.match(/^\/(?:reel|p)\/([-\w]+)\/?$/)?.[1];
+  if(!code)throw unavailable();
+  try{playback=instagramPagePlayback(html,code);}catch(error){
+   if(!(error instanceof AppError)||error.code!=='VIDEO_SOURCE_REQUIRED')throw error;
   const embed=new URL(source.pathname.replace(/\/$/,'')+'/embed/',source.origin);
   const response=await request(embed,'text/html');
   if(!response.ok||!/^text\/html\b/i.test(response.headers.get('content-type')||'')){await response.body?.cancel();throw unavailable();}
   playback=instagramPlayback(await limitedText(response,2000000));
+  }
  }else{
   if(videoPlatform(pageUrl)!=='tiktok')throw unavailable();
   const id=pageUrl.pathname.match(/^\/@[^/]+\/video\/(\d+)\/?$/)?.[1];if(!id)throw unavailable();
