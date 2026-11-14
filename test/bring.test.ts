@@ -17,7 +17,7 @@ beforeEach(async()=>{
  await env.DB.batch(['DELETE FROM bring_requests','DELETE FROM bring_settings','DELETE FROM imports','DELETE FROM checked_items','DELETE FROM plan','DELETE FROM steps','DELETE FROM ingredients','DELETE FROM recipe_images','DELETE FROM recipes','DELETE FROM members'].map(s=>env.DB.prepare(s)));
  for(const m of [admin,member])await env.DB.prepare('INSERT INTO members(id,email,role) VALUES(?,?,?)').bind(m.id,m.email,m.role).run();
 });
-async function savedRecipe(){const repo=new Repository(env.DB),source={url:'https://recipes.example/bring',kind:'web' as const};const job=await repo.reserve(admin,source,config(),50000);return repo.save(recipe,admin,source,job,generated.usage);}
+async function savedRecipe(data=recipe){const repo=new Repository(env.DB),source={url:'https://recipes.example/bring',kind:'web' as const};const job=await repo.reserve(admin,source,config(),50000);return repo.save(data,admin,source,job,generated.usage);}
 async function configured(){const client=fake(),service=new BringService(config(),env.DB,()=>client);await service.configure(admin,{list_id:listId});return {client,service};}
 it('verbindet nur eigene Listen durch Admins und gibt Mitgliederstatus ohne Zugangsdaten aus',async()=>{
  const {client,service}=await configured();expect(await service.status()).toEqual({enabled:true,ready:true,list_name:'Zuhause',revision:1});
@@ -29,7 +29,7 @@ it('verbindet nur eigene Listen durch Admins und gibt Mitgliederstatus ohne Zuga
 });
 it('überträgt gespeicherte Zutaten samt Mengen einmal, auch bei parallelem Doppelklick',async()=>{
  const id=await savedRecipe(),{client,service}=await configured();
- const input={recipe_id:id,revision:1,target_revision:1};
+ const input={recipe_id:id,ingredient_index:0,revision:1,target_revision:1};
  const results=await Promise.allSettled([service.send(member,input),service.send(admin,input)]);
  expect(results.filter(r=>r.status==='fulfilled').length).toBeGreaterThan(0);
  expect(client.add).toHaveBeenCalledTimes(1);
@@ -39,7 +39,7 @@ it('überträgt gespeicherte Zutaten samt Mengen einmal, auch bei parallelem Dop
 it('unsicheres Schreibergebnis wird weder automatisch noch durch erneuten Klick wiederholt',async()=>{
  const id=await savedRecipe(),{client,service}=await configured();
  client.add.mockRejectedValue(new Error('TEST_PASSWORD_ONLY'));
- const input={recipe_id:id,revision:1,target_revision:1};
+ const input={recipe_id:id,ingredient_index:0,revision:1,target_revision:1};
  await expect(service.send(member,input)).rejects.toMatchObject({code:'BRING_UNCERTAIN'});
  await expect(service.send(admin,input)).rejects.toMatchObject({code:'BRING_PENDING'});
  expect(client.add).toHaveBeenCalledTimes(1);
@@ -47,9 +47,9 @@ it('unsicheres Schreibergebnis wird weder automatisch noch durch erneuten Klick 
 });
 it('prüft Ziel- und Rezeptrevision vor externem Zugriff und sperrt veränderte Ziele',async()=>{
  const id=await savedRecipe(),{client,service}=await configured();client.login.mockClear();
- await expect(service.send(member,{recipe_id:id,revision:2,target_revision:1})).rejects.toMatchObject({code:'EDIT_CONFLICT'});
- await expect(service.send(member,{recipe_id:id,revision:1,target_revision:2})).rejects.toMatchObject({code:'BRING_CHANGED'});
- await expect(service.send(member,{recipe_id:id,revision:1,target_revision:1,list_id:userId})).rejects.toMatchObject({code:'BRING_INPUT'});
+ await expect(service.send(member,{recipe_id:id,ingredient_index:0,revision:2,target_revision:1})).rejects.toMatchObject({code:'EDIT_CONFLICT'});
+ await expect(service.send(member,{recipe_id:id,ingredient_index:0,revision:1,target_revision:2})).rejects.toMatchObject({code:'BRING_CHANGED'});
+ await expect(service.send(member,{recipe_id:id,ingredient_index:0,revision:1,target_revision:1,list_id:userId})).rejects.toMatchObject({code:'BRING_INPUT'});
  expect(client.login).not.toHaveBeenCalled();expect(client.add).not.toHaveBeenCalled();
 });
 it('begrenzt Verbindungsanfragen persistent und entfernt keine Bring-Artikel',async()=>{
@@ -66,7 +66,7 @@ it('fehlende Secrets deaktivieren Bring ohne Fremdanfragen; Preview ist gesperrt
 });
 it('Loginfehler vor dem Schreiben erlauben bewussten neuen Versuch, kein automatisches Retry',async()=>{
  const id=await savedRecipe(),{client,service}=await configured();client.login.mockRejectedValueOnce(new Error('mock-login-error'));
- const input={recipe_id:id,revision:1,target_revision:1};
+ const input={recipe_id:id,ingredient_index:0,revision:1,target_revision:1};
  await expect(service.send(member,input)).rejects.toThrow();expect(client.add).not.toHaveBeenCalled();
  expect((await service.send(member,input)).ok).toBe(true);expect(client.add).toHaveBeenCalledTimes(1);
 });
@@ -201,4 +201,30 @@ it('funktioniert auch mit einem receiver-sensitiven Transport und behält Redire
  };
  await new BringClient(config(),transport as typeof fetch).login();
  expect(receivers).toEqual([undefined]);
+});
+
+it('sendet exakt die ausgewählte gespeicherte Zutat und dedupliziert pro Zutat',async()=>{
+ const id=await savedRecipe({...recipe,ingredients:[...recipe.ingredients,{name:'Salz',amount:null,unit:'',note:'nach Geschmack'}]});
+ const {client,service}=await configured();
+ await service.send(member,{recipe_id:id,revision:1,target_revision:1,ingredient_index:1});
+ expect(client.add).toHaveBeenLastCalledWith(listId,[{name:'Salz',quantity:'Menge offen'}],expect.any(String));
+ await service.send(member,{recipe_id:id,revision:1,target_revision:1,ingredient_index:0});
+ expect(client.add).toHaveBeenLastCalledWith(listId,[{name:'Tomaten',quantity:'200 g'}],expect.any(String));
+ expect((await service.send(member,{recipe_id:id,revision:1,target_revision:1,ingredient_index:1})).existing).toBe(true);
+ expect(client.add).toHaveBeenCalledTimes(2);
+});
+it('Bulk- und ungültige Zutatenauswahl werden vor Fremdzugriff abgewiesen',async()=>{
+ const id=await savedRecipe(),{client,service}=await configured();client.login.mockClear();
+ for(const input of [{recipe_id:id,revision:1,target_revision:1},{recipe_id:id,revision:1,target_revision:1,ingredient_index:-1},{recipe_id:id,revision:1,target_revision:1,ingredient_index:200}]){
+   await expect(service.send(member,input)).rejects.toMatchObject({code:'BRING_INPUT'});
+ }
+ await expect(service.send(member,{recipe_id:id,revision:1,target_revision:1,ingredient_index:1})).rejects.toMatchObject({code:'INVALID_INGREDIENT'});
+ expect(client.login).not.toHaveBeenCalled();expect(client.add).not.toHaveBeenCalled();
+});
+it('einzelne Zutaten verwenden ein eigenes persistentes Kontingent von 30 Exporten pro Minute',async()=>{
+ const ingredients=Array.from({length:31},(_,i)=>({name:'Testzutat '+i,amount:1,unit:'Stück',note:''}));
+ const id=await savedRecipe({...recipe,ingredients}),{client,service}=await configured();
+ for(let i=0;i<30;i++)await service.send(member,{recipe_id:id,revision:1,target_revision:1,ingredient_index:i});
+ await expect(service.send(member,{recipe_id:id,revision:1,target_revision:1,ingredient_index:30})).rejects.toMatchObject({status:429});
+ expect(client.add).toHaveBeenCalledTimes(30);
 });

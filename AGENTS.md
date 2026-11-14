@@ -1,7 +1,7 @@
 # Dauerhafte Projektregeln
 
 - Ziel: private gemeinsame Rezept-App auf Cloudflare Workers + Static Assets, D1, Cloudflare Access und ausschließlich OpenAI als KI-Anbieter.
-- Bestehende gute Oberfläche und Einkaufslogik weiterentwickeln. Geschäftslogik und API-Verträge in gemeinsamem TypeScript.
+- Bestehende gute Rezeptoberfläche weiterentwickeln; Zutaten einzeln an Bring! übertragen. Die interne Einkaufsliste bleibt ausschließlich im Archiv und darf nicht in aktive Builds gelangen. Geschäftslogik und API-Verträge in gemeinsamem TypeScript.
 - Nur Branches mit Präfix `codex/` bearbeiten und per Pull Request übergeben. Niemals direkt auf `main` pushen oder selbst mergen.
 - Keine produktiven Ressourcen, Deployments, Datenänderungen oder remote D1-Migrationen ohne ausdrückliche Zustimmung. Kein automatischer Migrationsschritt im Build/Deploy.
 - Die vorhandene produktive D1 verwenden; keine zweite produktive Datenbank anlegen. Fehlende Konfiguration offen dokumentieren.
@@ -19,3 +19,5 @@
 - Hosting vorerst ausschließlich über die kostenlose workers.dev-Adresse für Frontend und API. Worker-weites Cloudflare Access auf All traffic mit expliziten E-Mail-Freigaben schützt auch Vorschauen. Keine eigene Domain voraussetzen und GitHub Pages unverändert lassen.
 
 - Öffentliche HTTPS-Rezeptquellen ohne Pflicht-Hostliste unterstützen. RECIPE_ALLOWED_HOSTS bleibt eine optionale Einschränkung. global_fetch_strictly_public, DNS-/Redirect-Prüfungen und öffentliche Egress-Isolation erhalten; keine privaten Netzwerk-/Service-Fetch-Bindings ergänzen.
+
+- `archive/shopping-list/` ist ein eingefrorener Quellstand, kein aktiver Einstieg. Keine Imports, Assets oder Kataloge daraus ausliefern. Historische Einkaufsdaten nicht löschen; keine erneute Aktivierung ohne Produktentscheidung.

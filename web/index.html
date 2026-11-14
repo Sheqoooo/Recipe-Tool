@@ -33,7 +33,7 @@
 <label class="authorization"><input id="transcript-authorized" type="checkbox"> Ich darf den bereitgestellten Text für diesen Import verwenden.</label>
 </div>
 </form>
-<div class="start-shortcuts"><button class="saved-button" data-view="collection"><span aria-hidden="true">📚</span> Meine Rezepte <span id="recipe-count" class="count">0</span></button><button class="saved-button" data-view="shopping"><span aria-hidden="true">🛍️</span> Meine Einkaufsliste <span id="home-shopping-count" class="count">0</span></button></div>
+<div class="start-shortcuts"><button class="saved-button" data-view="collection"><span aria-hidden="true">📚</span> Meine Rezepte <span id="recipe-count" class="count">0</span></button></div>
 </div>
 </section>
 <section id="view-collection" class="view content-view" hidden>
@@ -41,34 +41,18 @@
 <label class="sr-only" for="search">Rezepte durchsuchen</label><div class="search-field"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Rezept oder Zutat suchen …" autocomplete="off"></div>
 <div id="recipe-grid" class="recipe-grid"></div>
 </section>
-<section id="view-shopping" class="view content-view" hidden>
-<div class="shopping-heading"><h1>Einkaufsliste</h1></div>
-<form id="shopping-form" class="grocery-composer" autocomplete="off">
-<label class="sr-only" for="shopping-name">Was möchtest du einkaufen?</label>
-<div class="grocery-search-controls"><div class="grocery-input-row"><span id="shopping-emoji" aria-hidden="true">🛍️</span><input id="shopping-name" disabled role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="shopping-suggestions" placeholder="Was möchtest du einkaufen?" maxlength="100" enterkeyhint="done" required><button id="shopping-search-clear" type="button" class="search-clear" aria-label="Suche leeren" hidden>×</button><button type="submit" disabled class="primary grocery-add" aria-label="Artikel hinzufügen">+</button></div><button id="shopping-search-cancel" type="button" class="search-cancel">Abbrechen</button></div>
-<div id="shopping-suggestions" class="product-suggestions" role="listbox" aria-label="Artikelvorschläge" hidden></div>
-<div class="grocery-quantity-row"><label class="sr-only" for="shopping-quantity">Menge (optional)</label><input id="shopping-quantity" disabled placeholder="Menge, z. B. 2 Flaschen (optional)" maxlength="60"><button id="cancel-shopping-edit" type="button" class="text-button" hidden>Abbrechen</button></div>
-<p id="shopping-edit-hint" class="field-help" hidden>Artikel bearbeiten – Änderungen mit + speichern.</p>
-</form>
-<button id="shopping-search-backdrop" type="button" aria-label="Artikelsuche schließen" hidden></button>
-<section class="manual-shopping-section" aria-label="Einkaufsartikel"><div id="shopping-list"><div id="manual-shopping-list"></div></div></section>
-<section id="recent-shopping-section" class="recent-shopping-section" hidden><h2>Zuletzt verwendet</h2><p class="field-help">Antippen, um einen Artikel erneut einzukaufen.</p><div id="recent-shopping-list" class="grocery-grid"></div></section>
-<div id="recipe-shopping" class="shopping-layout"><div><h2 class="section-title">Geplante Gerichte</h2><div id="plan-list"></div></div></div>
-<footer class="shopping-footer"><div class="section-tools"><h2>Auf deiner Liste <span id="manual-count" class="count">0</span></h2><button id="copy-list" class="text-button">Liste kopieren ↗</button></div><p class="catalog-attribution">Lebensmittelbegriffe: <a href="https://blsdb.de/download" target="_blank" rel="noopener noreferrer">MRI · BLS 4.0</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>) und <a href="https://world.openfoodfacts.org/" target="_blank" rel="noopener noreferrer">Open Food Facts</a> (<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>). <a href="https://github.com/Sheqoooo/Recipe-Tool/tree/main/data/catalog" target="_blank" rel="noopener noreferrer">Daten & Herkunft ↗</a></p><p class="shopping-route-help">Nach Einkaufsbereichen sortiert · Kühl- und Tiefkühlware am Ende</p></footer>
-</section>
 <section id="view-settings" class="view content-view" hidden>
 <div class="page-heading"><div><span class="page-emoji" aria-hidden="true">⚙️</span><h1>Einstellungen</h1><p id="identity" class="intro"></p></div></div>
 <div class="panel settings-panel"><h2>KI-Verbindung</h2><div id="key-status" class="hint"></div><p class="field-help">Der API-Key wird ausschließlich als Cloudflare Worker Secret verwaltet.</p></div>
 <div id="bring-panel" class="panel settings-panel" hidden><h2>Bring! 🛍️</h2><p id="bring-status" class="field-help"></p><div id="bring-admin" hidden><p class="field-help">Eine gemeinsame Zielliste für alle freigegebenen Mitglieder. Übertragen werden nur die Zutaten, die du ausdrücklich sendest.</p><button id="bring-load-lists" type="button" class="secondary">Bring!-Listen laden</button><form id="bring-form" hidden><label for="bring-list">Gemeinsame Bring!-Liste</label><select id="bring-list" required></select><button type="submit" class="primary compact">Liste verbinden</button></form></div><p class="field-help">Inoffizielle Anbindung. Die Übertragung verursacht keine KI-Kosten.</p></div>
 <div id="members-panel" class="panel settings-panel" hidden><h2>Mitglieder</h2><p class="field-help">Zugriff hier und zusätzlich in Cloudflare Access erlauben. Es werden keine Einladungs-E-Mails versendet.</p><form id="member-form"><label for="member-email">E-Mail-Adresse</label><input id="member-email" type="email" required maxlength="254"><label for="member-role">Rolle</label><select id="member-role"><option value="member">Mitglied</option><option value="admin">Administrator</option></select><button class="primary compact" type="submit">Zugriff erlauben</button></form><div id="member-list"></div></div>
-<div class="panel settings-panel"><h2>Auf dem iPhone speichern</h2><p class="field-help">Den gewünschten Bereich in Safari öffnen und über Teilen zum Home-Bildschirm hinzufügen. Nach einem Symbolwechsel das alte Home-Symbol entfernen und neu hinzufügen.</p><p class="field-help"><a href="/recipes/">🍋 Futterluke</a> · <a href="/shopping/">🛍️ Einkaufsliste</a> · <a href="/shopping/dark/">Dunkles Einkaufssymbol</a></p></div><div class="panel settings-panel"><h2>Importverlauf</h2><div id="import-history"></div></div>
+<div class="panel settings-panel"><h2>Auf dem iPhone speichern</h2><p class="field-help">Den gewünschten Bereich in Safari öffnen und über Teilen zum Home-Bildschirm hinzufügen. Nach einem Symbolwechsel das alte Home-Symbol entfernen und neu hinzufügen.</p><p class="field-help"><a href="/recipes/">🍋 Futterluke</a></p></div><div class="panel settings-panel"><h2>Importverlauf</h2><div id="import-history"></div></div>
 <div class="panel settings-panel"><h2>Deine Daten gehören dir</h2><p class="field-help">Exportiere deine Sammlung als JSON-Datei. Ein vollständiges Backup erfolgt über Cloudflare D1.</p><button id="export" class="secondary">Rezepte exportieren ↓</button></div>
 </section>
 </main>
 <nav id="app-navigation" class="bottom-navigation" aria-label="Hauptnavigation" hidden>
 <button data-view="collection" class="nav-item"><span aria-hidden="true">📚</span><span>Meine Rezepte</span></button>
 <button data-view="import" class="nav-item"><span aria-hidden="true">＋</span><span>Link einfügen</span></button>
-<button data-view="shopping" class="nav-item"><span aria-hidden="true">🛍️</span><span>Einkaufsliste <b id="plan-count">0</b></span></button>
 </nav>
 <dialog id="recipe-dialog" aria-label="Rezept"><div class="dialog-header"><span id="dialog-caption">DEIN REZEPT</span><button id="close-dialog" class="icon-button" aria-label="Schließen">×</button></div><div id="dialog-content"></div></dialog>
 </body>

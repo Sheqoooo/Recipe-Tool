@@ -1,0 +1,42 @@
+{
+  "name": "rezeptwerk",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12 <27"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "dev": "npm run build && wrangler dev --local --ip 127.0.0.1 --port 8787",
+    "start": "npm run dev",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "build:worker": "wrangler deploy --dry-run --outdir .runtime/worker",
+    "deploy:production": "node scripts/release.mjs production",
+    "deploy:preview": "node scripts/release.mjs preview",
+    "db:migrate:production": "node scripts/release.mjs migrate",
+    "test:browser": "playwright test",
+    "build:demo": "node scripts/build.mjs --demo",
+    "demo": "npm run build:demo && node scripts/serve-demo.mjs"
+  },
+  "dependencies": {
+    "openai": "7.54.0",
+    "jose": "6.2.16",
+    "zod": "4.6.7",
+    "parse5": "8.0.0",
+    "ipaddr.js": "2.2.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.159.0",
+    "@cloudflare/workers-types": "5.20261109.1",
+    "@cloudflare/vitest-plugin": "1.6.1",
+    "typescript": "7.0.2",
+    "vitest": "5.1.0",
+    "esbuild": "0.28.2",
+    "@types/node": "24.0.0",
+    "@playwright/test": "1.65.0"
+  }
+}

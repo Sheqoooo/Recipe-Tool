@@ -1,110 +1,45 @@
-# Manueller Smoke-Test nach Freigabe
+# Manueller Smoke-Test der privaten Futterluke
 
-Status: **noch nicht durchgeführt**. Die erfolgreichen lokalen Emulator-/Mocktests ersetzen diese Prüfung im tatsächlichen Cloudflare-Konto nicht. Automatischer YouTube-Videoimport bleibt das langfristige Produktziel; der aktuelle Transkriptimport ist ein eingeschränkter Zwischenstand.
+Automatisierte Tests verwenden ausschließlich lokales D1 und gemocktes OpenAI/Bring!. Die nachstehenden echten Aktionen werden vom Betreiber bewusst ausgeführt. Keine Secrets, Rohantworten oder Tokens in Screenshots/Chat/Logs teilen.
 
-## Freigaben und Protokoll
+## Access und Rollen
 
-Vor Beginn getrennt festhalten: freigegebener Commit, App-Deployment, anzuwendende SQL-Migrationen und gegebenenfalls kostenpflichtige OpenAI-Importtests. Eine Merge-Freigabe ist nicht automatisch eine Freigabe für Datenänderungen oder echte KI-Anfragen. Keine produktiven Fehlerszenarien durch Austauschen von Secrets oder absichtliches Überlasten erzeugen.
+- Nicht angemeldet: App, Rezeptbilder, JavaScript, Manifest und APIs sind geschützt.
+- Freigegebene E-Mail: anmelden; konfigurierte einmonatige Sitzung bleibt wirksam.
+- Nicht freigegebene E-Mail: kein Zugriff. Ungültiges Worker-Token: HTML-Anmeldehilfe bzw. API-JSON/401, ohne private Daten.
+- Preview: Access aktiv, keine produktiven DB-/KI-/Bring!-Secrets; schreibgeschützt.
+- Mitglied kann eigene Rezepte bearbeiten; Admin fremde verwalten/löschen und gemeinsame Bring!-Zielliste konfigurieren.
 
-| Feld | Eintrag |
-| --- | --- |
-| Datum / prüfende Person | offen |
-| Commit / Deployment-Version | offen |
-| Hauptadresse / geschützte Preview-Adresse | offen |
-| Access-/D1-/Deploy-Freigabe | offen |
-| Freigabe echte KI-Aufrufe, maximale Anzahl / Kosten | offen |
-| Ergebnis / offene Fehler | offen |
+## Datenbank und Build
 
-Als Rollen werden ein Administrator, ein zusätzlich eingeladenes normales Mitglied und eine nicht erlaubte Testidentität benötigt. E-Mail-Adressen bleiben privat. Nur vereinbarte Testrezepte verwenden, keine fremden privaten Rezepte ändern. Ergebnisse mit Fehlercode und Testnummer protokollieren; keine Keys, Cookies, JWTs oder vollständigen Netzwerkexporte veröffentlichen.
+- Migrationen in der bestehenden D1 prüfen; der aktuelle Archivierungsstand benötigt keine neue Migration.
+- Bestehende Rezepte bleiben lesbar. Historische Einkaufsdaten werden nicht gelöscht und fehlen in `/api/state`.
+- Keine Einkaufsnavigation, Kochplanung, Produktkataloge oder Sammelversandschaltfläche.
+- Alte `/shopping/`-URLs führen nach Anmeldung zum Kochbuch. Archiv-/Katalog-Assets und alte Einkaufs-APIs liefern 404.
+- Futterluke bleibt mit unverändertem Zitronensymbol installierbar. Das alte Einkaufs-Home-Symbol kann manuell entfernt werden.
+- GitHub Pages bleibt unabhängig und unverändert.
 
-## 1. Access und Preview — noch kein KI-Aufruf
+## Rezeptimport (nur nach Kostenfreigabe)
 
-- [ ] Im Worker **Access** prüfen: **All traffic**, ausschließlich die beabsichtigte E-Mail-Allow-Regel, höchstens 24 Stunden Sitzung. Keine zusätzliche Cloudflare-account-/Everyone-/Bypass-Regel, die weitere Personen zulässt.
-- [ ] In einem frischen privaten Browserfenster nacheinander `/`, `/app.js`, `/style.css`, `/api/state` der Hauptadresse aufrufen. Erwartung: Access-Anmeldung oder Sperre, keine App-Dateien und keine privaten API-Daten vor Anmeldung.
-- [ ] Mit nicht erlaubter E-Mail versuchen: kein Zugang. Mit erlaubter E-Mail per One-time PIN anmelden: Zugriff möglich. Access-Login allein genügt ohne aktive App-Mitgliedschaft weiterhin nicht.
-- [ ] Als Admin Sammlung öffnen. Als Mitglied ohne Einladung bzw. nach ausdrücklich freigegebener Sperrung in der Mitgliederverwaltung: `403 NOT_INVITED`; keine Rezepte. Für den Sperrtest ausschließlich die Testidentität verwenden, nicht den letzten Administrator.
-- [ ] Dasselbe für eine tatsächlich erstellte Preview testen: Anmeldung erforderlich, anschließend leere schreibgeschützte Sammlung. Import und andere POST-Aktionen sind gesperrt. Ohne vorhandene Preview diesen Punkt als **offen** kennzeichnen, nicht als bestanden.
-- [ ] Preview-Konfiguration im Dashboard kontrollieren: keine D1, kein `OPENAI_API_KEY`, kein `BOOTSTRAP_ADMIN_EMAILS`; keine Produktions-Secrets aus Previews Base importiert. Alte Versions-URLs bleiben deaktiviert.
+- Öffentliche strukturierte Rezeptseite importieren: direkt speichern, Titel/Portionen/Zeiten/Zutaten/Schritte prüfen.
+- Mengen in Klammern in Arbeitsschritten; keine erfundenen Mengen oder Temperaturen.
+- Große Seiten, optionale Bilder, fehlende Mengen, Quellfehler und sensible/private URLs prüfen.
+- Identischer Link ohne Wunsch verursacht keinen erneuten KI-Aufruf; Anpassungswunsch erzeugt eine nachvollziehbare Variante.
+- Öffentliche Videoquelle nur nach Zugriffsmöglichkeiten; kein Versprechen beliebiger YouTube-/Instagram-/TikTok-Downloads.
+- OpenAI-Ausfall und Budget-/Rate-Limits liefern sichere Meldungen.
 
-## 2. Bestehende D1 und Migrationen
+## Einzelne Bring!-Zutaten (bewusster externer Schreibtest, keine KI-Kosten)
 
-- [ ] Binding `DB` zeigt ausschließlich in Production auf `recipe-prod`, ID `58577ba1-de20-4078-915d-9c0a2962f555`. Keine zweite produktive Datenbank.
-- [ ] Vor Remote-Migration Bestand und Backup-/Wiederherstellungsmöglichkeit prüfen. Beide SQL-Dateien reviewen: `0001_shared_cookbook.sql` erstellt sieben Anwendungstabellen; `0002_recipe_listing_index.sql` ergänzt nur den Listenindex. Freigabe und Anwendung separat vom Deployment protokollieren. Der dokumentierte Betreiberbefehl steht in DEPLOYMENT.md; ihn nicht als Build-Schritt hinterlegen.
-- [ ] Nach Migration in der D1-Konsole nur lesend prüfen:
+- Als Admin Verbindung/ausgewählte Liste prüfen, ohne Secrets anzuzeigen.
+- Ein gespeichertes Testrezept öffnen. Plus neben einer Zutat drücken; nur diese Zutat und gespeicherte Menge erscheinen in Bring!.
+- Fehlende Menge bleibt „Menge offen“. Andere Zutaten werden nicht mitgesendet.
+- Dieselbe Zutat binnen zehn Minuten erneut drücken: keine erneute Übertragung. Andere Zutat lässt sich danach übertragen.
+- Mehrere unterschiedliche Plus-Schaltflächen zügig drücken: sie werden nacheinander gesendet. Nach einem Fehler keine automatische Schreibwiederholung.
+- Veraltete Rezept-/Ziellistenrevision und unklare Bring!-Antwort kontrolliert abweisen. Bei unklarem Ergebnis vor neuem Versuch die Bring!-Liste prüfen.
+- Testartikel bei Bedarf anschließend selbst in Bring! entfernen.
 
-```sql
-SELECT name FROM sqlite_schema
-WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;
-SELECT name FROM sqlite_schema
-WHERE type='index' AND name='recipes_listing';
-```
+## Smartphone und Offline-Demo
 
-Erwartete Anwendungstabellen: `members`, `recipes`, `ingredients`, `steps`, `plan`, `checked_items`, `imports`. Wrangler-interne Migrationstabellen können zusätzlich vorhanden sein. Der Index `recipes_listing` muss vorhanden sein.
-
-- [ ] Nach erster Adminanmeldung aktive Mitgliedschaft/Rolle kontrollieren. Keine Admin-Adresse in öffentlichen Repository-Variablen oder im Browser-Bundle.
-- [ ] Nach einem freigegebenen Testimport Seite neu laden und neu anmelden: Rezept bleibt gespeichert; Zutaten/Schritte sind vollständig und korrekt zugeordnet. Kopieren/Exportieren der Sammlung gibt keine vollständigen Rohquellen aus.
-
-## 3. Sensible Links und Fehlergrenzen — kein kostenpflichtiger Test nötig
-
-- [ ] In der App `https://example.com/?access_token=SMOKE_TEST_NOT_A_SECRET` eingeben, anschließend mit `apikey` bzw. `X-Amz-Signature` statt `access_token`. Erwartung: `PRIVATE_URL`, kein Rezept, kein neuer Importdatensatz, kein KI-Verbrauch. Der Fehler enthält weder URL noch Parameterwert.
-- [ ] `https://127.0.0.1/` und `https://host.internal/` eingeben: kontrollierte Ablehnung; kein Rezept. Quellprüfungen nach einer Kostenreservierung können einen fehlgeschlagenen Importversuch zählen, aber keine KI-Anfrage auslösen.
-- [ ] Bei einem vereinbarten nicht auslesbaren Rezeptlink: verständlicher Fehler statt Rohfehler/Stacktrace; kein leerer Rezeptdatensatz. Keine Zugangsdaten in die Quelle eingeben.
-- [ ] Historische verdächtige Quell-URLs nur bei bestehendem Anlass und mit eigener Freigabe untersuchen. Neue Daten werden geprüft; alte unsichere URLs werden in Sammlung/Historie als leere Quelle ausgegeben. Dieses Verhalten löscht vorhandene DB-Werte nicht. Nicht absichtlich echte Geheimnisse als Testdaten eintragen.
-
-## 4. OpenAI und Webseitenimport — erst nach ausdrücklicher Kostenfreigabe
-
-- [ ] Produktions-Key und Admin-Adresse ausschließlich als Worker Secrets hinterlegt, Schlüsselberechtigung für Responses vorhanden, Modell und Preise konfiguriert, API-Abrechnung aktiv. App-Kontingente vor Testbeginn ablesen/vereinbaren.
-- [ ] Eine öffentlich lesbare Rezeptquelle mit überprüfbaren Zutaten/Mengen/Zeiten auswählen. URL im privaten Testprotokoll notieren. Nach Freigabe **genau einen** Import starten.
-- [ ] Erwartung: automatische Speicherung ohne obligatorische Korrekturmaske; deutscher Titel und Schritte; Quelle korrekt; bekannte Zeiten/Portionen erhalten; unbekannte Angaben als unbekannt/Hinweis. Zutatenmengen zusätzlich in den passenden Schritten, unklare Teilmengen nicht erfunden.
-- [ ] Für eine US-Quelle anhand des Originals oz/lb, Fahrenheit und Cups nachprüfen. Bei Cups zu Gramm muss die Zutat berücksichtigt oder Volumen beibehalten werden. Dieser zusätzliche Import benötigt ein eigenes Kontingent im Testprotokoll.
-- [ ] Eine lange Seite mit großem JSON-LD (Bewertungen/Bilder) bzw. langer Einleitung und kurzer Rezeptkarte nach Freigabe testen: der Rezeptkern soll importiert werden. Wenn der eigentliche Zutaten-/Schritttext selbst über 20 KB bleibt oder nicht verlässlich isolierbar ist, kontrolliertes `SOURCE_TOO_LARGE` statt still gekürztem Rezept erwarten.
-- [ ] In D1 nur lesend die letzten Importmetadaten prüfen:
-
-```sql
-SELECT status, error_code, input_tokens, output_tokens,
-       estimated_cost_microusd, model
-FROM imports ORDER BY created_at DESC LIMIT 5;
-```
-
-Erwartung bei Erfolg: `completed`, Tokenverbrauch und Kostenschätzung vorhanden. Mit dem privaten OpenAI-Verbrauchs-Dashboard zeitversetzt abgleichen. Keine Produktions-Keys in Logs oder Browser-Netzwerkanfragen.
-
-- [ ] Identischen Link erneut importieren (auch anderes URL-Fragment): vorhandenes Rezept wird wiedererkannt, kein weiterer KI-Aufruf. Reguläre Rezept-Query-Parameter bleiben bei der Wiedererkennung erhalten.
-- [ ] Rezept zur Kochliste hinzufügen, Portionen ändern, Einkaufsmengen prüfen, Position abhaken und neu laden. Nach Mengenänderung dürfen alte Häkchen nicht unpassend erhalten bleiben.
-- [ ] Als normales Mitglied eigenes Testrezept bearbeiten; fremdes Rezept und Löschen bleiben gesperrt. Als Admin darf das vereinbarte Testrezept verwaltet werden. Löschen nur nach Freigabe des konkreten Testdatensatzes.
-
-Timeouts, OpenAI-429/5xx und unvollständige Modellantworten sind mit Mocks automatisiert abgedeckt. Sie werden für diesen Smoke-Test nicht kostenpflichtig oder durch absichtliche Produktionsstörungen erzwungen.
-
-## 5. Eingeschränkter YouTube-Zwischenstand
-
-- [ ] YouTube-Shorts-/Instagram-/TikTok-Link ohne Transkript: öffentliche Beschreibung wird versucht; bei fehlendem Rezepttext `VIDEO_SOURCE_REQUIRED`. Keine Plattform-Anmeldung. Bei ausgeschaltetem Medienflag kein Videodateiabruf.
-- [ ] Optional und nur nach Kostenfreigabe: rechtmäßig bereitgestelltes Transkript bis 20 KB, Nutzungsbestätigung und angegebene Videodauer bis 20 Minuten importieren. Erwartung: Hinweis, dass ausschließlich Text und keine Bilder/Audio analysiert wurden. Die angegebene Dauer wird nicht am Video verifiziert.
-- [ ] Festhalten: **Vollständige automatische Ton-/Bildanalyse beliebiger Plattformlinks ist nicht implementiert.** Der begrenzte öffentliche Medienadapter muss separat aktiviert und live geprüft werden; YouTube-Ton/Bild bleibt offen. Dieses Produktziel ist durch das Bestehen des Transkript-Tests nicht erreicht.
-
-Abschluss: Jeden Punkt als bestanden, fehlgeschlagen oder offen markieren. Ein fehlgeschlagener Schutztest blockiert die weitere Nutzung der privaten App bis zur Behebung. Keine offenen Live-Prüfungen als erfolgreich ausgeführt darstellen.
-
-## Optionaler automatischer Medienpfad (separate Freigabe nötig)
-
-- [ ] Vor Aktivierung: fehlendes Flag oder fehlendes MEDIA-Binding führt niemals zu Audio-/Vision-Anfragen. Preview mit MEDIA/Flag ist gesperrt.
-- [ ] Nach ausdrücklicher Kostenfreigabe und Aktivierung: kurzes berechtigtes Instagram-Video mit unzureichender Beschreibung importieren; echte Ton- und Bildverarbeitung prüfen, nicht nur Beschreibungserfolg.
-- [ ] Importhinweis nennt sechs Einzelbilder; Mengen, sichtbare Einblendungen und Tontranskription mit dem Original vergleichen. Fehlende Mengen werden nicht ergänzt.
-- [ ] In D1/Status nur Rezept, kanonischen Link und Verbrauch sehen; keine signierten Playback-URLs, Rohbytes, Frames oder vollständigen Transkripte.
-- [ ] Budget-/Parallelitätsgrenzen, 90-s-/12-MiB-Grenzen, falscher MIME-Typ und abgelaufene Quelle erzeugen kontrollierte Fehler ohne Wiederholungsschleife.
-- [ ] TikTok-Beispiel mit Medien-HTTP-403 bleibt abgewiesen. Keine automatische Umgehung. YouTube-Medienfähigkeit wird nicht suggeriert.
-- [ ] Cloudflare-CPU-/Speichermetriken und Media-Latenz prüfen; Native-Binding-Beta ist kein Nachweis der Eignung des Free-Worker-Tarifs.
-
-## Videostandbilder und Import-Reset
-
-- [ ] Neues berechtigtes Video mit tatsächlicher Medienanalyse importieren: sofern einer der sechs Frames geeignet ist, erscheint ein echtes Standbild mit Originalquelle. Keine zusätzliche Bildgenerierungsanfrage.
-- [ ] Rein aus Beschreibung importiertes Video ohne Bild: wenn das öffentliche Video abrufbar ist, wird ein früher Frame ergänzt; Bildfehler verwerfen das Rezept nicht.
-- [ ] In bestehendem bildlosen eigenen Instagram-/TikTok-Rezept **Videovorschaubild laden** verwenden: Bild erscheint, Rezepttext bleibt gleich, OpenAI-Verbrauch für den Nachladevorgang null. Vorhandenes Bild wird nicht überschrieben.
-- [ ] Als normales Mitglied kein fremdes Rezeptbild ergänzen; als Admin erlaubt. Vorschau/fehlendes Binding/ausgeschaltetes Flag ist gesperrt.
-- [ ] Hochkant im geöffneten Rezept vollständig sichtbar, in Übersicht als Kachel zugeschnitten. Quellenhinweis nennt das Originalvideo. Bei nicht auslesbarer Quelle bleibt ein klarer Fehler/Platzhalter.
-- [ ] Erfolgreicher neuer oder deduplizierter Import: zurück zur Maske → leeres URL-Feld, verstecktes Textpanel, leerer Transkripttext und keine gespeicherte Zustimmung. Fehlgeschlagener Import behält den Link.
-
-## Optionale Rezeptanpassung
-
-- [ ] Start bleibt schlicht: **Rezept anpassen** öffnet ein optionales Feld. Zuklappen erhält den Wunsch und zeigt „Wunsch hinterlegt“; **Leeren** entfernt ihn. Tastatur und mobile Darstellung prüfen.
-- [ ] Nur nach ausdrücklicher Kostenfreigabe: Fleischrezept mit Wunsch „Hackfleisch durch Halloumi ersetzen“ importieren. Zutaten und alle Anweisungen auf verbliebene Fleischbegriffe/unpassende Garweisen prüfen. Mengen im Satz, Unsicherheiten und nicht mehr bekannte Zeiten sachlich beurteilen.
-- [ ] Original bleibt unverändert; identischer normalisierter Wunsch wird dedupliziert; anderer Wunsch erzeugt eine andere Variante. Ein normaler Import liefert kein angepasstes Rezept als Original zurück.
-- [ ] Gleiches Verhalten für bereitgestellten Videotext und tatsächlich analysiertes Video prüfen. Kein zusätzlicher Modellaufruf nur für den Wunsch.
-- [ ] Erfolg leert und schließt Wunschfeld und Linkmaske. Fehler bewahrt beides. Anpassungskennzeichnung bleibt nach manueller Rezeptkorrektur erhalten; Originalbild darf als ursprüngliche Version erkennbar sein.
+- iPhone: Import, Sammlung, Suche, Rezeptansicht und einzelne Plus-Schaltflächen mit Tastatur prüfen; keine horizontalen Überläufe.
+- `npm run build:demo`: portable Offline-Datei zeigt nur Rezeptoberfläche und simulierte einzelne Bring!-Übertragungen ohne Netz.
+- Die reale Bring!-Liste wird durch die Demo niemals verändert.

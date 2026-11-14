@@ -1,9 +1,11 @@
 import {buildAppIcons} from './app-icons.mjs';
 import {appDefinitions,appManifest,appHtml} from './app-entries.mjs';
 import { build } from 'esbuild';
-import { mkdir,copyFile,readFile,writeFile } from 'node:fs/promises';
+import { rm,mkdir,copyFile,readFile,writeFile } from 'node:fs/promises';
 const demo=process.argv.includes('--demo');
 const output=demo?'.runtime/demo':'dist/client';
+// Only the fixed generated output directory is cleaned; source and archive are untouched.
+await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
 for(const file of ['index.html','style.css'])await copyFile('web/'+file,output+'/'+file);
 await build({entryPoints:['web/app.ts'],outfile:output+'/app.js',bundle:true,format:'esm',target:'es2022',minify:true,define:{__REZEPTWERK_DEMO__:String(demo)}});
@@ -23,10 +25,4 @@ if(!demo){
   await writeFile(output+'/'+app.key+'.webmanifest',JSON.stringify(appManifest(app),null,2));
  }
  await writeFile(output+'/index.html',appHtml(html,appDefinitions[0]));
- const darkShopping={...appDefinitions[1],iconAppearance:'dark'};
- await mkdir(output+'/shopping/dark',{recursive:true});
- await writeFile(output+'/shopping/dark/index.html',appHtml(html,darkShopping));
- await writeFile(output+'/shopping-dark.webmanifest',JSON.stringify(appManifest(darkShopping),null,2));
 }
-
-if(!demo){await mkdir(output+'/catalog',{recursive:true});for(const file of ['bls.json','open-food-facts.json','search.json','SOURCES.json','LICENSE.md','README.md'])await copyFile('data/catalog/'+file,output+'/catalog/'+file);}

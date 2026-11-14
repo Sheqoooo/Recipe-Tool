@@ -15,23 +15,15 @@ function appFixture(){const config=localEnv(env.DB);const read=vi.fn(async(url:s
   const post=(path:string,data:unknown,origin='http://localhost')=>app.fetch(new Request('http://localhost'+path,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify(data)}),config);
   return {config,app,read,generate,get,post};
 }
-it('Webimport speichert direkt; gemeinsame Kochliste, Skalierung, Häkchen und Korrektur funktionieren',async()=>{
-  const app=appFixture();const response=await app.post('/api/import',{value:'https://recipes.example/pasta'});expect(response.status).toBe(201);
-  const {id}=await response.json() as {id:number};let state=await(await app.get()).json() as AppState;
-  expect(state.recipes[0].ingredients[0].amount).toBe(200);expect(JSON.stringify(state)).not.toContain('Untrusted source');expect(state.recipes[0]).not.toHaveProperty('original_text');
-  expect((await app.post('/api/plan',{recipe_id:id,servings:4})).status).toBe(200);state=await(await app.get()).json() as AppState;expect(state.shopping[0].amount).toBe(400);
-  await app.post('/api/shopping/check',{key:state.shopping[0].key,checked:true});expect((await(await app.get()).json() as AppState).checked).toHaveLength(1);
-  expect((await app.post('/api/recipes/save',{...state.recipes[0],title:'Korrigierte Pasta'})).status).toBe(200);
-  state=await(await app.get()).json() as AppState;expect(state.recipes[0].title).toBe('Korrigierte Pasta');expect(state.checked).toHaveLength(0);
-  expect((await app.post('/api/recipes/delete',{id})).status).toBe(200);expect((await(await app.get()).json() as AppState).recipes).toHaveLength(0);
+it('Webimport speichert direkt; gemeinsame Sammlung und Korrektur funktionieren',async()=>{
+ const app=appFixture(),response=await app.post('/api/import',{value:'https://recipes.example/pasta'});expect(response.status).toBe(201);
+ const {id}=await response.json() as {id:number};let state=await(await app.get()).json() as AppState;
+ expect(state.recipes[0].ingredients[0].amount).toBe(200);expect(JSON.stringify(state)).not.toContain('Untrusted source');
+ expect((await app.post('/api/recipes/save',{...state.recipes[0],title:'Korrigierte Pasta'})).status).toBe(200);
+ state=await(await app.get()).json() as AppState;expect(state.recipes[0].title).toBe('Korrigierte Pasta');
+ expect((await app.post('/api/recipes/delete',{id})).status).toBe(200);expect((await(await app.get()).json() as AppState).recipes).toHaveLength(0);
 });
 it('bekannte Quelle verursacht keine zweite KI-Anfrage',async()=>{const app=appFixture();await app.post('/api/import',{value:'https://recipes.example/pasta'});expect((await app.post('/api/import',{value:'https://recipes.example/pasta#zutaten'})).status).toBe(200);expect(app.generate).toHaveBeenCalledTimes(1);});
-it('veraltete Häkchen können geänderte Einkaufsmengen nicht als erledigt markieren',async()=>{
-  const app=appFixture();const {id}=await(await app.post('/api/import',{value:'https://recipes.example/pasta'})).json() as {id:number};
-  await app.post('/api/plan',{recipe_id:id,servings:2});const old=(await(await app.get()).json() as AppState).shopping[0].key;
-  await app.post('/api/plan',{recipe_id:id,servings:4});expect((await app.post('/api/shopping/check',{key:old,checked:true})).status).toBe(409);
-  expect((await(await app.get()).json() as AppState).checked).toHaveLength(0);
-});
 it('fehlender Key, falsche Origin und ungültige Mengen verursachen keine KI-Kosten',async()=>{
   const app=appFixture();app.config.OPENAI_API_KEY=undefined;expect((await app.post('/api/import',{value:'https://recipes.example/pasta'})).status).toBe(503);expect((await app.post('/api/import',{value:'https://recipes.example/pasta'},'https://evil.example')).status).toBe(403);expect(app.generate).not.toHaveBeenCalled();
 });
@@ -159,79 +151,6 @@ it('fehlerhafter Bildabruf verhindert keinen erfolgreichen Rezeptimport',async()
   expect(response.status).toBe(201);expect(await response.text()).not.toContain('Private details');expect(image).toHaveBeenCalledTimes(1);
 });
 
-it('freie Einkaufsartikel werden gemeinsam gespeichert, dedupliziert, geändert und wiederverwendet',async()=>{
- const f=appFixture();expect((await f.post('/api/shopping/items/save',{name:'Spülmittel',quantity:'2 Flaschen'})).status).toBe(200);
- let state=await(await f.get()).json() as AppState;expect(state.manual_items).toHaveLength(1);const item=state.manual_items![0];
- expect(item.name).toBe('Spülmittel');expect(item.checked).toBe(false);
- expect((await f.post('/api/shopping/items/check',{id:item.id,checked:true})).status).toBe(200);
- // Changing recipe plans must not clear completed manual products.
- await f.post('/api/import',{value:'https://recipes.example/manual-independent'});
- const recipeId=(await(await f.get()).json() as AppState).recipes[0].id;
- await f.post('/api/plan',{recipe_id:recipeId,servings:4});
- expect((await(await f.get()).json() as AppState).manual_items![0].checked).toBe(true);
- await f.post('/api/shopping/items/save',{name:'spuelmittel',quantity:''});
- state=await(await f.get()).json() as AppState;expect(state.manual_items).toHaveLength(1);expect(state.manual_items![0].checked).toBe(false);expect(state.manual_items![0].quantity).toBe('2 Flaschen');
- await f.post('/api/shopping/items/save',{id:item.id,name:'Spülmittel sensitiv',quantity:'1 Flasche'});
- expect((await(await f.get()).json() as AppState).manual_items![0].name).toBe('Spülmittel sensitiv');
- await f.post('/api/shopping/items/delete',{id:item.id});
- expect((await(await f.get()).json() as AppState).manual_items).toHaveLength(0);
- expect(f.generate).toHaveBeenCalledTimes(1);
-});
-it('Einkaufsartikel sind für aktive Mitglieder gemeinsam zugänglich',async()=>{
- const repo=new Repository(env.DB),one=actor('one'),two=actor('two');await seed(one);await seed(two);
- await repo.saveShoppingItem({name:'Milch',quantity:'1 l'},one);
- const item=(await repo.shoppingItems())[0];expect(item.name).toBe('Milch');
- await repo.saveShoppingItem({id:item.id,name:'Hafermilch',quantity:'2 l'},two);
- await repo.checkShoppingItem(item.id,true);expect((await repo.shoppingItems())[0].checked).toBe(true);
- await repo.deleteShoppingItem(item.id);expect(await repo.shoppingItems()).toEqual([]);
-});
-it('Einkaufseingaben, Origin und Status werden geprüft und enthalten keine ausführbaren Daten',async()=>{
- const f=appFixture();
- expect((await f.post('/api/shopping/items/save',{name:'Milch'},'https://evil.example')).status).toBe(403);
- for(const value of [{name:''},{name:'x'.repeat(101)},{name:'Milch',quantity:'x'.repeat(61)},{name:'Milch',emoji:'x'}])expect((await f.post('/api/shopping/items/save',value)).status).toBe(400);
- await f.post('/api/shopping/items/save',{name:'<img src=x onerror=alert(1)>'});
- const item=(await(await f.get()).json() as AppState).manual_items![0];
- expect((await f.post('/api/shopping/items/check',{id:item.id,checked:'true'})).status).toBe(400);
- expect((await f.post('/api/shopping/items/check',{id:'bad',checked:true})).status).toBe(400);
- expect(f.generate).not.toHaveBeenCalled();
-});
-it('500 Artikel sind die atomare Grenze, vorhandene Namen lassen sich weiterverwenden',async()=>{
- const repo=new Repository(env.DB),owner=actor('owner');await seed(owner);
- await env.DB.prepare("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<500) INSERT INTO shopping_items(id,name,name_key,created_by) SELECT printf('item-%d',i),printf('Artikel %d',i),printf('artikel %d',i),? FROM n").bind(owner.id).run();
- await expect(repo.saveShoppingItem({name:'Weiterer Artikel'},owner)).rejects.toMatchObject({code:'SHOPPING_LIMIT'});
- await repo.saveShoppingItem({name:'Artikel 1'},owner);expect(await env.DB.prepare('SELECT COUNT(*) FROM shopping_items').first()).not.toBeNull();
- expect(await repo.shoppingItems()).toHaveLength(500);
-});
-
-it('Einkaufsliste funktioniert ohne OpenAI-Key und ohne gespeicherte Rezepte',async()=>{
- const f=appFixture();f.config.OPENAI_API_KEY=undefined;
- expect((await f.post('/api/shopping/items/save',{name:'Spülmittel',quantity:'1 Flasche'})).status).toBe(200);
- const state=await(await f.get()).json() as AppState;
- expect(state.has_key).toBe(false);expect(state.recipes).toHaveLength(0);expect(state.manual_items![0].name).toBe('Spülmittel');expect(f.generate).not.toHaveBeenCalled();expect(f.read).not.toHaveBeenCalled();
-});
-
-it('einzelne und alle Rezeptzutaten werden ohne Kochplanung oder weitere KI-Aufrufe übernommen',async()=>{
- const f=appFixture();f.generate.mockResolvedValue({...structuredClone(generated),recipe:{...structuredClone(recipe),ingredients:[...recipe.ingredients,{name:'Reis',amount:100,unit:'g',note:''}],steps:[{text:'Zutaten zubereiten.',ingredient_indices:[0,1]}]}});
- const {id}=await(await f.post('/api/import',{value:'https://recipes.example/ingredient-copy'})).json() as {id:number};
- f.config.OPENAI_API_KEY=undefined;
- expect((await f.post('/api/shopping/from-recipe',{recipe_id:id,ingredient_indices:[1]})).status).toBe(200);
- let state=await(await f.get()).json() as AppState;expect(state.plan).toHaveLength(0);expect(state.manual_items).toHaveLength(1);expect(state.manual_items![0]).toMatchObject({name:'Reis',quantity:'100 g'});
- expect((await f.post('/api/shopping/from-recipe',{recipe_id:id})).status).toBe(200);
- await f.post('/api/shopping/from-recipe',{recipe_id:id});
- state=await(await f.get()).json() as AppState;expect(state.manual_items).toHaveLength(2);expect(state.manual_items!.find(i=>i.name==='Tomaten')!.quantity).toBe('200 g');expect(f.generate).toHaveBeenCalledTimes(1);
- expect((await f.post('/api/shopping/from-recipe',{recipe_id:id,ingredient_indices:[199]})).status).toBe(400);
- expect((await f.post('/api/shopping/from-recipe',{recipe_id:id},'https://evil.example')).status).toBe(403);
-});
-it('Zutaten-Batch ist bei Kapazitätsüberschreitung atomar',async()=>{
- const f=appFixture();f.generate.mockResolvedValue({...structuredClone(generated),recipe:{...structuredClone(recipe),ingredients:[...recipe.ingredients,{name:'Reis',amount:100,unit:'g',note:''}],steps:[{text:'Zutaten zubereiten.',ingredient_indices:[0,1]}]}});
- const {id}=await(await f.post('/api/import',{value:'https://recipes.example/ingredient-cap'})).json() as {id:number};
- const owner=(await(await f.get()).json() as AppState).user.id;
- await env.DB.prepare("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<499) INSERT INTO shopping_items(id,name,name_key,created_by) SELECT printf('old-%d',i),printf('Artikel %d',i),printf('artikel %d',i),? FROM n").bind(owner).run();
- expect((await f.post('/api/shopping/from-recipe',{recipe_id:id})).status).toBe(409);
- expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM shopping_items').first('n')).toBe(499);
- expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM shopping_items WHERE name IN ('Reis','Tomaten')").first('n')).toBe(0);
-});
-
 it('importiert autorisierten Videotext aller Plattformen ohne Seitenabruf und speichert keine Rohdaten',async()=>{
  const f=appFixture();const response=await f.post('/api/import',{value:'https://www.instagram.com/reel/mock/',transcript:'Zutaten: 200 g Tomaten. Zehn Minuten kochen und servieren.',authorized:true,duration_seconds:60});
  expect(response.status).toBe(201);expect(f.read).not.toHaveBeenCalled();expect(f.generate).toHaveBeenCalledTimes(1);
@@ -332,4 +251,21 @@ it('bietet bei ungültiger Anmeldung eine eigenständige HTML-Seite, aber keine 
   expect(response.status).toBe(401);expect(response.headers.get('Content-Type')).toContain('application/json');
   expect(await response.json()).toMatchObject({code:'UNAUTHENTICATED'});
   expect(asset).not.toHaveBeenCalled();expect(fixture.generate).not.toHaveBeenCalled();
+});
+
+it('die aktive API lädt keine archivierten Einkaufsdaten und bietet keine alten Schreibwege',async()=>{
+ const app=appFixture();await app.get();
+ const state=await(await app.get()).json() as Record<string,unknown>;
+ for(const key of ['shopping','plan','checked','manual_items'])expect(state).not.toHaveProperty(key);
+ for(const path of ['/api/shopping/from-recipe','/api/shopping/items/save','/api/shopping/items/check','/api/shopping/items/delete','/api/shopping/check','/api/plan'])expect((await app.post(path,{})).status).toBe(404);
+ expect(app.generate).not.toHaveBeenCalled();
+ const old=await app.app.fetch(new Request('http://localhost/shopping/'),app.config);
+ expect(old.status).toBe(302);expect(old.headers.get('Location')).toBe('http://localhost/recipes/#collection');
+ for(const path of ['/catalog/search.json','/archive/shopping-list/web/app.ts','/shopping.webmanifest','/icons/shopping-bag-auto-180-v2.png'])expect((await app.app.fetch(new Request('http://localhost'+path),app.config)).status).toBe(404);
+});
+it('Sammlungszugriff liest keine alten Listen-Tabellen',async()=>{
+ const app=appFixture();await app.get();
+ const prepare=vi.spyOn(env.DB,'prepare');await app.get();
+ expect(prepare.mock.calls.map(([sql])=>sql).join('\n')).not.toMatch(/\b(shopping_items|checked_items|plan)\b/);
+ prepare.mockRestore();
 });
