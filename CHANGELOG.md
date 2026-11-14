@@ -1,5 +1,10 @@
 # Änderungsverlauf
 
+## 2026-11-14 – Klarere Einstellungen auf Smartphones
+
+- Zahnrad mit größerem Symbol, 48-Pixel-Schaltfläche, dezenter Fläche und Rand sichtbar gruppiert.
+- Redundanten Kopfzeilentext auf kleinen Bildschirmen ausgeblendet; Desktop-Beschriftung bleibt erhalten.
+
 ## 2026-11-14 – Einkaufsliste archiviert, einzelne Bring!-Zutaten
 
 - Interne Einkaufsliste und Kochplanung aus Frontend, API, Datenabfragen, Build, Manifesten und Icons entfernt; vollständiger Quellstand unter `archive/shopping-list/` archiviert.
