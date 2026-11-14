@@ -106,3 +106,15 @@ it('Client lehnt fremde Redirects, übergroße und ungültige Antworten ohne Wie
    const transport=vi.fn(async()=>response);await expect(new BringClient(config(),transport as typeof fetch).login()).rejects.toMatchObject({status:503});expect(transport).toHaveBeenCalledTimes(1);
  }
 });
+
+it('Client bricht langsame Anfragen ab und startet keinen neuen Versuch',async()=>{
+ vi.useFakeTimers();
+ try{
+   const transport=vi.fn((_url:RequestInfo|URL,init?:RequestInit)=>new Promise<Response>((_resolve,reject)=>{
+     init?.signal?.addEventListener('abort',()=>reject(new Error('TEST_TOKEN_ONLY')),{once:true});
+   }));
+   const operation=new BringClient(config(),transport as typeof fetch).login();
+   const assertion=expect(operation).rejects.toMatchObject({code:'BRING_UNAVAILABLE',status:503});
+   await vi.advanceTimersByTimeAsync(10001);await assertion;expect(transport).toHaveBeenCalledTimes(1);
+ }finally{vi.useRealTimers();}
+});

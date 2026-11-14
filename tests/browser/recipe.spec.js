@@ -151,7 +151,7 @@ test('Bring-Zielliste einrichten und Zutaten ohne externe Anfragen senden',async
  await page.locator('#bring-load-lists').click();await page.locator('#bring-list').selectOption('11111111-1111-4111-8111-111111111111');await page.locator('#bring-form button').click();
  await expect(page.locator('#bring-status')).toContainText('Zuhause');
  await page.getByRole('button',{name:/Meine Rezepte/}).click();await page.locator('[data-open="'+id+'"]').click();
- const button=page.getByRole('button',{name:'Zutaten an Bring! senden'});await expect(button).toBeVisible();await button.click();
+ const button=page.locator('[data-bring-export="'+id+'"]');await expect(button).toBeVisible();await button.click();
  await expect(page.locator('#notice')).toContainText('Zutaten an „Zuhause“ gesendet');
  await expect(button).toHaveText('✓ An Bring! gesendet');
  await page.screenshot({path:info.outputPath('bring-export.png'),fullPage:true});
