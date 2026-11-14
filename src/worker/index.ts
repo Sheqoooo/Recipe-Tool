@@ -5,6 +5,7 @@ import {normalizeAdaptation,markAdaptation} from '../shared/adaptation.js';
 import { recipeSchema,validateRecipe,shoppingList } from '../shared/recipe.js';
 import { Repository } from './db.js';
 import { authenticate,verifyIdentity } from './auth.js';
+import {BringService,type BringFactory} from './bring.js';
 import {needsSignInPage,signInPage} from './auth-recovery.js';
 import { normalizeUrl,readWeb,transcriptSource } from './source.js';
 import {videoPlatform,videoLink} from '../shared/video-platform.js';
@@ -33,6 +34,7 @@ function assertWrite(request:Request):void{
 }
 function admin(actor:Member):void{if(actor.role!=='admin')throw new AppError('FORBIDDEN','Nur Administratoren dürfen diese Aktion ausführen.',403);}
 export interface Dependencies {
+  bring?:BringFactory;
   image?:typeof fetchRecipeImage;
   generate?:(source:Source,env:Env,id:string)=>Promise<Generated>;
   generateVideo?:typeof generateVideoRecipe;
@@ -49,7 +51,7 @@ export function createApp(deps:Dependencies={}){
       // Authentication runs before every asset AND API response.
       if(env.APP_ENV==='preview'){
         const identity=await verifyIdentity(request,env);
-        if(env.DB||env.OPENAI_API_KEY||env.BOOTSTRAP_ADMIN_EMAILS||env.MEDIA||env.VIDEO_ANALYSIS_ENABLED==='true')throw new AppError('PREVIEW_ISOLATION','Die Vorschau ist wegen unsicherer Ressourcenbindung gesperrt.',503);
+        if(env.DB||env.BRING_EMAIL||env.BRING_PASSWORD||env.BRING_CLIENT_KEY||env.OPENAI_API_KEY||env.BOOTSTRAP_ADMIN_EMAILS||env.MEDIA||env.VIDEO_ANALYSIS_ENABLED==='true')throw new AppError('PREVIEW_ISOLATION','Die Vorschau ist wegen unsicherer Ressourcenbindung gesperrt.',503);
         if(request.method!=='GET')throw new AppError('PREVIEW_READ_ONLY','Diese Vorschau ist schreibgeschützt.',403);
         if(path==='/api/state')return json({recipes:[],plan:[],shopping:[],checked:[],members:[],imports:[],has_key:false,read_only:true,user:{id:identity.sub,email:identity.email,role:'member',active:1}} satisfies AppState);
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
@@ -63,13 +65,16 @@ export function createApp(deps:Dependencies={}){
         if(path==='/api/state'){
           const recipes=await repo.recipes(actor),plan=await repo.plan(recipes);
           return json({recipes,plan,shopping:shoppingList(plan),manual_items:await repo.shoppingItems(),checked:await repo.checked(),user:actor,
-            members:actor.role==='admin'?await repo.members():[],imports:await repo.history(actor),has_key:Boolean(env.OPENAI_API_KEY),read_only:false} satisfies AppState);
+            bring:await new BringService(env,env.DB,deps.bring).status(),members:actor.role==='admin'?await repo.members():[],imports:await repo.history(actor),has_key:Boolean(env.OPENAI_API_KEY),read_only:false} satisfies AppState);
         }
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
         return protect(await env.ASSETS.fetch(request));
       }
       if(request.method!=='POST')throw new AppError('METHOD','Methode nicht erlaubt.',405);
       assertWrite(request);const data=await body(request);
+      if(path==='/api/bring/lists')return json(await new BringService(env,env.DB,deps.bring).lists(actor));
+      if(path==='/api/bring/configure')return json(await new BringService(env,env.DB,deps.bring).configure(actor,data));
+      if(path==='/api/bring/export')return json(await new BringService(env,env.DB,deps.bring).send(actor,data));
       if(path==='/api/recipes/video-image'){
         const recipeId=id(data.recipe_id),row=await repo.byId(recipeId);
         if(!row)throw new AppError('NOT_FOUND','Rezept nicht gefunden.',404);

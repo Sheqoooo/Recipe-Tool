@@ -19,6 +19,7 @@ export interface ImportRecord {
   created_at: number; input_tokens: number | null; output_tokens: number | null; estimated_cost_microusd: number | null;
 }
 export interface AppState {
+  bring?:BringStatus;
   manual_items?:ManualShoppingItem[];
   recipes: Recipe[]; plan: PlanEntry[]; shopping: ShoppingItem[]; checked: string[];
   user: Member; members: Member[]; imports: ImportRecord[]; has_key: boolean; read_only: boolean;
@@ -28,3 +29,7 @@ export interface RecipeImageData {bytes:ArrayBuffer;mime:'image/jpeg'|'image/png
 export interface Usage { input_tokens: number; output_tokens: number; estimated_cost_microusd: number; model: string }
 export interface Generated { recipe: RecipeData; usage: Usage; cover_frame_index?:number|null; image?:RecipeImageData }
 
+
+export interface BringList {id:string;name:string}
+export interface BringStatus {setup_required?:boolean;enabled:boolean;ready:boolean;list_name:string|null;revision:number}
+export interface BringExportResult {ok:true;existing:boolean;count:number;list_name:string}

@@ -1,3 +1,8 @@
 # Only placeholders. Copy to .dev.vars for local use; never commit .dev.vars.
 # Tests require no real API key. Actual API tests require explicit separate approval.
 # OPENAI_API_KEY=your-own-key-here
+
+# Optional shared Bring account; values are entered locally or as Worker Secrets.
+# BRING_EMAIL=your-bring-account-email
+# BRING_PASSWORD=your-bring-account-password
+# BRING_CLIENT_KEY=upstream-client-key-placeholder

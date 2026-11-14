@@ -129,3 +129,31 @@ test('abgelaufene API-Anmeldung bietet einen bleibenden Link zur erneuten Anmeld
   await page.screenshot({path:info.outputPath('access-recovery.png'),fullPage:true});
   expect(errors).toEqual([]);
 });
+
+test('Bring-Zielliste einrichten und Zutaten ohne externe Anfragen senden',async({page},info)=>{
+ const requests=[],errors=[];let ready=false,sent=false;
+ page.on('pageerror',e=>errors.push(e.message));
+ page.on('request',r=>{if(r.url().includes('getbring.com'))requests.push(r.url());});
+ const imported=await page.request.post('/api/import',{headers:{Origin:'http://127.0.0.1:8877','X-Rezeptwerk-Request':'1'},data:{value:'https://example.com/bring-'+info.project.name}});
+ expect(imported.ok()).toBe(true);const {id}=await imported.json();
+ await page.route('**/api/state',async route=>{
+   const response=await route.fetch(),state=await response.json();state.bring={enabled:true,ready,list_name:ready?'Zuhause':null,revision:ready?1:0};
+   await route.fulfill({response,json:state});
+ });
+ await page.route('**/api/bring/**',async route=>{
+   const path=new URL(route.request().url()).pathname;
+   if(path.endsWith('/lists'))return route.fulfill({json:{lists:[{id:'11111111-1111-4111-8111-111111111111',name:'Zuhause'}]}});
+   if(path.endsWith('/configure')){ready=true;return route.fulfill({json:{ok:true}});}
+   const body=route.request().postDataJSON();expect(body.recipe_id).toBe(id);expect(body.target_revision).toBe(1);
+   const existing=sent;sent=true;return route.fulfill({json:{ok:true,existing,count:1,list_name:'Zuhause'}});
+ });
+ await page.goto('/#settings');await expect(page.locator('#bring-status')).toContainText('Noch keine');
+ await page.locator('#bring-load-lists').click();await page.locator('#bring-list').selectOption('11111111-1111-4111-8111-111111111111');await page.locator('#bring-form button').click();
+ await expect(page.locator('#bring-status')).toContainText('Zuhause');
+ await page.getByRole('button',{name:/Meine Rezepte/}).click();await page.locator('[data-open="'+id+'"]').click();
+ const button=page.getByRole('button',{name:'Zutaten an Bring! senden'});await expect(button).toBeVisible();await button.click();
+ await expect(page.locator('#notice')).toContainText('Zutaten an „Zuhause“ gesendet');
+ await expect(button).toHaveText('✓ An Bring! gesendet');
+ await page.screenshot({path:info.outputPath('bring-export.png'),fullPage:true});
+ expect(requests).toEqual([]);expect(errors).toEqual([]);
+});

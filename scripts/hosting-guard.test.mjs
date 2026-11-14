@@ -10,3 +10,5 @@ test('rejects preview DB bindings and plaintext keys in either environment',()=>
 
 test('rejects origin bypass and private fetch bindings',()=>{for(const change of [{compatibility_flags:[]},{compatibility_flags:['global_fetch_strictly_public','global_fetch_private_origin']},{services:[{binding:'INTERNAL'}]},{vpc_networks:[{binding:'PRIVATE'}]}])assert.throws(()=>validateHosting({...fixture(),...change}));});
 test('keeps administrator email addresses out of both public variable blocks',()=>{for(const preview of [false,true]){const c=fixture();(preview?c.previews.vars:c.vars).BOOTSTRAP_ADMIN_EMAILS='admin@example.invalid';assert.throws(()=>validateHosting(c));}});
+
+test('keeps Bring credentials out of public production and preview configuration',()=>{for(const preview of [false,true])for(const key of ['BRING_EMAIL','BRING_PASSWORD','BRING_CLIENT_KEY']){const c=fixture();(preview?c.previews.vars:c.vars)[key]='test-placeholder';assert.throws(()=>validateHosting(c));}});
