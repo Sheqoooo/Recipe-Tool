@@ -70,22 +70,26 @@ test('Rezepte importieren, öffnen und korrigieren ohne interne Einkaufsliste',a
  await page.screenshot({path:info.outputPath('recipe-only-collection.png'),fullPage:true});expect(errors).toEqual([]);
 });
 test('Bring-Zielliste einrichten und einzelne Zutaten über Plus senden',async({page},info)=>{
- const requests=[],errors=[],payloads=[];let ready=false;
+ const requests=[],errors=[],payloads=[];let ready=false,inFlight=0,maxInFlight=0;
  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().includes('getbring.com'))requests.push(r.url());});
  const imported=await page.request.post('/api/import',{headers:{Origin:'http://127.0.0.1:8877','X-Rezeptwerk-Request':'1'},data:{value:'https://example.com/bring-single-'+info.project.name}});expect(imported.ok()).toBe(true);const {id}=await imported.json();
+ const state=await(await page.request.get('/api/state')).json(),recipe=state.recipes.find(r=>r.id===id);
+ const saved=await page.request.post('/api/recipes/save',{headers:{Origin:'http://127.0.0.1:8877','X-Rezeptwerk-Request':'1'},data:{...recipe,ingredients:[...recipe.ingredients,{name:'Salz',amount:null,unit:'',note:'nach Geschmack'}]}});
+ expect(saved.ok()).toBe(true);
  await page.route('**/api/state',async route=>{const response=await route.fetch(),state=await response.json();state.bring={enabled:true,ready,list_name:ready?'Zuhause':null,revision:ready?1:0};await route.fulfill({response,json:state});});
  await page.route('**/api/bring/**',async route=>{
    const path=new URL(route.request().url()).pathname;
    if(path.endsWith('/lists'))return route.fulfill({json:{lists:[{id:'11111111-1111-4111-8111-111111111111',name:'Zuhause'}]}});
    if(path.endsWith('/configure')){ready=true;return route.fulfill({json:{ok:true}});}
-   const body=route.request().postDataJSON();payloads.push(body);expect(body.recipe_id).toBe(id);expect(body.ingredient_index).toBe(0);expect(body.target_revision).toBe(1);
+   const body=route.request().postDataJSON();payloads.push(body);expect(body.recipe_id).toBe(id);expect([0,1]).toContain(body.ingredient_index);expect(body.target_revision).toBe(1);
+   inFlight++;maxInFlight=Math.max(maxInFlight,inFlight);await new Promise(r=>setTimeout(r,150));inFlight--;
    await route.fulfill({json:{ok:true,existing:false,count:1,list_name:'Zuhause'}});
  });
  await page.goto('/#settings');await page.locator('#bring-load-lists').click();await page.locator('#bring-list').selectOption('11111111-1111-4111-8111-111111111111');await page.locator('#bring-form button').click();await expect(page.locator('#bring-status')).toContainText('Zuhause');
  await page.getByRole('button',{name:/Meine Rezepte/}).click();await page.locator('[data-open="'+id+'"]').click();
  await expect(page.getByRole('button',{name:'Zutaten an Bring! senden'})).toHaveCount(0);
- const plus=page.locator('[data-bring-ingredient="0"]');await expect(plus).toHaveAttribute('aria-label','Tomaten an Bring! senden');await plus.click();await expect(plus).toHaveText('✓');
- expect(payloads).toHaveLength(1);expect(requests).toEqual([]);expect(errors).toEqual([]);
+ const plus=page.locator('[data-bring-ingredient="0"]');await expect(plus).toHaveAttribute('aria-label','Tomaten an Bring! senden');await plus.click();await page.locator('[data-bring-ingredient="1"]').click();await expect(plus).toHaveText('✓');await expect(page.locator('[data-bring-ingredient="1"]')).toHaveText('✓');
+ expect(payloads.map(p=>p.ingredient_index)).toEqual([0,1]);expect(maxInFlight).toBe(1);expect(payloads).toHaveLength(2);expect(requests).toEqual([]);expect(errors).toEqual([]);
  await page.screenshot({path:info.outputPath('bring-recipe-plus.png'),fullPage:true});
 });
 test('alte Einkaufslinks führen zum Kochbuch; nur Futterluke bleibt installierbar',async({page})=>{

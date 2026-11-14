@@ -39,7 +39,7 @@ export function validateRecipe(input: unknown): RecipeData {
   for (const step of recipe.steps) if (step.ingredient_indices.some(i => i >= recipe.ingredients.length)) {
     throw new AppError('INVALID_RECIPE', 'Ein Arbeitsschritt verweist auf eine unbekannte Zutat.', 422);
   }
-  if (recipe.servings === null && recipe.warnings.length<20 && !recipe.warnings.some(w => /portion/i.test(w))) recipe.warnings.push('Portionenzahl fehlt; Skalieren erst nach Korrektur möglich.');
+  if (recipe.servings === null && recipe.warnings.length<20 && !recipe.warnings.some(w => /portion/i.test(w))) recipe.warnings.push('Portionenzahl fehlt; bitte Quelle prüfen.');
   for (const [index, item] of recipe.ingredients.entries()) {
     if (item.amount !== null && !recipe.steps.some(s => s.ingredient_indices.includes(index))) {
       if (recipe.warnings.length < 20) recipe.warnings.push(`Zutat ${item.name}: Zuordnung zu einem Arbeitsschritt bitte prüfen.`);

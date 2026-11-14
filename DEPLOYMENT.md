@@ -211,7 +211,7 @@ Quelle: [Cloudflare Access Session management](https://developers.cloudflare.com
 
 ## Optionale Bring!-Anbindung
 
-Futterluke kann jeweils eine Zutat eines gespeicherten Rezepts über deren Plus-Schaltfläche direkt an eine gemeinsame Bring!-Liste senden. Diese Anbindung ist **inoffiziell** und kann durch Änderungen bei Bring! ausfallen. Es gibt keine automatische Synchronisation, keinen Import fremder Bring!-Listeninhalte und keine Lösch-/Abhakfunktion für Bring!. Die frühere interne Einkaufsliste ist ausschließlich im Quellcodearchiv erhalten und wird nicht ausgeliefert. Übertragen werden die Mengen des gespeicherten Rezepts, nicht abweichende Portionen aus der Kochliste. Zutaten ohne zuverlässige Mengen bleiben „Menge offen“. Unbekannte Artikelnamen können als eigene Bring!-Artikel erscheinen; es erfolgt keine zusätzliche KI-Auswertung.
+Futterluke kann jeweils eine Zutat eines gespeicherten Rezepts über deren Plus-Schaltfläche direkt an eine gemeinsame Bring!-Liste senden. Diese Anbindung ist **inoffiziell** und kann durch Änderungen bei Bring! ausfallen. Es gibt keine automatische Synchronisation, keinen Import fremder Bring!-Listeninhalte und keine Lösch-/Abhakfunktion für Bring!. Die frühere interne Einkaufsliste ist ausschließlich im Quellcodearchiv erhalten und wird nicht ausgeliefert. Übertragen werden die Mengen des gespeicherten Rezepts, ohne automatische Portionsskalierung. Zutaten ohne zuverlässige Mengen bleiben „Menge offen“. Unbekannte Artikelnamen können als eigene Bring!-Artikel erscheinen; es erfolgt keine zusätzliche KI-Auswertung.
 
 Ein gemeinsames Bring!-Konto für dieses Kochbuch wird ausschließlich serverseitig über Worker Secrets angebunden. Administratoren laden in Einstellungen → Bring! die verfügbaren Listen und wählen die gemeinsame Zielliste. Normale freigegebene Mitglieder können danach Rezeptzutaten senden; sie können weder die Zielliste ändern noch weitere Bring!-Listen abrufen. Alle Mitglieder nutzen dieselbe Bring!-Verbindung. Es werden Zutaten/Mengen an Bring! übermittelt, keine Rezeptquelle, keine Arbeitsschritte und keine Cloudflare-Nutzer-E-Mail.
 
@@ -231,7 +231,7 @@ Quellen/Protokollstand geprüft am 14.11.2026: [bring-api, inoffizieller Client]
 6. Erst mit ausdrücklicher Freigabe für einen echten Listen-Schreibtest: ein kleines Testrezept öffnen, Zielliste/Mengen prüfen, die Plus-Schaltfläche einer Zutat drücken. In Bring! Mengen und Artikelnamen prüfen; zweiter Klick binnen zehn Minuten darf keine neue Übertragung auslösen. Es entstehen keine OpenAI-Aufrufe. Testartikel bei Bedarf manuell in Bring! entfernen.
 7. Entkopplung: die drei Worker Secrets entfernen (bewusste Produktionsänderung durch Betreiber). Der nächste Statusabruf blendet die Exportfunktion aus. Bereits in Bring! vorhandene Artikel bleiben bestehen.
 
-Noch nicht live verifiziert: Apple-Relay-Kontoanmeldung, tatsächliche Bring!-Batch-Antworten, Artikel-/Mengendarstellung und mögliche Anbieterlimits. Alle automatisierten Prüfungen verwenden Mocks, keine echten Bring!-Konten.
+Der Nutzer hat die bestehende Bring!-Verbindung als funktionierend bestätigt. Neue Einzelübertragungen werden automatisiert mit Mocks geprüft; echte externe Schreibtests erfolgen nur bewusst durch den Nutzer. Anbieterlimits und genaue Darstellung eigener Artikelnamen können variieren.
 
 ### Bring!-Antwortformate und Fehlerdiagnose
 
