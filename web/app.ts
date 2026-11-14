@@ -1,3 +1,4 @@
+import {installCollectionGestures} from './collection-gestures.js';
 import {videoPlatform} from '../src/shared/video-platform.js';
 declare const __REZEPTWERK_DEMO__:boolean;
 import type { AppState,Recipe,RecipeData,BringList,BringExportResult } from '../src/shared/types.js';
@@ -6,6 +7,8 @@ type Ingredient=RecipeData['ingredients'][number];
 type Step=RecipeData['steps'][number];
 let state:AppState={recipes:[],members:[],imports:[],has_key:false,read_only:true,user:{id:'',email:'',role:'member',active:0}};
 let draft:Recipe|null=null;
+let pendingDelete:number|null=null;
+let deleting=false;
 let bringQueue:Promise<void>=Promise.resolve();
 function $<T extends HTMLElement=HTMLElement>(selector:string):T{const element=document.querySelector<T>(selector);if(!element)throw new Error('Oberflächenelement fehlt');return element;}
 const input=(s:string)=>$<HTMLInputElement>(s);
@@ -34,7 +37,7 @@ async function api<T>(path:string,data?:unknown):Promise<T>{
 }
 function showView(view:string){
   if(!['import','collection','settings'].includes(view))view='import';
-  document.body.dataset.view=view;
+  document.body.dataset.view=view;document.documentElement.dataset.view=view;
   $('#area-label').textContent=view==='settings'?'Einstellungen':'Dein Kochbuch';
   document.querySelectorAll<HTMLElement>('.view').forEach(e=>{e.hidden=e.id!=='view-'+view;});
   $('#app-header').hidden=view==='import';$('#app-navigation').hidden=view==='import';
@@ -73,7 +76,7 @@ document.addEventListener('error',event=>{if(event.target instanceof HTMLImageEl
 function renderRecipes(){
   const search=input('#search').value.toLowerCase();
   const recipes=state.recipes.filter(r=>(r.title+' '+r.ingredients.map(i=>i.name).join(' ')).toLowerCase().includes(search));
-  $('#recipe-grid').innerHTML=recipes.length?recipes.map(r=>{const [emoji,tone]=presentation(r);return `<article class="recipe-card"><button class="recipe-cover tone-${tone}" data-open="${r.id}" aria-label="${esc(r.title)} ansehen"><span aria-hidden="true">${emoji}</span>${imageMarkup(r)}</button><div class="recipe-content">${r.warnings.length?'<div class="warning-label">Hinweise zur Prüfung</div>':''}<h2>${esc(r.title)}</h2><p class="recipe-meta"><span>◷ ${esc(cookingTime(r))}</span><span>${r.servings===null?'Portionen offen':fmt(r.servings)+' Portionen'}</span></p></div></article>`;}).join(''):empty(search?'Kein Treffer.':'Dein Kochbuch wartet auf dich.',search?'Versuche einen anderen Namen oder eine Zutat.':'Füge deinen ersten Rezeptlink ein.');
+  $('#recipe-grid').innerHTML=recipes.length?recipes.map(r=>{const [emoji,tone]=presentation(r);return `<article class="recipe-card"><button class="recipe-cover tone-${tone}" data-open="${r.id}" aria-label="${esc(r.title)} ansehen"><span aria-hidden="true">${emoji}</span>${imageMarkup(r)}</button><div class="recipe-content">${r.warnings.length?'<div class="warning-label">Hinweise zur Prüfung</div>':''}<h2><button class="recipe-title" data-open="${r.id}" aria-label="${esc(r.title)} öffnen">${esc(r.title)}</button></h2><p class="recipe-meta"><span>◷ ${esc(cookingTime(r))}</span><span>${r.servings===null?'Portionen offen':fmt(r.servings)+' Portionen'}</span></p></div></article>`;}).join(''):empty(search?'Kein Treffer.':'Dein Kochbuch wartet auf dich.',search?'Versuche einen anderen Namen oder eine Zutat.':'Füge deinen ersten Rezeptlink ein.');
 }
 function render(){
   $('#recipe-count').textContent=String(state.recipes.length);$('#key-hint').hidden=state.has_key||state.read_only;
@@ -92,7 +95,7 @@ function sourceLink(value:string){try{const url=new URL(value);if(url.protocol==
 function openRecipe(id:number){const r=state.recipes.find(r=>r.id===id);if(!r)return;
   $('#dialog-caption').textContent='AUS EUREM KOCHBUCH';
   const [emoji,tone]=presentation(r);
-  $('#dialog-content').innerHTML=`<div class="detail-hero tone-${tone}"><div class="detail-hero-art" aria-hidden="true">${emoji}${imageMarkup(r)}</div><div class="detail-hero-copy"><span class="detail-kicker">AUS DEINEM KOCHBUCH</span><h2>${esc(r.title)}</h2><p class="recipe-description">${esc(r.description)}</p></div></div>${imageCredit(r)}<div class="recipe-facts"><div><span>⏱️ Vorbereitung</span><strong>${r.prep_minutes===null?'Unbekannt':fmt(r.prep_minutes)+' Min.'}</strong></div><div><span>🍳 Kochzeit</span><strong>${r.cook_minutes===null?'Unbekannt':fmt(r.cook_minutes)+' Min.'}</strong></div><div><span>🍽️ Portionen</span><strong>${r.servings===null?'Unbekannt':fmt(r.servings)}</strong></div><div><span>👩‍🍳 Zubereitung</span><strong>${r.steps.length} Schritte</strong></div></div><div class="recipe-columns"><section><div class="ingredient-heading"><h3>Zutaten</h3></div><ul class="ingredient-view">${r.ingredients.map((i,n)=>`<li><label class="ingredient-check"><input type="checkbox" aria-label="${esc(i.name)} vorbereitet"><span>${esc(i.name)}<small>${esc(i.note)}</small></span><strong>${esc(quantity(i))||'Menge offen'}</strong></label><button class="ingredient-add" data-bring-ingredient="${n}" data-recipe-id="${r.id}" aria-label="${esc(i.name)} an Bring! senden" title="${state.bring?.ready?'An Bring! → '+esc(state.bring.list_name):'Bring! zuerst in den Einstellungen verbinden'}" ${state.read_only||!state.bring?.ready?'disabled':''}>＋</button></li>`).join('')}</ul><div class="detail-source">${sourceLink(r.source_url)}</div></section><section><h3>Zubereitung</h3><ol class="method-list">${r.steps.map((s,n)=>{return `<li><span class="step-number" aria-hidden="true">${n+1}</span><p>${esc(stepInstruction(r,n))}</p></li>`;}).join('')}</ol></section></div><div class="detail-actions">${r.can_edit?`<button class="secondary" data-edit="${r.id}">Bearbeiten</button>`:''}${canLoadVideoImage(r)?`<button class="secondary" data-video-image="${r.id}">Videovorschaubild laden</button>`:''}${r.can_delete?`<button class="text-button danger" data-delete="${r.id}">Löschen</button>`:''}</div>${r.warnings.length?`<footer class="recipe-notes" aria-label="Hinweise zum Rezept"><p>Hinweise zum Rezept</p><ul>${r.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></footer>`:''}`;
+  $('#dialog-content').innerHTML=`<div class="detail-hero tone-${tone}"><div class="detail-hero-art" aria-hidden="true">${emoji}${imageMarkup(r)}</div><div class="detail-hero-copy"><h2>${esc(r.title)}</h2><p class="recipe-description">${esc(r.description)}</p></div></div>${imageCredit(r)}<div class="recipe-facts"><div><span>⏱️ Vorbereitung</span><strong>${r.prep_minutes===null?'Unbekannt':fmt(r.prep_minutes)+' Min.'}</strong></div><div><span>🍳 Kochzeit</span><strong>${r.cook_minutes===null?'Unbekannt':fmt(r.cook_minutes)+' Min.'}</strong></div><div><span>🍽️ Portionen</span><strong>${r.servings===null?'Unbekannt':fmt(r.servings)}</strong></div><div><span>👩‍🍳 Zubereitung</span><strong>${r.steps.length} Schritte</strong></div></div><div class="recipe-columns"><section><div class="ingredient-heading"><h3>Zutaten</h3></div><ul class="ingredient-view">${r.ingredients.map((i,n)=>`<li><label class="ingredient-check"><input type="checkbox" aria-label="${esc(i.name)} vorbereitet"><span>${esc(i.name)}<small>${esc(i.note)}</small></span><strong>${esc(quantity(i))||'Menge offen'}</strong></label><button class="ingredient-add" data-bring-ingredient="${n}" data-recipe-id="${r.id}" aria-label="${esc(i.name)} an Bring! senden" title="${state.bring?.ready?'An Bring! → '+esc(state.bring.list_name):'Bring! zuerst in den Einstellungen verbinden'}" ${state.read_only||!state.bring?.ready?'disabled':''}>＋</button></li>`).join('')}</ul><div class="detail-source">${sourceLink(r.source_url)}</div></section><section><h3>Zubereitung</h3><ol class="method-list">${r.steps.map((s,n)=>{return `<li><span class="step-number" aria-hidden="true">${n+1}</span><p>${esc(stepInstruction(r,n))}</p></li>`;}).join('')}</ol></section></div><div class="detail-actions">${r.can_edit?`<button class="secondary" data-edit="${r.id}">Bearbeiten</button>`:''}${canLoadVideoImage(r)?`<button class="secondary" data-video-image="${r.id}">Videovorschaubild laden</button>`:''}${r.can_delete?`<button class="text-button danger" data-delete="${r.id}">Löschen</button>`:''}</div>${r.warnings.length?`<footer class="recipe-notes" aria-label="Hinweise zum Rezept"><p>Hinweise zum Rezept</p><ul>${r.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></footer>`:''}`;
   if(!dialog().open)dialog().showModal();
 }
 function ingredientRow(i:Partial<Ingredient>={}){return `<div class="ingredient-edit"><input type="number" data-amount min="0" max="1000000" step="any" aria-label="Menge" value="${i.amount??''}"><input data-unit aria-label="Einheit" maxlength="30" value="${esc(i.unit||'')}"><input data-name aria-label="Zutat" required maxlength="300" value="${esc(i.name||'')}"><button type="button" class="icon-button danger" data-delete-row aria-label="Zutat entfernen">×</button><input class="ingredient-note" data-note aria-label="Hinweis" maxlength="300" value="${esc(i.note||'')}"></div>`;}
@@ -107,10 +110,32 @@ async function saveEditor(){if(!draft)return;
   const recipe:RecipeData={title:input('#edit-title').value,description:input('#edit-description').value,servings:nullable('#edit-servings'),prep_minutes:nullable('#edit-prep'),cook_minutes:nullable('#edit-cook'),ingredients,steps,warnings:$<HTMLTextAreaElement>('#edit-warnings').value.split('\n').filter(Boolean)};
   await api('/api/recipes/save',{...recipe,id:draft.id,revision:draft.revision});await refresh();dialog().close();showView('collection');notify('Die Korrektur wurde gespeichert.');
 }
+function requestDelete(id:number){
+ const recipe=state.recipes.find(r=>r.id===id);if(!recipe?.can_delete||state.read_only||deleting)return;
+ pendingDelete=id;$('#delete-recipe-name').textContent='„'+recipe.title+'“ wird aus dem gemeinsamen Kochbuch gelöscht.';
+ $('#delete-error').hidden=true;const modal=$<HTMLDialogElement>('#delete-dialog');if(!modal.open)modal.showModal();
+}
+async function confirmDelete(){
+ const id=pendingDelete;if(id===null||deleting)return;
+ deleting=true;input('#confirm-delete').disabled=true;input('#cancel-delete').disabled=true;
+ try{
+  await api('/api/recipes/delete',{id});state.recipes=state.recipes.filter(r=>r.id!==id);render();
+  $<HTMLDialogElement>('#delete-dialog').close();if(dialog().open)dialog().close();notify('Rezept gelöscht.');
+ }catch(error){$('#delete-error').textContent=error instanceof Error?error.message:'Das Rezept konnte nicht gelöscht werden.';$('#delete-error').hidden=false;}
+ finally{deleting=false;input('#confirm-delete').disabled=false;input('#cancel-delete').disabled=false;}
+}
+$<HTMLDialogElement>('#delete-dialog').addEventListener('close',()=>{pendingDelete=null;});
+$<HTMLDialogElement>('#delete-dialog').addEventListener('cancel',event=>{if(deleting)event.preventDefault();});
+const collectionGestures=installCollectionGestures({
+ root:$('#view-collection'),indicator:$('#collection-refresh'),
+ active:()=>document.body.dataset.view==='collection'&&!dialog().open&&!$<HTMLDialogElement>('#delete-dialog').open&&(!preview||__REZEPTWERK_DEMO__),
+ canDelete:id=>!state.read_only&&Boolean(state.recipes.find(r=>r.id===id)?.can_delete),
+ onDelete:requestDelete,onRefresh:refresh,onError:error=>notify(error instanceof Error?error.message:'Aktualisieren fehlgeschlagen.',true)
+});
 document.addEventListener('click',async event=>{
   if(!(event.target instanceof Element))return;const b=event.target.closest<HTMLButtonElement>('button');if(!b||b.disabled)return;
   try{
-    if(b.dataset.view)showView(b.dataset.view);
+    if(b.dataset.view){if(b.dataset.view==='collection'&&document.body.dataset.view==='collection')await collectionGestures.refresh();else showView(b.dataset.view);}
     if(b.id==='provide-video'){$('#transcript-panel').hidden=false;return;}
     if(b.id==='bring-load-lists'){
       b.disabled=true;try{const result=await api<{lists:BringList[]}>('/api/bring/lists',{});$('#bring-list').innerHTML=result.lists.map(l=>'<option value="'+esc(l.id)+'">'+esc(l.name)+'</option>').join('');$('#bring-form').hidden=!result.lists.length;if(!result.lists.length)notify('Keine Bring!-Listen gefunden.',true);}finally{b.disabled=false;}return;
@@ -130,7 +155,9 @@ document.addEventListener('click',async event=>{
     if(b.id==='clear-adaptation'){$<HTMLTextAreaElement>('#adaptation').value='';$('#adaptation-active').hidden=true;$<HTMLTextAreaElement>('#adaptation').focus();return;}
     if(b.dataset.open)openRecipe(Number(b.dataset.open));
     if(b.dataset.edit){const r=state.recipes.find(r=>r.id===Number(b.dataset.edit));if(r)openEditor(r);}
-    if(b.dataset.delete&&confirm('Dieses Rezept löschen?')){await api('/api/recipes/delete',{id:Number(b.dataset.delete)});await refresh();dialog().close();}
+    if(b.dataset.delete)requestDelete(Number(b.dataset.delete));
+    if(b.id==='cancel-delete')$<HTMLDialogElement>('#delete-dialog').close();
+    if(b.id==='confirm-delete')await confirmDelete();
     if(b.hasAttribute('data-delete-row'))b.closest('.ingredient-edit')?.remove();
     if(b.hasAttribute('data-delete-step'))b.closest('.step-edit')?.remove();
     if(b.id==='add-ingredient')$('#ingredient-rows').insertAdjacentHTML('beforeend',ingredientRow());

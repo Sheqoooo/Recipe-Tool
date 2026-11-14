@@ -59,3 +59,7 @@ Die interne Einkaufsliste, Kochplanung, Suche/Emojis und Kataloge liegen als ein
 [Architektur](ARCHITECTURE.md) · [Sicherheit](SECURITY.md) · [Deployment](DEPLOYMENT.md) · [Projektregeln](AGENTS.md) · [Änderungen](CHANGELOG.md)
 
 Open Source unter MIT-Lizenz; Lizenz-/Herkunftshinweise der archivierten Lebensmitteldaten bleiben im Archiv erhalten.
+
+## Rezeptbuch bedienen
+
+Bild oder Titel antippen öffnet ein Rezept. Am oberen Rand herunterziehen aktualisiert die Sammlung ohne KI-Aufruf und erhält den Suchfilter. Die bereits ausgewählte Navigation „Meine Rezepte“ erneut zu aktivieren aktualisiert ebenfalls und ist per Tastatur erreichbar. Administratoren können auf Bild/Titel lange drücken oder das Kontextmenü öffnen und nach Bestätigung löschen. Scrollen/Bewegen bricht langes Drücken ab; Mitglieder erhalten keine Löschoption. Fehlgeschlagene Aktualisierungen erhalten die vorhandene Sammlung. Touch-Verhalten wird automatisiert in Chromium geprüft; native iOS-Gesten zusätzlich auf einem echten Gerät prüfen.

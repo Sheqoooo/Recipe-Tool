@@ -247,3 +247,15 @@ dialog .ingredient-view li:last-child{border:0}
 .settings-button>span{display:block;line-height:1}
 .settings-button:active{background:#e6ebdf}
 @media(max-width:600px){.app-header .area-label{display:none}.app-header .settings-button{margin-left:auto}}
+
+/* Collection gestures retain native scrolling; only a downward pull at the top is captured. */
+html[data-view="collection"],body[data-view="collection"]{overscroll-behavior-y:contain}
+.recipe-title{display:block;width:100%;min-height:44px;padding:0;background:none;text-align:left;font:inherit;color:inherit}
+.recipe-cover,.recipe-title{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.collection-refresh{display:flex;align-items:center;justify-content:center;overflow:hidden;height:0;color:#657457;font-size:13px;text-align:center}
+.delete-dialog{width:min(420px,calc(100% - 32px));padding:24px;border:1px solid #e3e7dc;border-radius:20px;color:#242522;background:#fff}
+.delete-dialog::backdrop{background:#17220e66}
+.delete-dialog h2{font-size:23px;margin-bottom:12px}
+.delete-dialog p{line-height:1.6;overflow-wrap:anywhere}
+.delete-dialog-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:24px}
+.delete-confirm{background:#9c4537}
