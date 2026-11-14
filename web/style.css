@@ -178,11 +178,13 @@ dialog .ingredient-view{border:1px solid #e7ebdf;border-radius:14px;overflow:hid
 dialog .ingredient-view li{padding:0}
 dialog .ingredient-view li:last-child{border:0}
 .ingredient-check{display:flex;gap:10px;align-items:center;margin:0;padding:13px;font-size:13px;font-weight:400;cursor:pointer;min-height:52px}
-.ingredient-check input{width:20px;min-width:20px;min-height:20px;height:20px;accent-color:#687e52}
+.ingredient-check input{appearance:none;-webkit-appearance:none;width:22px;min-width:22px;min-height:22px;height:22px;padding:0;border:1.5px solid #969c91;border-radius:6px;background:#fff;display:grid;place-content:center;cursor:pointer}
+.ingredient-check input:checked::after{content:'×';font-size:24px;line-height:18px;color:#666e60}
+.ingredient-check input:checked{background:#eff1ed}
 .ingredient-check>span{flex:1;min-width:0}
 .ingredient-check small{display:block;color:#849176;font-size:11px}
 .ingredient-check strong{font-size:12px;text-align:right;max-width:90px}
-.ingredient-check:has(input:checked)>span{text-decoration:line-through;opacity:.5}
+.ingredient-check:has(input:checked)>span,.ingredient-check:has(input:checked)>strong{opacity:.45}
 .detail-source{font-size:12px;color:#7a866b;margin-top:15px}
 .method-list{list-style:none;padding:0!important;margin:0}
 .method-list>li{display:flex;gap:12px;border:1px solid #e7ebdf;border-radius:14px;padding:16px!important;margin:0 0 12px!important}
@@ -219,6 +221,9 @@ dialog .ingredient-view li:last-child{border:0}
 .ingredient-view li{display:flex;align-items:center;gap:8px}
 .ingredient-view .ingredient-check{flex:1;min-width:0}
 .ingredient-add{background:#f0f5eb;border:1px solid #e0e8d9;border-radius:9px;min-width:44px;height:44px;font-size:22px;color:#647454}
+.bring-selection-help{font-size:12px!important;color:#7b8473;margin:0 0 12px!important}
+.bring-selection-send{width:100%;margin-top:12px;min-height:44px}
+.ingredient-check:has(input:checked)+.ingredient-add{opacity:.4}
 .recipe-notes{margin-top:28px;padding-top:16px;border-top:1px solid #edf0e9;color:#656b61;font-size:12px;line-height:1.65;overflow-wrap:anywhere}
 .recipe-notes p{font-size:12px;font-weight:500;margin:0 0 8px}
 .recipe-notes ul{margin:0;padding-left:18px}

@@ -1,5 +1,12 @@
 # Änderungsverlauf
 
+## 2026-11-14 – Bring!-Auswahl mit Ausschlüssen
+
+- Kreuzchen in der Zutatenliste schließen einzelne Zutaten vom Versand aus und grauen Namen und Mengen aus.
+- Neue Schaltfläche sendet alle übrigen Zutaten über den vorhandenen Einzelzutaten-Endpunkt nacheinander; individuelle Plus-Schaltflächen bleiben erhalten.
+- Nach vollständig bestätigtem Versand werden Auswahl und Status zurückgesetzt. Bei Teilfehlern stoppt die Übertragung; bestätigte Zutaten bleiben markiert und werden beim bewussten Fortsetzen übersprungen. Keine automatischen Retries.
+- Auswahl gilt nur für das geöffnete Rezept, wird nicht gespeichert und ändert keine Rezeptdaten. Keine Migration oder neuen Backend-Rechte.
+
 ## 2026-11-14 – Gesten im Rezeptbuch
 
 - Titel wie Bilder öffnen Rezepte per Klick und Tastatur.
