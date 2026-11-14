@@ -317,3 +317,18 @@ it('ungültige Anpassung wird vor Abruf, Reservierung und KI abgewiesen',async()
  const f=appFixture();for(const adaptation of [{},'x'.repeat(401)])expect((await f.post('/api/import',{value:'https://recipes.example/a',adaptation})).status).toBe(400);
  expect(f.read).not.toHaveBeenCalled();expect(f.generate).not.toHaveBeenCalled();expect((await(await f.get()).json() as AppState).imports).toHaveLength(0);
 });
+
+it('bietet bei ungültiger Anmeldung eine eigenständige HTML-Seite, aber keine privaten Assets oder API-Daten',async()=>{
+  const fixture=appFixture(),config={...fixture.config,APP_ENV:'production' as const,AUTH_MODE:'access' as const,APP_ORIGIN:'https://app.example',ACCESS_ISSUER:'https://recipe-test.cloudflareaccess.com',ACCESS_AUD:'test'};
+  const asset=vi.fn(async()=>new Response('PRIVATE_ASSET'));config.ASSETS={fetch:asset} as Fetcher;
+  for(const path of ['/','/recipes/','/shopping/']){
+    const response=await fixture.app.fetch(new Request('https://app.example'+path,{headers:{Accept:'text/html'}}),config);
+    expect(response.status).toBe(401);expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+    expect(response.headers.get('Cache-Control')).toContain('no-store');
+    const html=await response.text();expect(html).toContain('Erneut anmelden');expect(html).toContain('href="/cdn-cgi/access/logout"');expect(html).toContain('charset="utf-8"');expect(html).not.toContain('PRIVATE_ASSET');expect(html).not.toContain('<script');
+  }
+  const response=await fixture.app.fetch(new Request('https://app.example/api/state',{headers:{Accept:'text/html'}}),config);
+  expect(response.status).toBe(401);expect(response.headers.get('Content-Type')).toContain('application/json');
+  expect(await response.json()).toMatchObject({code:'UNAUTHENTICATED'});
+  expect(asset).not.toHaveBeenCalled();expect(fixture.generate).not.toHaveBeenCalled();
+});

@@ -24,10 +24,19 @@ const preview=location.protocol==='file:'||new URLSearchParams(location.search).
 let timer:ReturnType<typeof setTimeout>|undefined;
 let refreshDock=()=>{};
 function notify(message:string,error=false){$('#notice').textContent=message;$('#notice').hidden=false;$('#notice').classList.toggle('error',error);clearTimeout(timer);timer=setTimeout(()=>{$('#notice').hidden=true;},error?15000:6000);}
+function offerSignIn(){
+  if(document.querySelector('#access-recovery'))return;
+  const panel=document.createElement('aside');panel.id='access-recovery';panel.className='panel';panel.setAttribute('role','alert');
+  const message=document.createElement('p');message.textContent='Deine Anmeldung konnte nicht bestätigt werden. Bitte melde dich erneut an.';
+  const link=document.createElement('a');link.href='/cdn-cgi/access/logout';link.className='primary compact';link.textContent='Erneut anmelden';
+  const help=document.createElement('p');help.className='field-help';help.textContent='Dies beendet deine Cloudflare-Access-Sitzung, gegebenenfalls auch für andere Apps dieses Teams. Öffne Futterluke danach nach etwa 30 Sekunden erneut.';
+  panel.append(message,link,help);$('#notice').after(panel);
+}
 async function api<T>(path:string,data?:unknown):Promise<T>{
   if(__REZEPTWERK_DEMO__){const {demoApi}=await import('./demo.js');return demoApi<T>(path,data);}
   if(preview)throw new Error('Diese statische Vorschau ist nicht mit der privaten App verbunden.');
   const response=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Rezeptwerk-Request':'1'},body:JSON.stringify(data)});
+  if(response.status===401||response.redirected)offerSignIn();
   if(!response.headers.get('Content-Type')?.includes('application/json'))throw new Error('Die Access-Anmeldung ist abgelaufen. Bitte neu laden.');
   const result=await response.json() as {error?:string;code?:string};if(!response.ok)throw Object.assign(new Error(result.error||'Anfrage fehlgeschlagen.'),{code:result.code});return result as T;
 }

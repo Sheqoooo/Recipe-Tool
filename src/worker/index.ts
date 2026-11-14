@@ -5,6 +5,7 @@ import {normalizeAdaptation,markAdaptation} from '../shared/adaptation.js';
 import { recipeSchema,validateRecipe,shoppingList } from '../shared/recipe.js';
 import { Repository } from './db.js';
 import { authenticate,verifyIdentity } from './auth.js';
+import {needsSignInPage,signInPage} from './auth-recovery.js';
 import { normalizeUrl,readWeb,transcriptSource } from './source.js';
 import {videoPlatform,videoLink} from '../shared/video-platform.js';
 import { generateRecipe,reservationCost } from './openai.js';
@@ -135,7 +136,7 @@ export function createApp(deps:Dependencies={}){
         await repo.updateMember(data.id,data.active,data.role as 'admin'|'member'|undefined,actor);return json({ok:true});
       }
       throw new AppError('NOT_FOUND','Nicht gefunden.',404);
-    }catch(error){return json({error:error instanceof AppError?error.message:'Ein interner Fehler ist aufgetreten.',code:error instanceof AppError?error.code:'INTERNAL'},error instanceof AppError?error.status:500);}
+    }catch(error){if(error instanceof AppError&&error.code==='UNAUTHENTICATED'&&needsSignInPage(request))return signInPage();return json({error:error instanceof AppError?error.message:'Ein interner Fehler ist aufgetreten.',code:error instanceof AppError?error.code:'INTERNAL'},error instanceof AppError?error.status:500);}
   }};
 }
 function protect(response:Response):Response{

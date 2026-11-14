@@ -23,3 +23,18 @@ it('ein fremder Signaturschlüssel mit passender Audience wird abgewiesen',async
   const token=await new SignJWT({email:'admin@example.invalid'}).setProtectedHeader({alg:'RS256',kid:'expected'}).setSubject('subject').setIssuer(config.ACCESS_ISSUER!).setAudience(config.ACCESS_AUD!).setIssuedAt().setExpirationTime('1h').sign(attacker.privateKey);
   await expect(verifyIdentity(new Request('https://app.example/',{headers:{'Cf-Access-Jwt-Assertion':token}}),config,createLocalJWKSet({keys:[jwk]}))).rejects.toMatchObject({status:401});
 });
+
+it('respektiert einmonatige Access-Sitzungen und weist ungültige Zeitangaben weiterhin ab',async()=>{
+  const {privateKey,publicKey}=await generateKeyPair('RS256');const jwk=await exportJWK(publicKey);jwk.kid='month';
+  const resolver=createLocalJWKSet({keys:[jwk]}),now=Math.floor(Date.now()/1000),day=86400;
+  const check=async(iat:number,exp:number,nbf?:number)=>{
+    const jwt=new SignJWT({email:'member@example.invalid',...(nbf===undefined?{}:{nbf})}).setProtectedHeader({alg:'RS256',kid:'month'}).setSubject('subject').setIssuer(config.ACCESS_ISSUER!).setAudience(config.ACCESS_AUD!).setIssuedAt(iat).setExpirationTime(exp);
+    const token=await jwt.sign(privateKey);
+    return verifyIdentity(new Request('https://app.example/',{headers:{'Cf-Access-Jwt-Assertion':token}}),config,resolver);
+  };
+  expect((await check(now-29*day,now+day)).email).toBe('member@example.invalid');
+  await expect(check(now-30*day,now-10)).rejects.toMatchObject({status:401});
+  await expect(check(now+60,now+day)).rejects.toMatchObject({status:401});
+  await expect(check(now,now+day,now+60)).rejects.toMatchObject({status:401});
+  await expect(check(now,now-1)).rejects.toMatchObject({status:401});
+});

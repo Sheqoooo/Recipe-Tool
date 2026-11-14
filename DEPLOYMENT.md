@@ -35,7 +35,7 @@ Frontend und `/api/*` laufen gemeinsam unter dieser Origin. `workers_dev:true`, 
 
 Zuerst Zero Trust im Cloudflare-Konto einrichten, falls noch nicht aktiv. Für die Anmeldung per E-Mail **One-time PIN** als Loginmethode aktivieren (Zero Trust → Integrations → Identity providers → Add new identity provider → One-time PIN). Dadurch sind keine zusätzlichen Benutzerkonten bei einem Identitätsanbieter nötig.
 
-Dann **Workers & Pages → recipe-tool → Access → Protect this Worker behind Access** öffnen. **All traffic** auswählen, ausdrücklich nicht nur **Previews only**. Unter **Authentication policy** eine **Allow**-Richtlinie mit **Include → Emails** erstellen und ausschließlich einzelne freigegebene E-Mail-Adressen eintragen. Keine Freigabe einer gesamten E-Mail-Domain, keine Everyone-/Bypass-Richtlinie. Sitzungsdauer auf höchstens 24 Stunden setzen und **Apply Access** wählen.
+Dann **Workers & Pages → recipe-tool → Access → Protect this Worker behind Access** öffnen. **All traffic** auswählen, ausdrücklich nicht nur **Previews only**. Unter **Authentication policy** eine **Allow**-Richtlinie mit **Include → Emails** erstellen und ausschließlich einzelne freigegebene E-Mail-Adressen eintragen. Keine Freigabe einer gesamten E-Mail-Domain, keine Everyone-/Bypass-Richtlinie. Gewünschte Sitzungsdauer setzen (für Futterluke: ein Monat) und **Apply Access** wählen.
 
 Diese Worker-weite Access-Anwendung schützt alle zugehörigen URLs einschließlich `workers.dev`, sämtlicher Pfade, API-Endpunkte und Vorschauen. Nicht die kontoübergreifende Option „Protect all Workers“ verwenden: Andere Projekte und die vorhandene Pages-Seite sollen unverändert bleiben. Access muss vor dem ersten App-Deployment eingerichtet und geprüft werden. Die hier beschriebenen Kontoaktionen führt ausschließlich der Betreiber aus. [Offizieller Dashboard-Ablauf](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)
 
@@ -206,3 +206,11 @@ Neue Browserprüfungen verwenden ausschließlich eine klar gekennzeichnete Demo-
 Keine Migration, zusätzliche Ressource, Secret- oder Modellberechtigung notwendig. Die Variante nutzt das bestehende Warnungs-JSON und denselben Text-/Videomodellaufruf. Die höhere Eingabereservierung greift nur bei vorhandenem Wunsch; bestehende Tages-/Monatsbudgets und Rate Limits bleiben unverändert. Normale gespeicherte Rezepte ohne Variantenkennzeichnung bleiben Originale.
 
 Vor Freigabe Build/Typen, gemockte Text-/Videoübergabe, D1-Variantenerkennung/Editor-Provenienz und mobile/desktop Bedienung prüfen. Echte Modellqualität für Halloumi oder andere Ersetzungen ist ausschließlich in einem separat freigegebenen manuellen Import zu beurteilen; automatisierte Tests lösen keine kostenpflichtigen OpenAI-Aufrufe aus.
+
+### Erneute Access-Anmeldung
+
+Die App respektiert die signierte Access-Ablaufzeit, auch bei einmonatigen Sitzungen. Bei fehlender/ungültiger Anmeldung zeigt ein HTML-Seitenaufruf eine eigenständige öffentliche Hilfeseite (HTTP 401, ohne private App-Daten); API-Anfragen bleiben JSON mit HTTP 401. Die geladene Oberfläche bietet bei HTTP 401 oder einer Access-Weiterleitung einen dauerhaften Anmeldelink. „Erneut anmelden“ führt ausschließlich zum gleichnamigen Cloudflare-Pfad `/cdn-cgi/access/logout`; kein automatischer Logout und keine Redirect-Schleife. Dies kann weitere Access-Sitzungen desselben Teams beenden. Anschließend etwa 30 Sekunden warten und die App neu öffnen. Cloudflare-eigene Ablehnungen vor dem Worker bleiben von Cloudflare gesteuert.
+
+Manueller Smoke-Test: Access-Richtlinie bei einem Monat belassen; freigegebenes Mitglied im privaten Browser anmelden; Rezepte/Einkaufsliste prüfen. Bei ungültiger Worker-Anmeldung müssen Seitennavigation und API-Antwort die oben beschriebenen getrennten Wege nutzen. Abmelden/erneut anmelden und nicht freigegebene E-Mail separat prüfen. Keine KI-Anfrage dafür erforderlich.
+
+Quelle: [Cloudflare Access Session management](https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/session-management/).
