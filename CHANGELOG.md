@@ -1,5 +1,11 @@
 # Änderungsverlauf
 
+## 2026-11-14 – Access-Sitzungen und erneute Anmeldung
+
+- Einmonatige Access-Sitzungen anhand der signierten Ablaufzeit akzeptieren; widersprüchliche zusätzliche 24-Stunden-Grenze entfernt.
+- Ungültige/abgelaufene Sitzungen bleiben gesperrt; HTML-Seiten bieten eine öffentliche Anmeldehilfe, APIs behalten JSON/401 und die Oberfläche zeigt einen dauerhaften Anmeldelink.
+- Keine Änderung an Access-Richtlinien, Datenbankschema oder produktiven Daten; keine kostenpflichtigen Testanfragen.
+
 ## 2026-11-13 – Rezeptwünsche und Varianten
 
 - Optionales Feld „Rezept anpassen“ unter dem Linkfeld; Zutaten und Zubereitung werden im bestehenden KI-Aufruf gemeinsam berücksichtigt.

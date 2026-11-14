@@ -19,7 +19,10 @@ export async function verifyIdentity(request:Request,env:Env,resolver?:JWTVerify
   if(!token||token.length>16000)throw new AppError('UNAUTHENTICATED','Bitte über Cloudflare Access anmelden.',401);
   try {
     if(!keys.has(issuer))keys.set(issuer,createRemoteJWKSet(new URL(issuer+'/cdn-cgi/access/certs'),{timeoutDuration:5000}));
-    const {payload}=await jwtVerify(token,resolver||keys.get(issuer)!,{issuer,audience:env.ACCESS_AUD,algorithms:['RS256'],requiredClaims:['exp','iat','sub','email'],maxTokenAge:86400,clockTolerance:5});
+    const {payload}=await jwtVerify(token,resolver||keys.get(issuer)!,{issuer,audience:env.ACCESS_AUD,algorithms:['RS256'],requiredClaims:['exp','iat','sub','email'],clockTolerance:5});
+    const now=Math.floor(Date.now()/1000);
+    // Cloudflare's signed expiry determines the configured session duration.
+    if(typeof payload.iat!=='number'||!Number.isFinite(payload.iat)||payload.iat>now+5||typeof payload.exp!=='number'||payload.exp<=payload.iat)throw new Error('token time');
     if(typeof payload.email!=='string'||!/^\S+@\S+\.\S+$/.test(payload.email)||typeof payload.sub!=='string')throw new Error('identity');
     return {email:payload.email.toLowerCase(),sub:payload.sub};
   }catch{throw new AppError('UNAUTHENTICATED','Die Access-Anmeldung ist ungültig oder abgelaufen.',401);}

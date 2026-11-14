@@ -117,3 +117,15 @@ test('shopping icon metadata uses the filled bag and offers an explicit dark ins
  const manifest=await(await page.request.get('/shopping-dark.webmanifest')).json();expect(manifest.id).toBe('/shopping/');expect(manifest.start_url).toBe('/shopping/dark/');
  const icon=await(await page.request.get('/icons/shopping-bag-auto-180-v2.png')).body();expect(icon[25]).toBe(6);
 });
+
+test('abgelaufene API-Anmeldung bietet einen bleibenden Link zur erneuten Anmeldung',async({page},info)=>{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/api/state',route=>route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({error:'Die Access-Anmeldung ist ungültig oder abgelaufen.',code:'UNAUTHENTICATED'})}));
+  await page.goto('/');
+  const recovery=page.locator('#access-recovery');
+  await expect(recovery).toBeVisible();await expect(recovery).toContainText('erneut an');
+  await expect(recovery.getByRole('link',{name:'Erneut anmelden'})).toHaveAttribute('href','/cdn-cgi/access/logout');
+  await expect(recovery).toContainText('andere Apps dieses Teams');
+  await page.screenshot({path:info.outputPath('access-recovery.png'),fullPage:true});
+  expect(errors).toEqual([]);
+});
