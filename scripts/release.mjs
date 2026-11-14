@@ -9,6 +9,7 @@ if(!['production','preview','migrate'].includes(action))fail('Unknown release ac
 const vars=action==='preview'?config.previews.vars:config.vars;
 if(vars.AUTH_MODE!=='access'||vars.APP_ENV!==(action==='preview'?'preview':'production'))fail('Releases require Access and the correct isolated environment.');
 validateHosting(config);
+if(['BRING_EMAIL','BRING_PASSWORD','BRING_CLIENT_KEY'].some(key=>key in vars))fail('Bring credentials must be Worker Secrets.');
 if('OPENAI_API_KEY'in vars)fail('OPENAI_API_KEY must be a Worker Secret, never a config variable.');
 if(Object.values(vars).some(v=>String(v).includes('REPLACE_WITH')))fail('Fill in Access and application configuration before release.');
 if(config.assets.run_worker_first!==true)fail('All assets must pass authentication.');

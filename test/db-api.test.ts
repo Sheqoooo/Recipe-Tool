@@ -84,6 +84,7 @@ it('signierte Preview bleibt ohne DB/KI lesbar, aber Schreibzugriffe und unsiche
   const app=createApp(),headers={'Cf-Access-Jwt-Assertion':token};
   expect((await app.fetch(new Request('https://preview.example/api/state',{headers}),config)).status).toBe(200);
   expect((await app.fetch(new Request('https://preview.example/api/import',{method:'POST',headers}),config)).status).toBe(403);
+  for(const key of ['BRING_EMAIL','BRING_PASSWORD','BRING_CLIENT_KEY'])expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,[key]:'test-placeholder'})).status).toBe(503);
   expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,DB:env.DB})).status).toBe(503);
   expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,OPENAI_API_KEY:'test-placeholder'})).status).toBe(503);
   expect((await app.fetch(new Request('https://preview.example/',{headers}),{...config,BOOTSTRAP_ADMIN_EMAILS:'admin@example.invalid'})).status).toBe(503);

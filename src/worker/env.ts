@@ -1,4 +1,5 @@
 export interface Env {
+  BRING_EMAIL?:string; BRING_PASSWORD?:string; BRING_CLIENT_KEY?:string;
   MEDIA?: VideoMediaBinding; VIDEO_ANALYSIS_ENABLED?: string;
   OPENAI_VIDEO_MODEL?: string; VIDEO_INPUT_USD_PER_MILLION?: string; VIDEO_OUTPUT_USD_PER_MILLION?: string;
   DB?: D1Database; ASSETS: Fetcher;

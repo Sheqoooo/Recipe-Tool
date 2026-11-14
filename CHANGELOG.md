@@ -1,5 +1,11 @@
 # Änderungsverlauf
 
+## 2026-11-14 – Optionale direkte Bring!-Übertragung
+
+- Gemeinsame Bring!-Zielliste durch Administratoren auswählen; Mitglieder senden gespeicherte Rezeptzutaten samt Mengen.
+- Worker-Secrets für Bring!-Anmeldung, isolierte Vorschauen, begrenzter HTTP-Adapter und persistenter Doppelklick-/Rate-Schutz; keine zusätzliche KI.
+- Versionierte optionale Migration 0006 vorbereitet; keine produktiven Migrationen, Listen-Schreibtests oder automatische Veröffentlichung.
+
 ## 2026-11-14 – Access-Sitzungen und erneute Anmeldung
 
 - Einmonatige Access-Sitzungen anhand der signierten Ablaufzeit akzeptieren; widersprüchliche zusätzliche 24-Stunden-Grenze entfernt.
