@@ -37,6 +37,7 @@
 </div>
 </section>
 <section id="view-collection" class="view content-view" hidden>
+<div id="collection-refresh" class="collection-refresh" role="status" aria-live="polite" hidden></div>
 <div class="page-heading"><div><span class="page-emoji" aria-hidden="true">📚</span><h1>Meine Rezepte</h1><p class="intro">Alles, was du wieder kochen möchtest.</p></div><button class="add-link-button" data-view="import" aria-label="Rezeptlink hinzufügen">+</button></div>
 <label class="sr-only" for="search">Rezepte durchsuchen</label><div class="search-field"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Rezept oder Zutat suchen …" autocomplete="off"></div>
 <div id="recipe-grid" class="recipe-grid"></div>
@@ -55,5 +56,6 @@
 <button data-view="import" class="nav-item"><span aria-hidden="true">＋</span><span>Link einfügen</span></button>
 </nav>
 <dialog id="recipe-dialog" aria-label="Rezept"><div class="dialog-header"><span id="dialog-caption">DEIN REZEPT</span><button id="close-dialog" class="icon-button" aria-label="Schließen">×</button></div><div id="dialog-content"></div></dialog>
+<dialog id="delete-dialog" class="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-recipe-name"><h2 id="delete-title">Rezept löschen?</h2><p id="delete-recipe-name"></p><p id="delete-error" class="dialog-error" role="alert" hidden></p><div class="delete-dialog-actions"><button id="cancel-delete" type="button" class="secondary" autofocus>Abbrechen</button><button id="confirm-delete" type="button" class="primary delete-confirm">Rezept löschen</button></div></dialog>
 </body>
 </html>

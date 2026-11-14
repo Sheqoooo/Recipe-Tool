@@ -1,5 +1,12 @@
 # Änderungsverlauf
 
+## 2026-11-14 – Gesten im Rezeptbuch
+
+- Titel wie Bilder öffnen Rezepte per Klick und Tastatur.
+- Herunterziehen am oberen Rand aktualisiert nur die Sammlung; Suchfilter bleibt erhalten und parallele Aktualisierungen werden zusammengefasst.
+- Langes Drücken oder Kontextmenü auf Bild/Titel bietet berechtigten Administratoren einen bestätigten Löschdialog; Scrollen und Mehrfinger-Gesten brechen langes Drücken ab.
+- Kleinen Zusatz „Aus deinem Kochbuch“ vor dem Rezepttitel entfernt.
+
 ## 2026-11-14 – Klarere Einstellungen auf Smartphones
 
 - Zahnrad mit größerem Symbol, 48-Pixel-Schaltfläche, dezenter Fläche und Rand sichtbar gruppiert.
