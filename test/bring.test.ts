@@ -1,3 +1,4 @@
+import {workerRuntimeFetch} from './runtime-fetch.js';
 import {env} from 'cloudflare:workers';
 import {beforeEach,it,expect,vi} from 'vitest';
 import {BringClient,type BringItem} from '../src/worker/bring-client.js';
@@ -175,4 +176,29 @@ it('konstruiert Bring-Anfragen mit dem echten Workers-Request und blockiert Redi
  catch(error){expect(error).toMatchObject({code:'BRING_LOGIN_REDIRECT'});expect(String(error)).not.toContain('TEST_TOKEN_ONLY');}
  expect(urls).toEqual(['https://api.getbring.com/rest/v2/bringauth']);
  expect(transport).toHaveBeenCalledTimes(1);
+});
+
+it('führt den Bring-Adapter mit nativem workerd-fetch und lokalen data-Antworten ohne falschen Receiver aus',async()=>{
+ const requested:string[]=[];
+ const transport=function(this:unknown,url:RequestInfo|URL,init?:RequestInit):Promise<Response>{
+   const request=new Request(url,init);requested.push(request.url);
+   const data=request.url.endsWith('/v2/bringauth')?{uuid:userId,publicUuid:userId,access_token:'TEST_TOKEN_ONLY',token_type:'Bearer'}:{lists:[{listUuid:listId,name:'Lokale Testliste'}]};
+   // Forward the exact receiver to the real runtime. The previous client-method
+   // invocation fails here before I/O; data: responses never contact Bring.
+   return Reflect.apply(workerRuntimeFetch,this,['data:application/json,'+encodeURIComponent(JSON.stringify(data))]);
+ };
+ const client=new BringClient(config(),transport as typeof fetch);
+ await client.login();expect(await client.lists()).toEqual([{id:listId,name:'Lokale Testliste'}]);
+ expect(requested).toEqual(['https://api.getbring.com/rest/v2/bringauth','https://api.getbring.com/rest/bringusers/'+userId+'/lists']);
+});
+it('funktioniert auch mit einem receiver-sensitiven Transport und behält Redirect-Schutz',async()=>{
+ const receivers:unknown[]=[];
+ const transport=function(this:unknown,url:RequestInfo|URL,init?:RequestInit):Promise<Response>{
+   receivers.push(this);
+   if(this!==undefined&&this!==globalThis)throw new TypeError('Illegal invocation');
+   expect(new Request(url,init).redirect).toBe('manual');
+   return Promise.resolve(Response.json({uuid:userId,publicUuid:userId,access_token:'TEST_TOKEN_ONLY',token_type:'Bearer'}));
+ };
+ await new BringClient(config(),transport as typeof fetch).login();
+ expect(receivers).toEqual([undefined]);
 });
