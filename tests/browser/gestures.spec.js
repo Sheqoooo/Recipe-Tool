@@ -37,6 +37,7 @@ test('langes Drücken auf Bild oder Titel fordert Bestätigung; Loslassen öffne
    const box=await page.locator(selector).boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();
    await expect(page.locator('#delete-dialog')).toBeVisible();await page.mouse.up();
    await expect(page.locator('#recipe-dialog')).not.toBeVisible();expect(f.deletes).toHaveLength(0);
+   const sheet=await page.locator('#delete-dialog').boundingBox();expect(sheet.height).toBeLessThan(page.viewportSize().height*.75);
    await page.screenshot({path:info.outputPath('delete-confirmation.png')});
    await page.getByRole('button',{name:'Abbrechen',exact:true}).click();await expect(page.locator('.recipe-card')).toHaveCount(1);
  }
