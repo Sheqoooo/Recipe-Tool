@@ -1,11 +1,8 @@
 import type { Env } from "./env.js";
-import type { Member, Recipe, RecipeData, Source, SourceKind, Usage, ImportRecord, PlanEntry, RecipeImageData } from '../shared/types.js';
+import type { Member, Recipe, RecipeData, Source, SourceKind, Usage, ImportRecord, RecipeImageData } from '../shared/types.js';
 import { AppError } from '../shared/errors.js';
 import { normalizeSourceUrl,publicSourceUrl } from '../shared/source-url.js';
-import { positiveServings } from '../shared/recipe.js';
 import {normalizeAdaptation,adaptationNote,ADAPTATION_PREFIX,markAdaptation} from '../shared/adaptation.js';
-import {productKey,validateShoppingEntry,shoppingItemId,shoppingEntriesFromIngredients} from '../shared/shopping-entry.js';
-import type {ManualShoppingItem} from '../shared/types.js';
 
 interface Row {
   id: number; owner_id: string; title: string; description: string; servings: number | null;
@@ -21,46 +18,6 @@ export function intConfig(value: string | undefined, fallback: number, max = 100
 
 export class Repository {
   constructor(public db: D1Database) {}
-  async shoppingItems():Promise<ManualShoppingItem[]>{
-    const rows=await this.db.prepare('SELECT id,name,quantity,checked,updated_at FROM shopping_items ORDER BY checked,updated_at DESC,id LIMIT 500').all<Omit<ManualShoppingItem,'checked'>&{checked:number}>();
-    return rows.results.map(row=>({...row,checked:row.checked===1}));
-  }
-  async recipeToShopping(recipeId:number,indices:unknown,actor:Member):Promise<void>{
-    if(!Number.isSafeInteger(recipeId)||recipeId<=0)throw new AppError('INVALID_ID','Ungültiges Rezept.');
-    if(indices!==undefined&&(!Array.isArray(indices)||!indices.length||indices.length>200||indices.some(i=>typeof i!=='number'||!Number.isInteger(i)||i<0||i>=200)))throw new AppError('INVALID_INGREDIENT','Ungültige Zutatenauswahl.');
-    if(!await this.byId(recipeId))throw new AppError('NOT_FOUND','Rezept nicht gefunden.',404);
-    const rows=(await this.db.prepare('SELECT position,name,amount,unit FROM ingredients WHERE recipe_id=? ORDER BY position').bind(recipeId).all<{position:number;name:string;amount:number|null;unit:string}>()).results;
-    const selected=indices===undefined?rows:rows.filter(row=>(indices as number[]).includes(row.position));
-    if(!selected.length||(indices!==undefined&&new Set(indices as number[]).size!==selected.length))throw new AppError('INVALID_INGREDIENT','Die Zutatenauswahl ist nicht mehr gültig. Bitte neu laden.');
-    const items=shoppingEntriesFromIngredients(selected);
-    try{
-      const statements:D1PreparedStatement[]=[];
-      for(let offset=0;offset<items.length;offset+=18){
-        const chunk=items.slice(offset,offset+18);
-        statements.push(this.db.prepare('INSERT INTO shopping_items(id,name,name_key,quantity,created_by) VALUES '+chunk.map(()=>'(?,?,?,?,?)').join(',')+
-          ' ON CONFLICT(name_key) DO UPDATE SET checked=0,quantity=excluded.quantity,updated_at=CURRENT_TIMESTAMP')
-          .bind(...chunk.flatMap(item=>[crypto.randomUUID(),item.name,productKey(item.name),item.quantity,actor.id])));
-      }
-      await this.db.batch(statements);
-    }catch{throw new AppError('SHOPPING_LIMIT','Die Zutaten konnten nicht vollständig hinzugefügt werden. Bitte Platz auf der Einkaufsliste schaffen und erneut versuchen.',409);}
-  }
-  async saveShoppingItem(input:unknown,actor:Member):Promise<void>{
-    const item=validateShoppingEntry(input),key=productKey(item.name);
-    try{
-      const result=item.id?await this.db.prepare('UPDATE shopping_items SET name=?,name_key=?,quantity=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(item.name,key,item.quantity,item.id).run():
-        await this.db.prepare(`INSERT INTO shopping_items(id,name,name_key,quantity,created_by)
-          SELECT ?,?,?,?,? WHERE (SELECT COUNT(*) FROM shopping_items)<500 OR EXISTS(SELECT 1 FROM shopping_items WHERE name_key=?)
-          ON CONFLICT(name_key) DO UPDATE SET checked=0,quantity=CASE WHEN excluded.quantity='' THEN shopping_items.quantity ELSE excluded.quantity END,updated_at=CURRENT_TIMESTAMP`)
-          .bind(crypto.randomUUID(),item.name,key,item.quantity,actor.id,key).run();
-      if(!result.meta.changes)throw new AppError(item.id?'NOT_FOUND':'SHOPPING_LIMIT',item.id?'Der Artikel wurde inzwischen entfernt.':'Die Einkaufsliste enthält bereits 500 Artikel. Bitte alte Einträge entfernen.',item.id?404:409);
-    }catch(error){if(error instanceof AppError)throw error;throw new AppError('SHOPPING_CONFLICT','Der Artikel konnte nicht gespeichert werden. Prüfe, ob der Name bereits vorhanden ist.',409);}
-  }
-  async checkShoppingItem(value:unknown,checked:unknown):Promise<void>{
-    const id=shoppingItemId(value);if(typeof checked!=='boolean')throw new AppError('INVALID_SHOPPING_ITEM','Ungültiger Einkaufsstatus.');
-    const result=await this.db.prepare('UPDATE shopping_items SET checked=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(checked?1:0,id).run();
-    if(!result.meta.changes)throw new AppError('NOT_FOUND','Der Artikel wurde inzwischen entfernt.',404);
-  }
-  async deleteShoppingItem(value:unknown):Promise<void>{await this.db.prepare('DELETE FROM shopping_items WHERE id=?').bind(shoppingItemId(value)).run();}
   async member(email: string): Promise<(Member & { access_sub: string | null }) | null> {
     return this.db.prepare('SELECT * FROM members WHERE email=? COLLATE NOCASE').bind(email).first();
   }
@@ -135,22 +92,6 @@ export class Repository {
     return this.db.prepare('SELECT id FROM recipes WHERE source_url=? AND '+clause+' ORDER BY id LIMIT 1')
       .bind(url,...(wish?[adaptationNote(wish)]:[ADAPTATION_PREFIX.length,ADAPTATION_PREFIX])).first();
   }
-  async plan(recipes: Recipe[]): Promise<PlanEntry[]> {
-    const rows = (await this.db.prepare('SELECT * FROM plan ORDER BY recipe_id').all<{recipe_id:number;servings:number}>()).results;
-    return rows.flatMap(row => { const recipe=recipes.find(r => r.id===row.recipe_id); return recipe ? [{...row,recipe}] : []; });
-  }
-  async checked(): Promise<string[]> { return (await this.db.prepare('SELECT key FROM checked_items').all<{key:string}>()).results.map(r=>r.key); }
-  async setPlan(id:number, target:unknown, remove:boolean): Promise<void> {
-    const recipe=await this.byId(id);
-    if (!recipe) throw new AppError('NOT_FOUND','Das Rezept wurde nicht gefunden.',404);
-    if (!remove && recipe.servings===null) throw new AppError('SERVINGS_UNKNOWN','Bitte zuerst die fehlende Portionenzahl im Rezept korrigieren.',409);
-    const statement=remove ? this.db.prepare('DELETE FROM plan WHERE recipe_id=?').bind(id)
-      : this.db.prepare('INSERT INTO plan VALUES(?,?) ON CONFLICT(recipe_id) DO UPDATE SET servings=excluded.servings').bind(id,positiveServings(target));
-    await this.db.batch([statement,this.db.prepare('DELETE FROM checked_items')]);
-  }
-  async check(key:string, checked:boolean):Promise<void> {
-    await this.db.prepare(checked?'INSERT OR IGNORE INTO checked_items VALUES(?)':'DELETE FROM checked_items WHERE key=?').bind(key).run();
-  }
   async reserve(actor:Member, source:Pick<Source,'url'|'kind'>, env:Env, cost:number):Promise<string> {
     const sourceUrl=normalizeSourceUrl(source.url).href;
     const now=Date.now(), day=new Date().toISOString().slice(0,10), month=new Date().toISOString().slice(0,7);
@@ -204,7 +145,7 @@ export class Repository {
     recipe.steps.forEach((s,p)=>statements.push(this.db.prepare('INSERT INTO steps VALUES(?,?,?,?)').bind(id,p,s.text,JSON.stringify(s.ingredient_indices))));
     if(image)statements.push(this.db.prepare('INSERT INTO recipe_images(recipe_id,content,mime_type,original_url,source_page,credit) VALUES(?,?,?,?,?,?)').bind(id,image.bytes,image.mime,normalizeSourceUrl(image.original_url).href,sourceUrl,image.credit));
     statements.push(this.db.prepare("UPDATE imports SET status='completed',recipe_id=?,input_tokens=?,output_tokens=?,model=?,estimated_cost_microusd=? WHERE id=? AND status='running'")
-      .bind(id,usage.input_tokens,usage.output_tokens,usage.model,usage.estimated_cost_microusd,importId),this.db.prepare('DELETE FROM checked_items'));
+      .bind(id,usage.input_tokens,usage.output_tokens,usage.model,usage.estimated_cost_microusd,importId));
     await this.db.batch(statements); return id;
   }
   async edit(id:number,revision:number,recipe:RecipeData,actor:Member):Promise<void> {
@@ -222,12 +163,11 @@ export class Repository {
       this.db.prepare(`DELETE FROM steps WHERE recipe_id=? AND ${condition}`).bind(id,id,token)];
     recipe.ingredients.forEach((i,p)=>statements.push(this.db.prepare(`INSERT INTO ingredients SELECT ?,?,?,?,?,? WHERE ${condition}`).bind(id,p,i.name,i.amount,i.unit,i.note,id,token)));
     recipe.steps.forEach((s,p)=>statements.push(this.db.prepare(`INSERT INTO steps SELECT ?,?,?,? WHERE ${condition}`).bind(id,p,s.text,JSON.stringify(s.ingredient_indices),id,token)));
-    statements.push(this.db.prepare(`DELETE FROM checked_items WHERE ${condition}`).bind(id,token));
     const result=await this.db.batch(statements);
     if(!result[0].meta.changes)throw new AppError('EDIT_CONFLICT','Das Rezept wurde inzwischen geändert. Bitte neu laden.',409);
   }
   async delete(id:number,actor:Member):Promise<void> {
     if(actor.role!=='admin')throw new AppError('FORBIDDEN','Nur Administratoren dürfen Rezepte löschen.',403);
-    await this.db.batch([this.db.prepare('DELETE FROM recipes WHERE id=?').bind(id),this.db.prepare('DELETE FROM checked_items')]);
+    await this.db.batch([this.db.prepare('DELETE FROM recipes WHERE id=?').bind(id)]);
   }
 }

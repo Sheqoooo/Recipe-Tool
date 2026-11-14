@@ -1,5 +1,11 @@
 # Änderungsverlauf
 
+## 2026-11-14 – Einkaufsliste archiviert, einzelne Bring!-Zutaten
+
+- Interne Einkaufsliste und Kochplanung aus Frontend, API, Datenabfragen, Build, Manifesten und Icons entfernt; vollständiger Quellstand unter `archive/shopping-list/` archiviert.
+- Plus neben jeder Rezeptzutat sendet nur diese gespeicherte Zutat an Bring!; Sammelversand entfernt. Einzelne Positionen separat deduplizieren und schnelle Klicks seriell übertragen.
+- Keine produktive Datenlöschung oder neue Migration. Historische Tabellen und GitHub Pages bleiben erhalten; Build-Prüfungen verhindern versehentliche Archivauslieferung.
+
 ## 2026-11-14 – Bring!-Aufrufkontext
 
 - Bring!-Transport ohne falschen Client-Receiver aufrufen, damit natives workerd-fetch nicht vor dem Netzwerkzugriff mit „Illegal invocation“ scheitert.

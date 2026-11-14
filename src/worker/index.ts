@@ -2,7 +2,7 @@ import type { Env } from "./env.js";
 import type { Source,Generated,Member,AppState,RecipeImageData } from '../shared/types.js';
 import { AppError } from '../shared/errors.js';
 import {normalizeAdaptation,markAdaptation} from '../shared/adaptation.js';
-import { recipeSchema,validateRecipe,shoppingList } from '../shared/recipe.js';
+import { recipeSchema,validateRecipe } from '../shared/recipe.js';
 import { Repository } from './db.js';
 import { authenticate,verifyIdentity } from './auth.js';
 import {BringService,type BringFactory} from './bring.js';
@@ -53,18 +53,22 @@ export function createApp(deps:Dependencies={}){
         const identity=await verifyIdentity(request,env);
         if(env.DB||env.BRING_EMAIL||env.BRING_PASSWORD||env.BRING_CLIENT_KEY||env.OPENAI_API_KEY||env.BOOTSTRAP_ADMIN_EMAILS||env.MEDIA||env.VIDEO_ANALYSIS_ENABLED==='true')throw new AppError('PREVIEW_ISOLATION','Die Vorschau ist wegen unsicherer Ressourcenbindung gesperrt.',503);
         if(request.method!=='GET')throw new AppError('PREVIEW_READ_ONLY','Diese Vorschau ist schreibgeschützt.',403);
-        if(path==='/api/state')return json({recipes:[],plan:[],shopping:[],checked:[],members:[],imports:[],has_key:false,read_only:true,user:{id:identity.sub,email:identity.email,role:'member',active:1}} satisfies AppState);
+        if(path==='/api/state')return json({recipes:[],members:[],imports:[],has_key:false,read_only:true,user:{id:identity.sub,email:identity.email,role:'member',active:1}} satisfies AppState);
+        if(path==='/shopping'||path.startsWith('/shopping/'))return protect(Response.redirect(url.origin+'/recipes/#collection',302));
+        if(path.startsWith('/catalog/')||path.startsWith('/archive/')||path.startsWith('/icons/shopping')||/^\/shopping.*\.webmanifest$/.test(path))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
         return protect(await env.ASSETS.fetch(request));
       }
       if(!env.DB)throw new AppError('DB_CONFIGURATION','Die Datenbank ist noch nicht eingerichtet.',503);
       const repo=new Repository(env.DB),actor=await authenticate(request,env,repo);
       if(request.method==='GET'){
+        if(path==='/shopping'||path.startsWith('/shopping/'))return protect(Response.redirect(url.origin+'/recipes/#collection',302));
+        if(path.startsWith('/catalog/')||path.startsWith('/archive/')||path.startsWith('/icons/shopping')||/^\/shopping.*\.webmanifest$/.test(path))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
         const imageMatch=path.match(/^\/api\/recipes\/([1-9][0-9]*)\/image$/);
         if(imageMatch){const image=await repo.image(id(Number(imageMatch[1])));if(!image)throw new AppError('NOT_FOUND','Kein Rezeptbild vorhanden.',404);return protect(new Response(new Uint8Array(image.content),{headers:{'Content-Type':image.mime_type}}));}
         if(path==='/api/state'){
-          const recipes=await repo.recipes(actor),plan=await repo.plan(recipes);
-          return json({recipes,plan,shopping:shoppingList(plan),manual_items:await repo.shoppingItems(),checked:await repo.checked(),user:actor,
+          const recipes=await repo.recipes(actor);
+          return json({recipes,user:actor,
             bring:await new BringService(env,env.DB,deps.bring).status(),members:actor.role==='admin'?await repo.members():[],imports:await repo.history(actor),has_key:Boolean(env.OPENAI_API_KEY),read_only:false} satisfies AppState);
         }
         if(path.startsWith('/api/'))throw new AppError('NOT_FOUND','Nicht gefunden.',404);
@@ -91,10 +95,6 @@ export function createApp(deps:Dependencies={}){
           await repo.addVideoImage(recipeId,actor,image,job);return json({ok:true,existing:false});
         }catch(error){await repo.fail(job,error instanceof AppError?error.code:'IMAGE_FAILED');throw error;}
       }
-      if(path==='/api/shopping/from-recipe'){await repo.recipeToShopping(id(data.recipe_id),data.ingredient_indices,actor);return json({ok:true});}
-      if(path==='/api/shopping/items/save'){await repo.saveShoppingItem(data,actor);return json({ok:true});}
-      if(path==='/api/shopping/items/check'){await repo.checkShoppingItem(data.id,data.checked);return json({ok:true});}
-      if(path==='/api/shopping/items/delete'){await repo.deleteShoppingItem(data.id);return json({ok:true});}
       if(path==='/api/import'){
         const adaptation=normalizeAdaptation(data.adaptation);
         const url=normalizeUrl(data.value),platform=videoPlatform(url);
@@ -126,12 +126,6 @@ export function createApp(deps:Dependencies={}){
         await repo.edit(id(data.id),id(data.revision),validateRecipe(recipe),actor);return json({id:data.id});
       }
       if(path==='/api/recipes/delete'){await repo.delete(id(data.id),actor);return json({ok:true});}
-      if(path==='/api/plan'){await repo.setPlan(id(data.recipe_id),data.servings,data.remove===true);return json({ok:true});}
-      if(path==='/api/shopping/check'){
-        if(typeof data.key!=='string'||data.key.length>8000||typeof data.checked!=='boolean')throw new AppError('INVALID_ITEM','Ungültige Einkaufsposition.');
-        if(!shoppingList(await repo.plan(await repo.recipes(actor))).some(i=>i.key===data.key))throw new AppError('STALE_ITEM','Die Einkaufsliste hat sich geändert. Bitte neu laden.',409);
-        await repo.check(data.key,data.checked);return json({ok:true});
-      }
       if(path==='/api/members'){
         admin(actor);if(typeof data.email!=='string'||data.email.length>254||!/^\S+@\S+\.\S+$/.test(data.email)||!['admin','member'].includes(String(data.role)))throw new AppError('INVALID_MEMBER','E-Mail und Rolle prüfen.');
         await repo.invite(data.email.trim().toLowerCase(),data.role as 'admin'|'member');return json({ok:true});

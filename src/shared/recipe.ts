@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AppError } from './errors.js';
-import type { PlanEntry, RecipeData, ShoppingItem } from './types.js';
+import type { RecipeData } from './types.js';
 
 const short = z.string().max(300);
 export const recipeSchema = z.object({
@@ -48,29 +48,3 @@ export function validateRecipe(input: unknown): RecipeData {
   return recipeSchema.parse(recipe);
 }
 
-export function positiveServings(input: unknown): number {
-  const parsed = z.number().positive().max(1000).safeParse(input);
-  if (!parsed.success) throw new AppError('INVALID_SERVINGS', 'Bitte eine gültige positive Portionenzahl angeben.');
-  return parsed.data;
-}
-
-export function shoppingList(entries: PlanEntry[]): ShoppingItem[] {
-  const groups = new Map<string, ShoppingItem>();
-  for (const entry of entries) {
-    if (entry.recipe.servings === null) continue;
-    const factor = entry.servings / entry.recipe.servings;
-    for (const ingredient of entry.recipe.ingredients) {
-      const { name, amount, unit, note } = ingredient;
-      const key = JSON.stringify([name.normalize('NFKC').toLowerCase().trim(), unit.toLowerCase(), note, amount === null]);
-      if (!groups.has(key)) groups.set(key, { key, name, unit, note, amount: amount === null ? null : 0, recipes: [] });
-      const item = groups.get(key)!;
-      if (amount !== null && item.amount !== null) item.amount += amount * factor;
-      if (!item.recipes.includes(entry.recipe.title)) item.recipes.push(entry.recipe.title);
-    }
-  }
-  return [...groups.values()].map(item => {
-    const amount=item.amount===null?null:Math.round(item.amount*1000)/1000;
-    return {...item,amount,key:JSON.stringify([item.key,amount])};
-  })
-    .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-}

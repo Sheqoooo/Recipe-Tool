@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "recipe-tool-local",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-11-09",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": { "directory": "./dist/client", "binding": "ASSETS", "run_worker_first": true },
+  "d1_databases": [{ "binding": "DB", "database_name": "recipe-tool-local", "database_id": "00000000-0000-4000-8000-000000000000", "migrations_dir": "migrations", "remote": false }],
+  "vars": {
+    "APP_ENV": "local", "AUTH_MODE": "local", "RECIPE_ALLOWED_HOSTS": "",
+    "OPENAI_MODEL": "gpt-6.1-sol", "DAILY_BUDGET_MICROUSD": "2000000", "MONTHLY_BUDGET_MICROUSD": "10000000"
+  }
+}

@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import {AppError} from '../shared/errors.js';
 import type {Member,BringStatus,BringExportResult} from '../shared/types.js';
-import {shoppingEntriesFromIngredients} from '../shared/shopping-entry.js';
+import {bringItem} from '../shared/bring-item.js';
 import type {Env} from './env.js';
 import {BringClient,bringEnabled} from './bring-client.js';
 import {Repository} from './db.js';
@@ -20,13 +20,13 @@ export class BringService {
     return {enabled:true,ready:Boolean(settings),list_name:settings?.list_name??null,revision:settings?.revision??0};
   }
   private async reserve(actor:Member,kind:'lists'|'configure'|'export',key:string|null,count=0,listName=''):Promise<{id:string;existing?:Job}>{
-    const now=Math.floor(Date.now()/1000),id=crypto.randomUUID();
+    const now=Math.floor(Date.now()/1000),id=crypto.randomUUID(),limit=kind==='export'?30:5;
     await this.db.batch([
       this.db.prepare('DELETE FROM bring_requests WHERE created_at<?').bind(now-7*86400),
       this.db.prepare('UPDATE bring_requests SET dedupe_key=NULL WHERE created_at<? AND dedupe_key IS NOT NULL').bind(now-600),
       this.db.prepare(`INSERT OR IGNORE INTO bring_requests(id,dedupe_key,actor_id,kind,state,created_at,item_count,list_name)
-        SELECT ?,?,?,?,'running',?,?,? WHERE (SELECT COUNT(*) FROM bring_requests WHERE created_at>?)<5
-        AND NOT EXISTS(SELECT 1 FROM bring_requests WHERE state='running' AND created_at>?)`).bind(id,key,actor.id,kind,now,count,listName,now-60,now-60)
+        SELECT ?,?,?,?,'running',?,?,? WHERE (SELECT COUNT(*) FROM bring_requests WHERE created_at>? AND kind=?)<?
+        AND NOT EXISTS(SELECT 1 FROM bring_requests WHERE state='running' AND created_at>?)`).bind(id,key,actor.id,kind,now,count,listName,now-60,kind,limit,now-60)
     ]);
     const own=await this.db.prepare('SELECT id FROM bring_requests WHERE id=?').bind(id).first();
     if(own)return {id};
@@ -56,7 +56,7 @@ export class BringService {
   }
   async send(actor:Member,input:unknown):Promise<BringExportResult>{
     this.enabled();
-    const parsed=z.object({recipe_id:z.number().int().positive(),revision:z.number().int().positive(),target_revision:z.number().int().positive()}).strict().safeParse(input);
+    const parsed=z.object({recipe_id:z.number().int().positive(),ingredient_index:z.number().int().min(0).max(199),revision:z.number().int().positive(),target_revision:z.number().int().positive()}).strict().safeParse(input);
     if(!parsed.success)throw new AppError('BRING_INPUT','Bitte ein gespeichertes Rezept auswählen.');
     const settings=await this.settings();
     if(!settings)throw new AppError('BRING_CONFIGURATION','Bitte zuerst in den Einstellungen eine Bring!-Liste auswählen.',409);
@@ -64,11 +64,10 @@ export class BringService {
     const recipe=await new Repository(this.db).byId(parsed.data.recipe_id);
     if(!recipe)throw new AppError('NOT_FOUND','Rezept nicht gefunden.',404);
     if(recipe.revision!==parsed.data.revision)throw new AppError('EDIT_CONFLICT','Das Rezept wurde geändert. Bitte neu laden.',409);
-    const ingredients=(await this.db.prepare('SELECT name,amount,unit FROM ingredients WHERE recipe_id=? ORDER BY position LIMIT 201').bind(recipe.id).all<{name:string;amount:number|null;unit:string}>()).results;
-    if(ingredients.length>200)throw new AppError('BRING_INPUT','Höchstens 200 Zutaten pro Übertragung.');
-    const items=shoppingEntriesFromIngredients(ingredients);
-    if(items.length>200)throw new AppError('BRING_INPUT','Höchstens 200 Zutaten pro Übertragung.');
-    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([settings.list_id,recipe.id,recipe.revision,items])));
+    const ingredient=await this.db.prepare('SELECT name,amount,unit,note FROM ingredients WHERE recipe_id=? AND position=?').bind(recipe.id,parsed.data.ingredient_index).first<{name:string;amount:number|null;unit:string;note:string}>();
+    if(!ingredient)throw new AppError('INVALID_INGREDIENT','Diese Zutat ist nicht mehr vorhanden. Bitte das Rezept neu laden.',409);
+    const items=[bringItem(ingredient)];
+    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([settings.list_id,recipe.id,recipe.revision,parsed.data.ingredient_index,items])));
     const key=Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
     const job=await this.reserve(actor,'export',key,items.length,settings.list_name);
     if(job.existing){

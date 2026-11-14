@@ -46,78 +46,6 @@ test('direkt geöffnete HTML-Datei zeigt gestaltete Vorschau und Startanleitung'
   expect(errors).toEqual([]);
 });
 
-test('Link eingeben, automatisch speichern, einkaufen und erst danach korrigieren', async ({ page }, testInfo) => {
-  const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
-  const state = await (await page.request.get('/api/state')).json();
-  for (const recipe of state.recipes) await page.request.post('/api/recipes/delete', {
-    headers: { Origin: 'http://127.0.0.1:8877', 'X-Rezeptwerk-Request': '1' }, data: { id: recipe.id },
-  });
-  await page.goto('/');
-  await expect(page.locator('#key-hint')).toBeHidden();
-  await expect(page.locator('#api-key')).toHaveCount(0);
-  await expect(page.locator('#source-text')).toHaveCount(0);
-  await expect(page.locator('#manual-create')).toHaveCount(0);
-  await page.screenshot({ path: testInfo.outputPath('import.png'), fullPage: true });
-  await page.locator('#source').fill(`https://example.com/rezept-${testInfo.project.name}`);
-  await page.locator('#import-submit').click();
-  await expect(page.locator('#view-collection')).toBeVisible();
-  await expect(page.locator('#recipe-dialog')).not.toBeVisible();
-  const card = page.locator('.recipe-card').first();
-  await expect(card).toContainText('Tomatenpasta');
-  await card.locator('[data-add]').click();
-  await page.getByRole('button', { name: /Einkaufsliste/ }).click();
-  const portion = page.locator('[data-portions]').first();
-  await portion.fill('4');
-  await portion.press('Tab');
-  await expect(page.locator('#shopping-list')).toContainText('400 g');
-  await page.locator('#shopping-list input[data-check]').first().click();
-  await expect(page.locator('.shopping-row.checked')).toHaveCount(1);
-  await page.reload();
-  await expect(page.locator('.shopping-row.checked')).toHaveCount(1);
-  await page.screenshot({ path: testInfo.outputPath('shopping.png'), fullPage: true });
-  await page.getByRole('button', { name: /Meine Rezepte/ }).click();
-  await page.locator('[data-open]').first().click();
-  await expect(page.locator('#recipe-dialog')).toBeVisible();
-  await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click();
-  await page.locator('#edit-title').fill('Korrigierte Tomatenpasta');
-  await page.getByRole('button', { name: /Rezept speichern/ }).click();
-  await expect(page.locator('#recipe-dialog')).not.toBeVisible();
-  await expect(page.locator('#recipe-grid')).toContainText('Korrigierte Tomatenpasta');
-  expect(errors).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-});
-
-test('eigene Einkaufseinträge bleiben nach Neuladen gespeichert',async({page},info)=>{
- const name='Spülmittel '+info.project.name;
- let releaseState;const pendingState=new Promise(resolve=>{releaseState=resolve;});
- await page.route('**/api/state',async route=>{await pendingState;await route.continue();});
- await page.goto('/#shopping');await expect(page.locator('#shopping-name')).toBeDisabled();await expect(page.getByRole('button',{name:'Artikel hinzufügen',exact:true})).toBeDisabled();releaseState();await page.locator('#shopping-name').fill(name);await page.locator('#shopping-quantity').fill('2 Flaschen');await page.getByRole('button',{name:'Artikel hinzufügen',exact:true}).click();
- await expect(page.locator('#manual-shopping-list')).toContainText(name);await page.reload();await expect(page.locator('#manual-shopping-list')).toContainText(name);
- await page.locator('#manual-shopping-list .grocery-tile').filter({hasText:name}).getByRole('checkbox').click();
- await page.reload();await expect(page.getByRole('button',{name:name+' erneut hinzufügen',exact:true})).toBeVisible();
- await page.getByRole('button',{name:name+' erneut hinzufügen',exact:true}).click();await page.locator('#manual-shopping-list').getByLabel('Aktionen für '+name,{exact:true}).click();await page.getByRole('button',{name:name+' entfernen',exact:true}).click();
- await expect(page.locator('#manual-shopping-list')).not.toContainText(name);
-});
-
-test('Rezepte und Einkaufsliste sind direkt erreichbar und getrennt auf iOS installierbar',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:/Meine Einkaufsliste/}).click();
- await expect(page).toHaveURL(/\/shopping\//);await expect(page.locator('#view-shopping')).toBeVisible();
- for(const key of ['recipes','shopping']){
-  const response=await page.request.get('/'+key+'/');const html=await response.text();expect(html).toContain('/'+key+'.webmanifest');expect(html).toContain(key==='shopping'?'/icons/shopping-bag-auto-180-v2.png':'/icons/recipes-180.png');
-  const manifest=await(await page.request.get('/'+key+'.webmanifest')).json();expect(manifest.id).toBe('/'+key+'/');expect(manifest.start_url).toBe('/'+key+'/');expect(manifest.display).toBe('standalone');
-  const icon=await page.request.get('/icons/'+key+'-180.png');expect(icon.status()).toBe(200);expect([...((await icon.body()).subarray(0,8))]).toEqual([137,80,78,71,13,10,26,10]);
- }
- await page.getByRole('button',{name:/Meine Rezepte/}).click();await expect(page).toHaveURL(/\/recipes\/#collection/);
-});
-
-test('shopping icon metadata uses the filled bag and offers an explicit dark installation entry',async({page})=>{
- const normal=await(await page.request.get('/shopping/')).text(),dark=await(await page.request.get('/shopping/dark/')).text();
- expect(normal).toContain('shopping-bag-auto-180-v2.png');expect(dark).toContain('shopping-bag-dark-180-v2.png');expect(dark).toContain('/shopping-dark.webmanifest');
- const manifest=await(await page.request.get('/shopping-dark.webmanifest')).json();expect(manifest.id).toBe('/shopping/');expect(manifest.start_url).toBe('/shopping/dark/');
- const icon=await(await page.request.get('/icons/shopping-bag-auto-180-v2.png')).body();expect(icon[25]).toBe(6);
-});
-
 test('abgelaufene API-Anmeldung bietet einen bleibenden Link zur erneuten Anmeldung',async({page},info)=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/api/state',route=>route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({error:'Die Access-Anmeldung ist ungültig oder abgelaufen.',code:'UNAUTHENTICATED'})}));
@@ -130,30 +58,39 @@ test('abgelaufene API-Anmeldung bietet einen bleibenden Link zur erneuten Anmeld
   expect(errors).toEqual([]);
 });
 
-test('Bring-Zielliste einrichten und Zutaten ohne externe Anfragen senden',async({page},info)=>{
- const requests=[],errors=[];let ready=false,sent=false;
- page.on('pageerror',e=>errors.push(e.message));
- page.on('request',r=>{if(r.url().includes('getbring.com'))requests.push(r.url());});
- const imported=await page.request.post('/api/import',{headers:{Origin:'http://127.0.0.1:8877','X-Rezeptwerk-Request':'1'},data:{value:'https://example.com/bring-'+info.project.name}});
- expect(imported.ok()).toBe(true);const {id}=await imported.json();
- await page.route('**/api/state',async route=>{
-   const response=await route.fetch(),state=await response.json();state.bring={enabled:true,ready,list_name:ready?'Zuhause':null,revision:ready?1:0};
-   await route.fulfill({response,json:state});
- });
+
+test('Rezepte importieren, öffnen und korrigieren ohne interne Einkaufsliste',async({page},info)=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/');await page.locator('#source').fill('https://example.com/recipe-only-'+info.project.name);await page.locator('#import-submit').click();
+ await expect(page.locator('#view-collection')).toBeVisible();await expect(page.locator('[data-view="shopping"]')).toHaveCount(0);
+ await page.locator('[data-open]').first().click();await expect(page.locator('#recipe-dialog')).toBeVisible();
+ await page.getByRole('button',{name:'Bearbeiten',exact:true}).click();await page.locator('#edit-title').fill('Korrigiertes Rezept');
+ await page.getByRole('button',{name:'Rezept speichern ✓'}).click();
+ await expect(page.locator('#recipe-grid')).toContainText('Korrigiertes Rezept');
+ await page.screenshot({path:info.outputPath('recipe-only-collection.png'),fullPage:true});expect(errors).toEqual([]);
+});
+test('Bring-Zielliste einrichten und einzelne Zutaten über Plus senden',async({page},info)=>{
+ const requests=[],errors=[],payloads=[];let ready=false;
+ page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().includes('getbring.com'))requests.push(r.url());});
+ const imported=await page.request.post('/api/import',{headers:{Origin:'http://127.0.0.1:8877','X-Rezeptwerk-Request':'1'},data:{value:'https://example.com/bring-single-'+info.project.name}});expect(imported.ok()).toBe(true);const {id}=await imported.json();
+ await page.route('**/api/state',async route=>{const response=await route.fetch(),state=await response.json();state.bring={enabled:true,ready,list_name:ready?'Zuhause':null,revision:ready?1:0};await route.fulfill({response,json:state});});
  await page.route('**/api/bring/**',async route=>{
    const path=new URL(route.request().url()).pathname;
    if(path.endsWith('/lists'))return route.fulfill({json:{lists:[{id:'11111111-1111-4111-8111-111111111111',name:'Zuhause'}]}});
    if(path.endsWith('/configure')){ready=true;return route.fulfill({json:{ok:true}});}
-   const body=route.request().postDataJSON();expect(body.recipe_id).toBe(id);expect(body.target_revision).toBe(1);
-   const existing=sent;sent=true;return route.fulfill({json:{ok:true,existing,count:1,list_name:'Zuhause'}});
+   const body=route.request().postDataJSON();payloads.push(body);expect(body.recipe_id).toBe(id);expect(body.ingredient_index).toBe(0);expect(body.target_revision).toBe(1);
+   await route.fulfill({json:{ok:true,existing:false,count:1,list_name:'Zuhause'}});
  });
- await page.goto('/#settings');await expect(page.locator('#bring-status')).toContainText('Noch keine');
- await page.locator('#bring-load-lists').click();await page.locator('#bring-list').selectOption('11111111-1111-4111-8111-111111111111');await page.locator('#bring-form button').click();
- await expect(page.locator('#bring-status')).toContainText('Zuhause');
+ await page.goto('/#settings');await page.locator('#bring-load-lists').click();await page.locator('#bring-list').selectOption('11111111-1111-4111-8111-111111111111');await page.locator('#bring-form button').click();await expect(page.locator('#bring-status')).toContainText('Zuhause');
  await page.getByRole('button',{name:/Meine Rezepte/}).click();await page.locator('[data-open="'+id+'"]').click();
- const button=page.locator('[data-bring-export="'+id+'"]');await expect(button).toBeVisible();await button.click();
- await expect(page.locator('#notice')).toContainText('Zutaten an „Zuhause“ gesendet');
- await expect(button).toHaveText('✓ An Bring! gesendet');
- await page.screenshot({path:info.outputPath('bring-export.png'),fullPage:true});
- expect(requests).toEqual([]);expect(errors).toEqual([]);
+ await expect(page.getByRole('button',{name:'Zutaten an Bring! senden'})).toHaveCount(0);
+ const plus=page.locator('[data-bring-ingredient="0"]');await expect(plus).toHaveAttribute('aria-label','Tomaten an Bring! senden');await plus.click();await expect(plus).toHaveText('✓');
+ expect(payloads).toHaveLength(1);expect(requests).toEqual([]);expect(errors).toEqual([]);
+ await page.screenshot({path:info.outputPath('bring-recipe-plus.png'),fullPage:true});
+});
+test('alte Einkaufslinks führen zum Kochbuch; nur Futterluke bleibt installierbar',async({page})=>{
+ await page.goto('/shopping/');await expect(page.locator('#view-collection')).toBeVisible();expect(new URL(page.url()).pathname).toBe('/recipes/');
+ const manifest=await(await page.request.get('/recipes.webmanifest')).json();expect(manifest.name).toBe('Futterluke');
+ await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href','/icons/recipes-180.png');
+ for(const path of ['/shopping.webmanifest','/shopping-dark.webmanifest','/catalog/search.json','/archive/shopping-list/web/app.ts'])expect((await page.request.get(path)).status()).toBe(404);
 });

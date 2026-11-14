@@ -2,7 +2,7 @@
 
 ## Weiterentwicklung statt Neubau
 
-Die [Bestandsaufnahme](docs/MIGRATION-CLOUDFLARE.md) beschreibt den Ausgangsstand. Erhalten sind Gestaltung, Navigation, Rezeptsammlung, Korrekturansicht, Export und Einkaufslogik. Die aktive Anwendung liegt jetzt in `web/` und `src/`; die bisherige `static/`-Oberfläche bleibt als eigenständige öffentliche GitHub-Pages-Vorschau erhalten. Es wurde kein UI-Framework eingeführt.
+Die [Bestandsaufnahme](docs/MIGRATION-CLOUDFLARE.md) beschreibt den Ausgangsstand. Erhalten sind Gestaltung, Navigation, Rezeptsammlung, Korrekturansicht und Export. Die aktive Anwendung liegt jetzt in `web/` und `src/`; die bisherige `static/`-Oberfläche bleibt als eigenständige öffentliche GitHub-Pages-Vorschau erhalten. Es wurde kein UI-Framework eingeführt.
 
 ## Laufzeit
 
@@ -32,7 +32,7 @@ Browser → Cloudflare Access → Worker (JWT + Mitgliedschaft + Berechtigung)
 
 `src/shared/recipe.ts` definiert das feste Zod-Schema; `src/shared/types.ts` leitet `RecipeData` daraus ab. Backend, D1-Repository und TypeScript-Oberfläche verwenden diese Typen. Unbekannte Portionen/Zeiten/Mengen sind `null`, keine erfundenen Standardwerte. Schritte enthalten `text` und nullbasierte `ingredient_indices`. Die Oberfläche zeigt zu jedem referenzierten Schritt die zugehörigen Zutatenmengen direkt an. Wird dieselbe Zutat in mehreren Schritten verwendet, kennzeichnet sie die zusätzliche Anzeige als Rezeptgesamtmenge; maßgeblich sind dann die bekannten Teilmengen im Schritttext. So wird eine Gesamtmenge nicht irreführend als jede einzelne Teilmenge ausgegeben.
 
-Ein fehlendes Portionenfeld verhindert die Aufnahme in die skalierbare Kochliste, bis es sachlich korrigiert wurde. Volumen-/Gewichtsumrechnung für Cups bleibt eine zutatenabhängige KI-Aufgabe mit Prüfhinweis; einfache g/kg- und ml/l-Normalisierung sowie Einkaufsarithmetik laufen deterministisch.
+Fehlende Portionen bleiben als unbekannt markiert; die Bring!-Übertragung verwendet gespeicherte Zutatenmengen. Volumen-/Gewichtsumrechnung für Cups bleibt eine zutatenabhängige KI-Aufgabe mit Prüfhinweis; einfache g/kg- und ml/l-Normalisierung und sichere Mengenformatierung für Bring! laufen deterministisch.
 
 ## D1-Schema
 
@@ -44,8 +44,8 @@ Die versionierte Migration `migrations/0001_shared_cookbook.sql` enthält folgen
 | `recipes` | Besitzer, Titel, Beschreibung, Portionen, Zeiten, Quelle, Warnungen, Revision, Zeitstempel |
 | `ingredients` | Strukturierte Zutaten in fester Reihenfolge |
 | `steps` | Schritte mit Referenzen auf Zutatenpositionen |
-| `plan` | Gemeinsam ausgewählte Gerichte und Zielportionen |
-| `checked_items` | Gemeinsam abgehakte Einkaufspositionen |
+| `plan` | Historische Kochliste; aktive App liest/schreibt sie nicht |
+| `checked_items` | Historische Einkaufsdaten; aktive App liest/schreibt sie nicht |
 | `imports` | Besitzer, Status, Fehlercode, Lease, Kostenreservierung, Tokenverbrauch und Kostenschätzung |
 
 SQL-Zugriffe verwenden gebundene Parameter. D1-Batches bilden Transaktionen. Rezeptänderungen verwenden Revision und ein internes Mutationstoken, damit eine veraltete Korrektur keine Zutaten eines neueren Stands überschreibt. Tabellenname/ID aus der früheren privaten SQLite-Datei werden nicht automatisch importiert; eine spätere Datenübernahme benötigt einen gesonderten, geprüften Datenmigrationsschritt.
@@ -73,25 +73,10 @@ Live-Nachweis: [manuelle Checkliste](docs/SMOKE-TEST.md), noch nicht ausgeführt
 ### Optionale Rezeptbilder
 `source-image.ts` extrahiert Bildmetadaten getrennt vom KI-Text. `image.ts` lädt höchstens einen Kandidaten über die vorhandenen URL-/DNS-/Redirect-Schutzregeln. Nach erfolgreicher Rezeptvalidierung wird das Bild im selben D1-Batch wie das Rezept in `recipe_images` gespeichert. Die Sammlung lädt nur Bildmetadaten, keine BLOBs. Ein authentifizierter GET `/api/recipes/:id/image` liefert die Bytes. Migration `0003_recipe_images.sql` erweitert die bestehende D1; keine weitere Ressource.
 
-### Gemeinsame Einkaufskacheln
-`src/shared/products.ts` enthält den lokalen Produktkatalog, Suchnormalisierung, Vorschlagsrangfolge, Emoji-Zuordnung und strikte Eingabevalidierung. Browser und Worker verwenden dieselben Typen und Regeln. Neue D1-Tabelle `shopping_items` (Migration 0004): manuelle Einträge mit normalisiert eindeutigem Namen, Freitextmenge, Erledigtstatus, Ersteller und Zeitpunkten. Aktive Mitglieder dürfen alle manuellen Listeneinträge bearbeiten. Atomare Insert-/Upsert-Abfrage begrenzt die gemeinsame Liste inklusive erledigter Einträge auf 500. Änderungen an der Kochliste beeinflussen manuelle Einträge nicht. Rezeptzutaten bleiben separat berechnet, um Mengen und Herkunft zu erhalten; keine automatische Mengenaddition mit Freitextartikeln.
-
-### Einkaufsweg, direkte Übernahme und App-Einstiege
-`shopping-order.ts` ordnet bekannte Namen in feste Abteilungen ein; Vorrats-/TK-Marker haben Vorrang vor Grundzutaten. Unklare Produkte landen sichtbar unter Sonstiges. Ein gemeinsamer Renderer sortiert manuelle Artikel und dynamische Rezeptzutaten zusammen. Die Speicherung bleibt getrennt, um Freitextmengen nicht mit skalierbaren Rezeptmengen zu vermischen.
-
-POST `/api/shopping/from-recipe` liest Originalzutaten serverseitig und übernimmt alle oder explizite Indizes als Snapshot in `shopping_items`. Bekannte Mengen bleiben erhalten; fehlende Mengen heißen „Menge offen“. Erneutes Hinzufügen ersetzt die manuelle Menge und öffnet den bestehenden Namen erneut, ohne ihn zu duplizieren. Gleichnamige Zutaten einer Übernahme werden mit ` + ` als Menge verbunden; keine willkürliche Addition unterschiedlicher Einheiten. Zu lange Namen/Mengen führen vor dem Schreiben zu einem Validierungsfehler. D1-Batches mit höchstens 18 Artikeln je Statement bleiben unter 100 Bindings. Migration 0005 erzwingt das bestehende 500-Artikel-Limit per Trigger, damit Mehrfachimporte bei Überschreitung vollständig zurückrollen.
-
-Der Build erstellt `/recipes/index.html` und `/shopping/index.html`, getrennte Manifest-IDs/Start-URLs und originale PNG-Icons in 180/192/512 Pixeln. Beide greifen auf dieselbe geschützte API zu. Wechsel zwischen den Bereichen nutzt in der echten App deren eigene URLs; die Offline-Demo verwendet weiterhin nur Ansichten im Arbeitsspeicher. Kein Service Worker und kein Cache privater Daten.
-
 ### Importierte Suchdaten
 `data/catalog/bls.json` und `open-food-facts.json` sind getrennte, öffentlich lizenzierte Auszüge. `search.json` ist die deduplizierte Suchprojektion; `SOURCES.json` enthält Versionen, Hashes und Zählungen. `scripts/import-product-data.py` erzeugt sie deterministisch aus lokal bereitgestellten offiziellen Quelldateien, ohne Netz- oder Datenbankzugriff. Die Anwendung lädt die Suchprojektion im Bundle. Exakte Namens-/Synonymzuordnung verwendet Maps, beschreibende Zusätze kurze Wortgruppen; keine wiederholte Volltextklassifizierung aller 5.000 Begriffe pro Artikel. Kategorien sind Heuristiken. Produktionsbuild enthält zusätzlich herunterladbare, geschützte `/catalog/`-Kopien. Private Nutzerdaten bleiben ausschließlich in D1.
 
 Katalogdaten und Suchindizes laufen nur im Frontend. Gemeinsame Schreibvalidierung liegt separat in shopping-entry.ts; der Worker importiert keine öffentlichen Lebensmittel-Datensätze und baut keine Suchindizes pro Isolat auf.
-
-### Mobile Einkaufsleiste
-shopping-dock.ts misst Formular, Navigation und VisualViewport. Gemeinsame reine Geometrie in dock-geometry.ts begrenzt Vorschlagshöhe und berechnet die Position oberhalb der Tastatur. ResizeObserver und Viewport-/Fokusereignisse aktualisieren CSS-Variablen über requestAnimationFrame. Bei sichtbarer Tastatur wird die Navigation ausgeblendet; beim Schließen kehrt sie zurück. Ausreichender Seitenabstand verhindert verdeckte letzte Artikel. Desktop bleibt im normalen Layout.
-
-Der Build erzeugt für die Einkaufstüte transparente sowie hell/dunkel hinterlegte PNGs und einen zusätzlichen Installations-Einstieg `/shopping/dark/` mit derselben Manifest-ID. Kein neuer Worker, keine Datenbankmigration, keine API-/Berechtigungsänderung.
 
 ### Ausgewählte Video-Standbilder
 Der Video-Responses-Umschlag erweitert ausschließlich den Medienpfad um `cover_frame_index` (0–5 oder null). Die Auswahl wird im selben strukturierten Rezeptaufruf validiert; der normale Textvertrag bleibt unverändert. `extractVideoImage` extrahiert den gewählten Zeitpunkt erneut aus den vorübergehend vorhandenen Originalbytes mit nur einer Zielbreite (960 px), damit kein quadratischer Rand in das Foto eingebrannt wird. Header/Dimensionen und höchstens 1 MiB JPEG werden geprüft. Ein Bildfehler verwirft kein gültiges Rezept. `Generated.image` bleibt ein serverinterner Übergabewert; D1 speichert nur das eine Bild in der bereits vorhandenen `recipe_images`-Tabelle.
@@ -109,12 +94,22 @@ Reservierung berücksichtigt die zusätzliche Wunsch-/Anweisungslänge vor jedem
 
 ## Optionale Bring!-Anbindung
 
-Futterluke kann Zutaten eines gespeicherten Rezepts per Knopfdruck direkt an eine gemeinsame Bring!-Liste senden. Diese Anbindung ist **inoffiziell** und kann durch Änderungen bei Bring! ausfallen. Es gibt keine automatische Synchronisation, keinen Import fremder Bring!-Listeninhalte und keine Lösch-/Abhakfunktion für Bring!. Die eigene Futterluke-Einkaufsliste bleibt unabhängig nutzbar. Übertragen werden die Mengen des gespeicherten Rezepts, nicht abweichende Portionen aus der Kochliste. Zutaten ohne zuverlässige Mengen bleiben „Menge offen“. Unbekannte Artikelnamen können als eigene Bring!-Artikel erscheinen; es erfolgt keine zusätzliche KI-Auswertung.
+Futterluke kann jeweils eine Zutat eines gespeicherten Rezepts über deren Plus-Schaltfläche direkt an eine gemeinsame Bring!-Liste senden. Diese Anbindung ist **inoffiziell** und kann durch Änderungen bei Bring! ausfallen. Es gibt keine automatische Synchronisation, keinen Import fremder Bring!-Listeninhalte und keine Lösch-/Abhakfunktion für Bring!. Die frühere interne Einkaufsliste ist ausschließlich im Quellcodearchiv erhalten und wird nicht ausgeliefert. Übertragen werden die Mengen des gespeicherten Rezepts, nicht abweichende Portionen aus der Kochliste. Zutaten ohne zuverlässige Mengen bleiben „Menge offen“. Unbekannte Artikelnamen können als eigene Bring!-Artikel erscheinen; es erfolgt keine zusätzliche KI-Auswertung.
 
 Ein gemeinsames Bring!-Konto für dieses Kochbuch wird ausschließlich serverseitig über Worker Secrets angebunden. Administratoren laden in Einstellungen → Bring! die verfügbaren Listen und wählen die gemeinsame Zielliste. Normale freigegebene Mitglieder können danach Rezeptzutaten senden; sie können weder die Zielliste ändern noch weitere Bring!-Listen abrufen. Alle Mitglieder nutzen dieselbe Bring!-Verbindung. Es werden Zutaten/Mengen an Bring! übermittelt, keine Rezeptquelle, keine Arbeitsschritte und keine Cloudflare-Nutzer-E-Mail.
 
-Ein Batch-PUT pro Export, keine automatischen Schreibwiederholungen. Identische Rezeptfassung/Zielliste/Zutaten werden haushaltsweit zehn Minuten dedupliziert, auch bei parallelen Klicks. Bei unklarem Ergebnis muss die Bring!-Liste geprüft werden; für zehn Minuten erfolgt kein erneutes Senden. Das ist keine garantierte Exactly-once-Zustellung über zwei unabhängige Dienste. Nach Ablauf des Schutzfensters ist ein bewusster neuer Export möglich; Bring! kann dann weitere gleichnamige Artikel anlegen. Namen/Mengen werden nicht mit vorhandenen Bring!-Artikeln zusammengeführt.
+Ein PUT mit genau einer Zutat pro Export, keine automatischen Schreibwiederholungen. Identische Rezeptfassung/Zielliste/Zutatenposition werden haushaltsweit zehn Minuten dedupliziert, auch bei parallelen Klicks. Bei unklarem Ergebnis muss die Bring!-Liste geprüft werden; für zehn Minuten erfolgt kein erneutes Senden. Das ist keine garantierte Exactly-once-Zustellung über zwei unabhängige Dienste. Nach Ablauf des Schutzfensters ist ein bewusster neuer Export möglich; Bring! kann dann weitere gleichnamige Artikel anlegen. Namen/Mengen werden nicht mit vorhandenen Bring!-Artikeln zusammengeführt.
 
-Maximal fünf Verbindungsaktionen pro Minute für das gemeinsame Konto, höchstens eine laufende Aktion (60 Sekunden Sperrfenster), 200 Zutaten und 128 KiB JSON-Antworten. Zehn Sekunden Timeout pro Bring!-HTTP-Anfrage, feste HTTPS-API-Adresse, UUID-validierte Pfade, keine Redirects, keine frei wählbaren Zielhosts. Login-Tokens bleiben nur im Arbeitsspeicher der einzelnen Aktion; kein Token-/Passwort-Logging und keine Browser- oder D1-Speicherung. Die D1-Migration `0006_bring_exports.sql` enthält ausschließlich Ziellistenkonfiguration und kurzlebige Anfragestatus (sieben Tage Aufbewahrung), keine Zugangsdaten. Ein fehlendes Schema deaktiviert die Bring!-Einrichtung, ohne die übrige App zu blockieren.
+Maximal 30 einzelne Zutatenexporte sowie jeweils fünf Aktionen je Einrichtungstyp pro Minute für das gemeinsame Konto, höchstens eine laufende Aktion (60 Sekunden Sperrfenster) und 128 KiB JSON-Antworten. Die Oberfläche reiht schnelle Klicks ohne automatische Wiederholung nacheinander ein. Zehn Sekunden Timeout pro Bring!-HTTP-Anfrage, feste HTTPS-API-Adresse, UUID-validierte Pfade, keine Redirects, keine frei wählbaren Zielhosts. Login-Tokens bleiben nur im Arbeitsspeicher der einzelnen Aktion; kein Token-/Passwort-Logging und keine Browser- oder D1-Speicherung. Die D1-Migration `0006_bring_exports.sql` enthält ausschließlich Ziellistenkonfiguration und kurzlebige Anfragestatus (sieben Tage Aufbewahrung), keine Zugangsdaten. Ein fehlendes Schema deaktiviert die Bring!-Einrichtung, ohne die übrige App zu blockieren.
 
 Quellen/Protokollstand geprüft am 14.11.2026: [bring-api, inoffizieller Client](https://github.com/miaucl/bring-api), [Bring!-Anmeldung in Home Assistant](https://www.home-assistant.io/integrations/bring/). Der TypeScript-Adapter verwendet Workers-fetch direkt; kein Python-Dienst und keine zusätzliche Laufzeitabhängigkeit.
+
+## Archivierte interne Einkaufsliste (14.11.2026)
+
+Der frühere Einkaufsbereich und die Kochplanung wurden aus aktiven HTML-/TypeScript-/CSS-, Worker- und Build-Einstiegen entfernt. Der eingefrorene Quellstand samt Tests und Kataloglizenzen liegt unter `archive/shopping-list/` (Baseline `d9589a0698b99d17dc1bb555980a2f9bc9911c53`). Keine aktiven Imports, keine Auslieferung des Archivs und keine Kopie von Katalogen oder Einkaufsicons in `dist/client`. Der Build reinigt vor jeder Erstellung ausschließlich seinen festen generierten Zielordner, damit keine alten Assets übrig bleiben.
+
+Nur Futterluke hat noch ein Manifest und das unveränderte Zitronensymbol. Alte `/shopping/`- und `/shopping/dark/`-Aufrufe führen nach Authentifizierung per 302 zu `/recipes/#collection`; alte Einkaufsmanifeste, Icons, Kataloge und `/archive/` liefern 404. Frühere `/api/shopping/*` und `/api/plan` bleiben nach Authentifizierung 404. `/api/state` enthält keine Koch-/Einkaufslistenfelder und fragt die alten Tabellen nicht ab.
+
+Plus neben einer Rezeptzutat sendet `recipe_id`, `revision`, `target_revision` und den einzelnen `ingredient_index` an `POST /api/bring/export`. Ein fehlender Index/Bulk-Aufruf wird vor Fremdzugriff abgewiesen. Die Zutat samt Menge stammt ausschließlich aus der gespeicherten passenden Rezeptrevision. Deduplizierung berücksichtigt die Zutatenposition; andere Zutaten desselben Rezepts können sofort danach übertragen werden. Keine Sammelschaltfläche, keine Katalog-/Emoji-Funktion im Bundle. Schnelle Klicks werden clientseitig seriell abgearbeitet; serverseitig 30 Exporte/Minute und weiterhin ein laufender Vorgang. Keine automatische Schreibwiederholung.
+
+Keine neue SQL-Migration. Historische Tabellen `shopping_items`, `plan` und `checked_items` und deren Daten bleiben erhalten; die aktive App liest oder bearbeitet sie nicht. Historische Migrationen bleiben vollständig für reproduzierbare D1-Neuinstallationen bestehen. Ein Wiederherstellen des Archivs ist eine bewusste spätere Entwicklungsentscheidung mit separatem Branch, Tests und Freigabe, kein Laufzeit-Schalter.
