@@ -56,6 +56,26 @@ it('verwendet passende Reel-Seitendaten ohne Einbettungsabruf, KI-Aufruf oder ge
  expect(source.url).toBe('https://www.instagram.com/reel/DfZugRbMuDa/');expect(source.text).not.toContain('SYNTHETIC_SECRET');
  expect(f.mock.calls.some(([url])=>String(url).includes('/embed/')||String(url).includes('api.openai.com'))).toBe(false);
 });
+it.each([
+ ['missing',200,'text/html','VIDEO_METADATA_MISSING'],
+ ['embed-http',403,'text/html','VIDEO_EMBED_HTTP_403'],
+ ['embed-type',200,'application/json','VIDEO_EMBED_TYPE'],
+ ['media-http',403,'video/mp4','VIDEO_MEDIA_HTTP_403'],
+ ['media-type',200,'text/html','VIDEO_MEDIA_TYPE'],
+ ['media-format',200,'video/mp4','VIDEO_MP4_FORMAT'],
+])('unterscheidet sichere Fehlerstufen ohne Medienadressen oder KI-Aufruf: %s',async(kind,status,type,stage)=>{
+ const {config}=fixture(),page='https://www.instagram.com/reel/DfZugRbMuDa/';
+ const html=kind.startsWith('media')?reelJson([reelItem()]):'';
+ const f=vi.fn(async(input:RequestInfo|URL)=>{
+  const url=String(input);
+  if(url.includes('dns-query'))return Response.json({Status:0,Answer:[{type:1,data:'93.184.216.34'}]});
+  return new Response(kind==='missing'?'No public player data':'synthetic invalid media',{status,headers:{'Content-Type':type}});
+ });
+ let error:unknown;try{await readPublicVideo(new URL(page),new URL(page),html,config,f as typeof fetch,Date.now()+10000);}catch(e){error=e;}
+ expect(error).toMatchObject({code:'VIDEO_SOURCE_REQUIRED'});expect(String(error)).toContain(stage);
+ expect(String(error)).not.toContain('SYNTHETIC_SECRET');expect(String(error)).not.toContain('scontent');
+ expect(f.mock.calls.some(([url])=>String(url).includes('api.openai.com'))).toBe(false);
+});
 it.each(['http://scontent.cdninstagram.com/a','https://scontent.cdninstagram.com.attacker.example/a','https://127.0.0.1/a','https://user:pass@scontent.cdninstagram.com/a','https://scontent.cdninstagram.com:8443/a'])('verwirft unsichere Medienadressen %s',url=>expect(()=>playbackUrl(url,'instagram')).toThrow());
 it('bindet TikTok-Playerdaten an die erwartete Video-ID',()=>{
  const html='<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{itemInfo:{itemStruct:{id:'123',video:{playAddr:'https://v16-webapp-prime.tiktok.com/test.mp4?synthetic=1'}}}}}})+'</script>';

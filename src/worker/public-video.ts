@@ -6,7 +6,7 @@ import {parse,type DefaultTreeAdapterMap} from 'parse5';
 
 export const MAX_VIDEO_BYTES=16*1024*1024;
 export const MAX_VIDEO_SECONDS=90;
-const unavailable=()=>new AppError('VIDEO_SOURCE_REQUIRED','Für diesen Link konnte keine öffentlich abrufbare Videodatei erkannt werden. Das bedeutet nicht, dass das Reel privat ist. Eine Beschreibung oder ein Transkript kann weiterhin verwendet werden.',422);
+const unavailable=(stage='VIDEO_SOURCE_UNAVAILABLE',message='Für diesen Link konnte keine öffentlich abrufbare Videodatei erkannt werden.')=>new AppError('VIDEO_SOURCE_REQUIRED',message+' Eine Beschreibung oder ein Transkript kann weiterhin verwendet werden. ('+stage+')',422);
 
 /** Signed playback URLs are ephemeral capabilities, never recipe source URLs. */
 export function playbackUrl(value:string,platform:'instagram'|'tiktok'):URL{
@@ -118,7 +118,7 @@ export function mp4Duration(bytes:Uint8Array):number{
 }
 
 export async function readPublicVideo(source:URL,pageUrl:URL,html:string,env:Env,fetcher:typeof fetch,deadline:number):Promise<{bytes:Uint8Array<ArrayBuffer>;duration:number}>{
- if(env.VIDEO_ANALYSIS_ENABLED!=='true'||!env.MEDIA||env.APP_ENV==='preview')throw unavailable();
+ if(env.VIDEO_ANALYSIS_ENABLED!=='true'||!env.MEDIA||env.APP_ENV==='preview')throw unavailable('VIDEO_NOT_ENABLED','Die automatische Videoanalyse ist auf diesem Server nicht freigeschaltet.');
  const platform=videoPlatform(source);if(platform!=='instagram'&&platform!=='tiktok')throw unavailable();
  const request=async(url:URL,accept:string)=>{
   if(Date.now()>=deadline)throw new AppError('SOURCE_TIMEOUT','Die Videoquelle antwortet zu langsam.',504);
@@ -134,8 +134,10 @@ export async function readPublicVideo(source:URL,pageUrl:URL,html:string,env:Env
    if(!(error instanceof AppError)||error.code!=='VIDEO_SOURCE_REQUIRED')throw error;
   const embed=new URL(source.pathname.replace(/\/$/,'')+'/embed/',source.origin);
   const response=await request(embed,'text/html');
-  if(!response.ok||!/^text\/html\b/i.test(response.headers.get('content-type')||'')){await response.body?.cancel();throw unavailable();}
-  playback=instagramPlayback(await limitedText(response,2000000));
+  if(!response.ok){await response.body?.cancel();throw unavailable('VIDEO_EMBED_HTTP_'+response.status,'Instagram hat den Abruf der Einbettungsseite durch den App-Server abgelehnt.');}
+  if(!/^text\/html\b/i.test(response.headers.get('content-type')||'')){await response.body?.cancel();throw unavailable('VIDEO_EMBED_TYPE','Instagram liefert dem App-Server keine lesbare Einbettungsseite.');}
+  try{playback=instagramPlayback(await limitedText(response,2000000));}
+  catch(error){if(!(error instanceof AppError)||error.code!=='VIDEO_SOURCE_REQUIRED')throw error;throw unavailable('VIDEO_METADATA_MISSING','Instagram liefert dem App-Server derzeit weder auf der Reel-Seite noch in der Einbettung eine nutzbare Videoadresse. Das bedeutet nicht, dass das Reel privat ist.');}
   }
  }else{
   if(videoPlatform(pageUrl)!=='tiktok')throw unavailable();
@@ -144,7 +146,9 @@ export async function readPublicVideo(source:URL,pageUrl:URL,html:string,env:Env
  }
  // No redirects on signed CDN capabilities. No cookies, credentials, referer or origin headers.
  const response=await request(playback,'video/mp4');
- if(response.status!==200||!/^video\/mp4\b/i.test(response.headers.get('content-type')||'')){await response.body?.cancel();throw unavailable();}
- const bytes=await limitedBytes(response,MAX_VIDEO_BYTES),duration=mp4Duration(bytes);
+ if(response.status!==200){await response.body?.cancel();throw unavailable('VIDEO_MEDIA_HTTP_'+response.status,'Die Videoadresse wurde erkannt, aber der Medienserver hat den Abruf durch die App abgelehnt.');}
+ if(!/^video\/mp4\b/i.test(response.headers.get('content-type')||'')){await response.body?.cancel();throw unavailable('VIDEO_MEDIA_TYPE','Die Videoadresse wurde erkannt, aber der Medienserver liefert keine unterstützte MP4-Datei.');}
+ const bytes=await limitedBytes(response,MAX_VIDEO_BYTES);let duration:number;
+ try{duration=mp4Duration(bytes);}catch(error){if(!(error instanceof AppError)||error.code!=='VIDEO_SOURCE_REQUIRED')throw error;throw unavailable('VIDEO_MP4_FORMAT','Die Videodatei wurde geladen, ihr MP4-Format konnte aber nicht sicher gelesen werden.');}
  return {bytes,duration};
 }

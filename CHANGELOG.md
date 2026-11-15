@@ -1,5 +1,11 @@
 # Änderungsverlauf
 
+## 2026-11-15 – Video-Abruffehler unterscheiden
+
+- Fehlende öffentliche Instagram-Metadaten, abgelehnte Einbettungs-/Medienabrufe, falsche Inhaltstypen, fehlende Freischaltung und unlesbares MP4-Format mit getrennten sicheren Hinweisen kennzeichnen.
+- Bestehender API-Code `VIDEO_SOURCE_REQUIRED` erhält die optionale Textalternative. Keine Medienadressen, signierten Parameter oder Rohantworten in Fehlern; keine zusätzlichen Abrufe, Logs oder Retries.
+- Sechs gemockte Fehlerstufen-Regressionen ergänzt. Keine Aussage, dass beliebige Reels zuverlässig importierbar seien.
+
 ## 2026-11-14 – Bring!-Auswahl mit Ausschlüssen
 
 - Kreuzchen in der Zutatenliste schließen einzelne Zutaten vom Versand aus und grauen Namen und Mengen aus.
