@@ -1,5 +1,12 @@
 # Änderungsverlauf
 
+## 2026-11-14 – Öffentliche Reel-Seitendaten
+
+- Instagram-Medien zusätzlich aus öffentlichen JSON-Daten der normalen Reel-Seite erkennen und eindeutig an den angefragten Reel-Code binden; bisherige Einbettung bleibt Rückfallweg.
+- Geeignete kleinere Auflösung bevorzugen. Bestehende DNS-, CDN-, Redirect-, Größen- und Zeitgrenzen gelten unverändert; keine Logins oder zusätzlichen Plattform-Endpunkte.
+- Fehlermeldung behauptet nicht mehr, dass ein nicht erkanntes Reel privat sei. Instagram kann wechselnde oder unvollständige Antworten liefern; der Import beliebiger Reels bleibt nicht garantiert.
+- Gemockte Regressionen für moderne Seitendaten, fremde/mehrdeutige Videos, unsichere Medienadressen und direkte Verarbeitung ohne Einbettungsabruf.
+
 ## 2026-11-14 – Gesten im Rezeptbuch
 
 - Titel wie Bilder öffnen Rezepte per Klick und Tastatur.
