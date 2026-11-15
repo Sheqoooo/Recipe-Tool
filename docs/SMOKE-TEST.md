@@ -43,3 +43,10 @@ Automatisierte Tests verwenden ausschließlich lokales D1 und gemocktes OpenAI/B
 - iPhone: Import, Sammlung, Suche, Rezeptansicht und einzelne Plus-Schaltflächen mit Tastatur prüfen; keine horizontalen Überläufe.
 - `npm run build:demo`: portable Offline-Datei zeigt nur Rezeptoberfläche und simulierte einzelne Bring!-Übertragungen ohne Netz.
 - Die reale Bring!-Liste wird durch die Demo niemals verändert.
+
+
+### Bring!-Auswahl mit Ausschlüssen
+
+Kreuzchen in der Rezept-Zutatenliste schließen Positionen vom Versand aus. Die Schaltfläche darunter überträgt die übrigen Positionen seriell, mit unveränderten Berechtigungen, Einzelzutaten-Prüfungen, Revisionen, Deduplizierung und 30-Exporte/Minute-Limit. Kein neuer Endpunkt, keine Migration und keine neuen Secrets. Nach vollständiger Bestätigung wird die Auswahl zurückgesetzt; bei Fehlern bleibt der bestätigte Fortschritt sichtbar, ohne automatische Wiederholung. Die Auswahl lebt nur im geöffneten Dialog.
+
+Manuell erst mit Freigabe eines echten Bring!-Schreibtests: drei Testzutaten öffnen, mittlere ausschließen und Auswahl senden. In Bring! dürfen nur die zwei übrigen ankommen; danach müssen Kreuzchen und Plus-Symbole wieder normal sein. Ohne weitere Freigabe ausschließlich die gemockten Browserprüfungen nutzen. Teilfehler und schreibgeschützte Ansichten werden im Browser mit Mocks geprüft.

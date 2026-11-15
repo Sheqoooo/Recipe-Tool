@@ -1,6 +1,6 @@
 # Futterluke 🍋
 
-Private gemeinsame Rezeptsammlung: **Link einfügen → auf Deutsch aufbereiten → speichern**. Bekannte Mengen werden metrisch normalisiert; verständliche Arbeitsschritte enthalten die Mengen direkt in Klammern. Zutaten lassen sich einzeln über **+** an eine gemeinsame Bring!-Liste senden.
+Private gemeinsame Rezeptsammlung: **Link einfügen → auf Deutsch aufbereiten → speichern**. Bekannte Mengen werden metrisch normalisiert; verständliche Arbeitsschritte enthalten die Mengen direkt in Klammern. Zutaten lassen sich einzeln über **+** oder gemeinsam mit Ausschlüssen an eine gemeinsame Bring!-Liste senden.
 
 ## Funktionen
 
@@ -8,7 +8,7 @@ Private gemeinsame Rezeptsammlung: **Link einfügen → auf Deutsch aufbereiten 
 - Gemeinsames Kochbuch mit serverseitigen Mitglieder-/Administratorrechten und JSON-Export.
 - Öffentliche Rezeptseiten: strukturierte Rezeptdaten bevorzugen, begrenzten Rezeptinhalt extrahieren, OpenAI Responses API mit Structured Outputs und zusätzlicher Validierung.
 - Öffentliche Instagram-/TikTok-Quellen: Beschreibung bevorzugen, verfügbare öffentliche Medien begrenzt auswerten. Kein Login-/DRM-/Plattformschutz-Umgehen. Automatische YouTube-Medien sind eingeschränkt; rechtmäßig bereitgestellter Text bleibt eine Alternative.
-- Bring! einmal mit Worker Secrets einrichten und als Administrator eine gemeinsame Zielliste auswählen. Die Plus-Schaltfläche neben jeder Zutat sendet ausschließlich diese Zutat samt gespeicherter Menge. Fehlende Mengen bleiben „Menge offen“. Kein Sammelversand und keine KI-Kosten für Bring!.
+- Bring! einmal mit Worker Secrets einrichten und als Administrator eine gemeinsame Zielliste auswählen. Die Plus-Schaltfläche neben jeder Zutat sendet ausschließlich diese Zutat samt gespeicherter Menge. Fehlende Mengen bleiben „Menge offen“. Kreuzchen schließen Zutaten aus; die Schaltfläche darunter sendet alle übrigen nacheinander. Nach vollständigem Erfolg werden Kreuzchen und Status zurückgesetzt. Bei Fehlern bleiben bestätigte Zutaten markiert; kein automatischer Retry und keine KI-Kosten für Bring!.
 - Futterluke in Safari zum Home-Bildschirm hinzufügen; das Zitronensymbol bleibt erhalten.
 
 ## Technik
