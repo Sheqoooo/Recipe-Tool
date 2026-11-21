@@ -261,3 +261,7 @@ Keine neue SQL-Migration. Historische Tabellen `shopping_items`, `plan` und `che
 Kreuzchen in der Rezept-Zutatenliste schließen Positionen vom Versand aus. Die Schaltfläche darunter überträgt die übrigen Positionen seriell, mit unveränderten Berechtigungen, Einzelzutaten-Prüfungen, Revisionen, Deduplizierung und 30-Exporte/Minute-Limit. Kein neuer Endpunkt, keine Migration und keine neuen Secrets. Nach vollständiger Bestätigung wird die Auswahl zurückgesetzt; bei Fehlern bleibt der bestätigte Fortschritt sichtbar, ohne automatische Wiederholung. Die Auswahl lebt nur im geöffneten Dialog.
 
 Manuell erst mit Freigabe eines echten Bring!-Schreibtests: drei Testzutaten öffnen, mittlere ausschließen und Auswahl senden. In Bring! dürfen nur die zwei übrigen ankommen; danach müssen Kreuzchen und Plus-Symbole wieder normal sein. Ohne weitere Freigabe ausschließlich die gemockten Browserprüfungen nutzen. Teilfehler und schreibgeschützte Ansichten werden im Browser mit Mocks geprüft.
+### Einkaufsnamen für Bring!
+
+Vor der Veröffentlichung der Einkaufsnamen muss `0007_bring_ingredient_names.sql` separat auf der vorhandenen D1-Datenbank angewendet werden. Der bisherige Worker funktioniert auch mit der zusätzlichen, optionalen Spalte. Der neue Worker benötigt die Spalte zum Importieren, Bearbeiten und Senden von Zutaten. Die Migration lässt vorhandene Zeilen stehen. Für diese Zutaten berechnet der neue Worker den Einkaufsnamen beim Versand. Der Build führt die Migration nicht aus.
+

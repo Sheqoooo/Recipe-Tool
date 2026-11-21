@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import {AppError} from '../shared/errors.js';
 import type {Member,BringStatus,BringExportResult} from '../shared/types.js';
-import {bringItem} from '../shared/bring-item.js';
+import {bringItem,normalizeIngredientName} from '../shared/bring-item.js';
 import type {Env} from './env.js';
 import {BringClient,bringEnabled} from './bring-client.js';
 import {Repository} from './db.js';
@@ -64,10 +64,13 @@ export class BringService {
     const recipe=await new Repository(this.db).byId(parsed.data.recipe_id);
     if(!recipe)throw new AppError('NOT_FOUND','Rezept nicht gefunden.',404);
     if(recipe.revision!==parsed.data.revision)throw new AppError('EDIT_CONFLICT','Das Rezept wurde geändert. Bitte neu laden.',409);
-    const ingredient=await this.db.prepare('SELECT name,amount,unit,note FROM ingredients WHERE recipe_id=? AND position=?').bind(recipe.id,parsed.data.ingredient_index).first<{name:string;amount:number|null;unit:string;note:string}>();
+    const ingredient=await this.db.prepare('SELECT name,amount,unit,note,bring_name FROM ingredients WHERE recipe_id=? AND position=?').bind(recipe.id,parsed.data.ingredient_index).first<{name:string;amount:number|null;unit:string;note:string;bring_name:string|null}>();
     if(!ingredient)throw new AppError('INVALID_INGREDIENT','Diese Zutat ist nicht mehr vorhanden. Bitte das Rezept neu laden.',409);
-    const items=[bringItem(ingredient)];
-    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([settings.list_id,recipe.id,recipe.revision,parsed.data.ingredient_index,items])));
+    const item=bringItem(ingredient,ingredient.bring_name);
+    const items=[item];
+    // Preserve the existing dedupe key across the shopping-name rollout.
+    const originalItems=[{name:normalizeIngredientName(ingredient.name),quantity:item.quantity}];
+    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([settings.list_id,recipe.id,recipe.revision,parsed.data.ingredient_index,originalItems])));
     const key=Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
     const job=await this.reserve(actor,'export',key,items.length,settings.list_name);
     if(job.existing){
