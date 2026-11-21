@@ -213,6 +213,26 @@ it('sendet exakt die ausgewählte gespeicherte Zutat und dedupliziert pro Zutat'
  expect((await service.send(member,{recipe_id:id,revision:1,target_revision:1,ingredient_index:1})).existing).toBe(true);
  expect(client.add).toHaveBeenCalledTimes(2);
 });
+it('speichert Einkaufsnamen beim Import und Bearbeiten und unterstützt historische Zutaten',async()=>{
+ const ingredients=[
+   {name:'frischer Rosmarin',amount:3,unit:'Zweig',note:'Zum Garnieren'},
+   {name:'Tomaten',amount:2,unit:'Dose',note:''},
+ ];
+ const id=await savedRecipe({...recipe,ingredients});
+ const readNames=async()=>(await env.DB.prepare('SELECT name,bring_name FROM ingredients WHERE recipe_id=? ORDER BY position').bind(id).all()).results;
+ expect(await readNames()).toEqual([{name:'frischer Rosmarin',bring_name:'Rosmarin'},{name:'Tomaten',bring_name:'Dosentomaten'}]);
+ const repo=new Repository(env.DB);
+ const publicRecipe=(await repo.recipes(member)).find(row=>row.id===id);
+ expect(publicRecipe?.ingredients).toEqual(ingredients);
+ await env.DB.prepare('UPDATE ingredients SET bring_name=NULL WHERE recipe_id=? AND position=0').bind(id).run();
+ const {client,service}=await configured();
+ await service.send(member,{recipe_id:id,revision:1,target_revision:1,ingredient_index:0});
+ expect(client.add).toHaveBeenLastCalledWith(listId,[{name:'Rosmarin',quantity:'3 Zweig'}],expect.any(String));
+ await service.send(member,{recipe_id:id,revision:1,target_revision:1,ingredient_index:1});
+ expect(client.add).toHaveBeenLastCalledWith(listId,[{name:'Dosentomaten',quantity:'2 Dose'}],expect.any(String));
+ await repo.edit(id,1,{...recipe,ingredients:[{...ingredients[0],name:'frischer Thymian'},ingredients[1]]},admin);
+ expect(await readNames()).toEqual([{name:'frischer Thymian',bring_name:'Thymian'},{name:'Tomaten',bring_name:'Dosentomaten'}]);
+});
 it('Bulk- und ungültige Zutatenauswahl werden vor Fremdzugriff abgewiesen',async()=>{
  const id=await savedRecipe(),{client,service}=await configured();client.login.mockClear();
  for(const input of [{recipe_id:id,revision:1,target_revision:1},{recipe_id:id,revision:1,target_revision:1,ingredient_index:-1},{recipe_id:id,revision:1,target_revision:1,ingredient_index:200}]){

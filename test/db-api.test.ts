@@ -117,7 +117,7 @@ it('große Sammlungen laden nur Details der gewählten 500 Rezepte mit stabiler 
   const owner=actor('owner');await seed(owner);
   await env.DB.batch([
     env.DB.prepare("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<505) INSERT INTO recipes(id,owner_id,title,source_url,source_kind,created_at) SELECT i,?,printf('Rezept %d',i),printf('https://recipes.example/%d',i),'web','2026-01-01' FROM n").bind(owner.id),
-    env.DB.prepare("INSERT INTO ingredients SELECT id,0,title,1,'g','' FROM recipes"),
+    env.DB.prepare("INSERT INTO ingredients(recipe_id,position,name,amount,unit,note) SELECT id,0,title,1,'g','' FROM recipes"),
     env.DB.prepare("INSERT INTO steps SELECT id,0,title,'[0]' FROM recipes"),
   ]);
   let counts:number[]=[];

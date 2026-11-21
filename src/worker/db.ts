@@ -3,6 +3,14 @@ import type { Member, Recipe, RecipeData, Source, SourceKind, Usage, ImportRecor
 import { AppError } from '../shared/errors.js';
 import { normalizeSourceUrl,publicSourceUrl } from '../shared/source-url.js';
 import {normalizeAdaptation,adaptationNote,ADAPTATION_PREFIX,markAdaptation} from '../shared/adaptation.js';
+import {bringIngredientName} from '../shared/bring-item.js';
+
+const ingredientColumns='recipe_id,position,name,amount,unit,note,bring_name';
+function ingredientValues(id:number,position:number,ingredient:RecipeData['ingredients'][number]){
+  const shoppingName=bringIngredientName(ingredient.name,ingredient.unit);
+  const storedName=shoppingName.length<=100&&shoppingName.length>0&&!/[\u0000-\u001f\u007f]/.test(shoppingName)?shoppingName:null;
+  return [id,position,ingredient.name,ingredient.amount,ingredient.unit,ingredient.note,storedName];
+}
 
 interface Row {
   id: number; owner_id: string; title: string; description: string; servings: number | null;
@@ -49,7 +57,7 @@ export class Repository {
     type StepRow={recipe_id:number;text:string;ingredient_indices_json:string};
     const result=await this.db.batch([
       this.db.prepare('SELECT * FROM recipes WHERE id IN ('+selection+') ORDER BY created_at DESC,id DESC'),
-      this.db.prepare('SELECT * FROM ingredients WHERE recipe_id IN ('+selection+') ORDER BY recipe_id,position'),
+      this.db.prepare('SELECT recipe_id,name,amount,unit,note FROM ingredients WHERE recipe_id IN ('+selection+') ORDER BY recipe_id,position'),
       this.db.prepare('SELECT * FROM steps WHERE recipe_id IN ('+selection+') ORDER BY recipe_id,position'),
       this.db.prepare('SELECT recipe_id,source_page,credit FROM recipe_images WHERE recipe_id IN ('+selection+')'),
     ]);
@@ -141,7 +149,7 @@ export class Repository {
     const id=Number.parseInt(crypto.randomUUID().replaceAll('-','').slice(0,13),16);
     const statements=[this.db.prepare(`INSERT INTO recipes(id,owner_id,title,description,servings,prep_minutes,cook_minutes,source_url,source_kind,warnings_json)
       SELECT ?,?,?,?,?,?,?,?,?,? FROM imports WHERE id=? AND status='running' AND lease_expires_at>?`).bind(id,actor.id,recipe.title,recipe.description,recipe.servings,recipe.prep_minutes,recipe.cook_minutes,sourceUrl,source.kind,JSON.stringify(recipe.warnings),importId,Date.now())];
-    recipe.ingredients.forEach((i,p)=>statements.push(this.db.prepare('INSERT INTO ingredients VALUES(?,?,?,?,?,?)').bind(id,p,i.name,i.amount,i.unit,i.note)));
+    recipe.ingredients.forEach((i,p)=>statements.push(this.db.prepare(`INSERT INTO ingredients(${ingredientColumns}) VALUES(?,?,?,?,?,?,?)`).bind(...ingredientValues(id,p,i))));
     recipe.steps.forEach((s,p)=>statements.push(this.db.prepare('INSERT INTO steps VALUES(?,?,?,?)').bind(id,p,s.text,JSON.stringify(s.ingredient_indices))));
     if(image)statements.push(this.db.prepare('INSERT INTO recipe_images(recipe_id,content,mime_type,original_url,source_page,credit) VALUES(?,?,?,?,?,?)').bind(id,image.bytes,image.mime,normalizeSourceUrl(image.original_url).href,sourceUrl,image.credit));
     statements.push(this.db.prepare("UPDATE imports SET status='completed',recipe_id=?,input_tokens=?,output_tokens=?,model=?,estimated_cost_microusd=? WHERE id=? AND status='running'")
@@ -161,7 +169,7 @@ export class Repository {
       WHERE id=? AND revision=? AND (owner_id=? OR ?='admin')`).bind(recipe.title,recipe.description,recipe.servings,recipe.prep_minutes,recipe.cook_minutes,JSON.stringify(recipe.warnings),token,id,revision,actor.id,actor.role),
       this.db.prepare(`DELETE FROM ingredients WHERE recipe_id=? AND ${condition}`).bind(id,id,token),
       this.db.prepare(`DELETE FROM steps WHERE recipe_id=? AND ${condition}`).bind(id,id,token)];
-    recipe.ingredients.forEach((i,p)=>statements.push(this.db.prepare(`INSERT INTO ingredients SELECT ?,?,?,?,?,? WHERE ${condition}`).bind(id,p,i.name,i.amount,i.unit,i.note,id,token)));
+    recipe.ingredients.forEach((i,p)=>statements.push(this.db.prepare(`INSERT INTO ingredients(${ingredientColumns}) SELECT ?,?,?,?,?,?,? WHERE ${condition}`).bind(...ingredientValues(id,p,i),id,token)));
     recipe.steps.forEach((s,p)=>statements.push(this.db.prepare(`INSERT INTO steps SELECT ?,?,?,? WHERE ${condition}`).bind(id,p,s.text,JSON.stringify(s.ingredient_indices),id,token)));
     const result=await this.db.batch(statements);
     if(!result[0].meta.changes)throw new AppError('EDIT_CONFLICT','Das Rezept wurde inzwischen geändert. Bitte neu laden.',409);
