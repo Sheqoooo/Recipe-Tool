@@ -111,7 +111,7 @@ export function createApp(deps:Dependencies={}){
           source.adaptation=adaptation;
           if(source.provenance==='public_video')await repo.reserveVideoBudget(importId,env,videoReservationCost(env,adaptation));
           const generated=source.provenance==='public_video'?await(deps.generateVideo||generateVideoRecipe)(source,env,importId):await(deps.generate||generateRecipe)(source,env,importId);
-          const recipe=validateRecipe(markAdaptation(generated.recipe,adaptation));
+          const recipe=validateRecipe(markAdaptation(generated.recipe,adaptation),{imported:true});
           let image:RecipeImageData|undefined=generated.image;
           if(!image&&source.kind==='web'&&source.image){try{image=await(deps.image||fetchRecipeImage)(source.image,env);}catch{/* An optional image must not discard a valid recipe. */}}
           if(!image&&source.provenance==='description'&&(platform==='instagram'||platform==='tiktok')&&env.VIDEO_ANALYSIS_ENABLED==='true'&&env.MEDIA){

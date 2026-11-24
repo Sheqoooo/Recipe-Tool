@@ -14,9 +14,9 @@ Schreibe Titel, Zutaten und Schritte auf Deutsch. Keine Zutaten, Mengen, Tempera
 Unbekannte Portionen/Zeiten und Mengen als null ausgeben und unter warnings kennzeichnen. Ist kein vollständiges Rezept erkennbar,
 liefere is_recipe=false und recipe=null, ohne Angaben zu erfinden. Sonst is_recipe=true und das Rezept unter recipe liefern.
 Zutatenname, Menge, Einheit und Hinweis getrennt halten.
-Rechne US-Pfund/Unzen in g, US fl oz in ml und Fahrenheit in Celsius um. Cups nur zutatenabhängig mit begründeter Dichte in g
-umrechnen, Näherung im note/warnings nennen; bei unbekannter Dichte stattdessen Volumen in ml behalten. Keine Ofenart erfinden.
-Einheiten g, ml, Stück, EL, TL bevorzugen. Alternativen, Mengenbereiche und nach Geschmack als note erhalten; keine falsche exakte Menge.
+Wähle zum Kochen sinnvolle Einheiten: Stück für ausdrücklich gezählte Zwiebeln, Zehen für Knoblauch, g für feste oder trockene Zutaten, ml für Flüssigkeiten und EL/TL für Löffelmengen. Verwandle Zwiebeln oder Reis nie pauschal in ml. Bei Cups für feste Zutaten nur mit einer verlässlichen, zur Sorte und Zubereitungsform passenden Referenz in g umrechnen. Unklare Fälle als US-Tasse erhalten und kurz erklären; aus einer Tasse niemals eine Stückzahl raten.
+Gib explizite US-Cups für gehackte/gewürfelte rohe Zwiebeln, ausdrücklich rohen weißen Langkornreis sowie Wasser, Brühe oder Fond als unit="cup" aus, damit die App die Umrechnung einheitlich übernimmt. Erhalte Schnittform, Reissorte und roh/gekocht in Name oder Hinweis, soweit belegt. Für solche Zutaten die passende Cup-Menge auch im Schritt direkt neben dem identischen Zutatennamen angeben, etwa Gemüsebrühe (2,5 cup).
+Rechne sonst US-Pfund/Unzen in g, US fl oz in ml und Fahrenheit in Celsius um. Runde reine Umrechnungswerte in haushaltsübliche Schritte, z. B. ca. 600 ml Brühe statt 591 ml. Kleine Mengen (etwa 3/4 TL), Backtriebmittel, genaue Quellangaben und relevante Mengenverhältnisse erhalten. Näherungen in note und an der betreffenden Menge im Schritt kenntlich machen. Mengenbereiche und „nach Geschmack“ bewahren. Keine Ofenart erfinden.
 prep_minutes/cook_minutes nur aus expliziten Zeitangaben. Schritte als Objekte: text und nullbasierte ingredient_indices zur Zutatenliste.
 Schreibe flüssige, gut lesbare deutsche Arbeitsanweisungen als normale Sätze. Bekannte Mengen stehen in Klammern direkt bei der jeweiligen Zutat im Satz, z. B. Paprikapulver (1 TL) hinzufügen. Danach den Reis dazugeben (200 g) und leicht anrösten lassen.
 Keine angehängte Zutatenliste, keine Sammelklammer am Schrittende und keine Wiederholung aller Zutatenmengen.
@@ -66,7 +66,7 @@ export async function generateRecipe(source:Source,env:Env,importId:string,fetch
     const envelope=selectedSchema.safeParse(parsed);
     if(!envelope.success)throw new AppError('AI_INVALID','Die strukturierte KI-Antwort ist ungültig.',422);
     if(!envelope.data.is_recipe||!envelope.data.recipe)throw new AppError('NO_RECIPE','In der Quelle wurde kein vollständiges Rezept erkannt.',422);
-    const recipe=validateRecipe(envelope.data.recipe);
+    const recipe=validateRecipe(envelope.data.recipe,{imported:true});
     if(source.kind==='youtube_transcript'||source.provenance==='provided_text')recipe.warnings=['Nur bereitgestellten Text ausgewertet; Ton und Bildinhalte wurden nicht analysiert.',...recipe.warnings].slice(0,20);
     if(source.provenance==='description')recipe.warnings=['Nur zugängliche Videobeschreibung oder verlinkte Rezeptseite ausgewertet; Ton und Videobilder wurden nicht analysiert.',...recipe.warnings].slice(0,20);
     if(source.provenance==='public_video')recipe.warnings=['Tontranskription und sechs Einzelbilder automatisch ausgewertet. Kurze Einblendungen und stumme Handlungen können fehlen; unsichere Angaben bitte mit dem Originalvideo prüfen.',...recipe.warnings].slice(0,20);
