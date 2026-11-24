@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AppError } from './errors.js';
 import type { RecipeData } from './types.js';
+import { normalizeImportQuantities } from './import-quantities.js';
 
 const short = z.string().max(300);
 export const recipeSchema = z.object({
@@ -22,12 +23,13 @@ const units: Record<string, [string, number]> = {
   'fl oz': ['ml', 29.5735295625], cup: ['ml', 236.5882365], cups: ['ml', 236.5882365],
   el: ['EL', 1], tbsp: ['EL', 1], tl: ['TL', 1], tsp: ['TL', 1], stück: ['Stück', 1], stk: ['Stück', 1],
 };
-export function validateRecipe(input: unknown): RecipeData {
+export function validateRecipe(input: unknown, options: { imported?: boolean } = {}): RecipeData {
   const parsed = recipeSchema.safeParse(input);
   if (!parsed.success) throw new AppError('INVALID_RECIPE', 'Kein vollständiges gültiges Rezept erkannt. Es wurde nichts gespeichert.', 422);
   const recipe = parsed.data;
   recipe.title=recipe.title.trim();
   if(!recipe.title||recipe.ingredients.some(i=>!i.name.trim())||recipe.steps.some(s=>!s.text.trim()))throw new AppError('INVALID_RECIPE','Leere Rezeptangaben sind nicht erlaubt.',422);
+  if (options.imported) normalizeImportQuantities(recipe);
   for (const item of recipe.ingredients) {
     item.name=item.name.trim();
     if(item.amount===null&&!item.note.trim())item.note='Menge unbekannt; bitte Quelle prüfen.';
